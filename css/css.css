@@ -1,0 +1,20 @@
+.big-font {
+    font-family:Helvetica; color:#0f557a; font-size:48px !important;
+}
+.medium-font {
+    font-family:Arial; color:000000; font-size:18px;
+}
+textarea {
+    font-family:Arial; font-size: 25px;
+    }
+input {
+    font-family:Arial; font-size: 25px;
+}
+div.stButton > button:first-child {
+    background-color: #D3D3D3;
+    height: auto;
+    color: black;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 20px;
+}
