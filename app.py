@@ -23,7 +23,7 @@ import streamlit as st
 
 from pathlib import Path
 
-from utils.validate import read_meta_table, validate_table, ReportCollector, load_css, NULL
+from utils.validate import validate_table, ReportCollector, load_css, NULL
 
 # google id for ASAP_CDE sheet
 # GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8"
