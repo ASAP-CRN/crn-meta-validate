@@ -1,0 +1,18 @@
+#conda env create -f app_11.yml 
+
+name: slapp
+channels:
+- conda-forge
+dependencies:
+- python=3.11
+- pip
+- pip:
+  - pandas
+  - streamlit
+
+# pip freeze > requirements.txt
+
+  # For better performance, install the Watchdog module:
+
+  # $ xcode-select --install
+  # $ pip install watchdog
