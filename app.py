@@ -280,7 +280,7 @@ def main():
         st.download_button('📥 Download your QC log', data=report_content, file_name=f"{table_choice}.md", mime='text/markdown')
 
         # Download button
-        st.download_button('📥 Download your QC log', data=table_content, file_name=f"{table_choice}.csv", mime='text/csv')
+        st.download_button('📥 Download your QC log', data=table_content, file_name=f"{table_choice}_sanitized.csv", mime='text/csv')
 
 
         return None
