@@ -61,25 +61,41 @@ load_css("css/css.css")
 
 
 # TODO: set up dataclasses to hold the data
+def read_file(data_file):
+    """
+    TODO: depricate dtypes
+    """
+    encoding = 'latin1'
+
+    if data_file.type == "text/csv":
+        print(f"reading {data_file.name} txt/csv, encoding={encoding}")
+        df = pd.read_csv(data_file, dtype="str", encoding=encoding)        
+        # df = read_meta_table(table_path,dtypes_dict)
+    # assume that the xlsx file remembers the dtypes
+    elif data_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        df = pd.read_excel(data_file, sheet_name=0)
+
+    for col in df.select_dtypes(include='object').columns:
+        df[col] = df[col].str.encode('latin1', errors='replace').str.decode('utf-8', errors='replace')
+
+    df.replace({"":NULL, pd.NA:NULL}, inplace=True)
+
+    return df
+
+# def read_file(data_file):
+#     try:
+#         df = _read_file(data_file)
+#     except UnicodeDecodeError:
+#         df = _read_file(data_file, encoding='latin1')
+#         print(f"read 'latin1' file")
+#     return df
+    
 @st.cache_data
 def load_data(data_files):
     """
     Load data from a files and cache it, return a dictionary of dataframe
     """
-    def read_file(data_file):
-        """
-        TODO: depricate dtypes
-        """
-        if data_file.type == "text/csv":
-            df = pd.read_csv(data_file, dtype="str")        
-            # df = read_meta_table(table_path,dtypes_dict)
-        # assume that the xlsx file remembers the dtypes
-        elif data_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            df = pd.read_excel(data_file, sheet_name=0)
 
-        df.replace({"":NULL, pd.NA:NULL}, inplace=True)
-        return df
-    
     tables = [dat_f.name.split('.')[0] for dat_f in data_files]
     print(tables)
     dfs = { dat_f.name.split('.')[0]:read_file(dat_f) for dat_f in data_files }
@@ -88,9 +104,24 @@ def load_data(data_files):
 
 @st.cache_data
 def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.DataFrame):
+    # TODO:  hack in a way to select all "ASSAY*" tables
 
     df = dfs[table_choice]
-    specific_cde_df = CDE_df[CDE_df['Table'] == table_choice]
+
+    hack = False
+    # hack to match all ASSAY tables
+    if table_choice.startswith("ASSAY"):
+        hack = True
+
+    # specific_cde_df = CDE_df[CDE_df['Table'] == table_choice]
+    specific_cde_df = CDE_df[CDE_df['Table'].str.startswith(table_choice)]
+
+
+    if hack:
+        specific_cde_df = specific_cde_df[specific_cde_df['Table'].str.startswith("ASSAY")]
+    else:
+        specific_cde_df = specific_cde_df[specific_cde_df['Table'] == table_choice]
+
     #TODO: make sure that the loaded table is in the CDE
     dat = (df,specific_cde_df)
 
@@ -135,6 +166,9 @@ def read_CDE(metadata_version:str="v3.0-beta", local=False):
     except:
         CDE_df = pd.read_csv(f"{sheet_name}.csv")
         print("read local file")
+
+    # drop rows with no table name (i.e. ASAP_ids)
+    CDE_df.dropna(subset=['Table'], inplace=True)
 
     return CDE_df
 
@@ -236,7 +270,7 @@ def main():
             st.runtime.legacy_caching.clear_cache()
 
         report_content = report.get_log()
-
+        table_content = df.to_csv(index=False)
         #from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
@@ -244,6 +278,10 @@ def main():
 
         # Download button
         st.download_button('📥 Download your QC log', data=report_content, file_name=f"{table_choice}.md", mime='text/markdown')
+
+        # Download button
+        st.download_button('📥 Download your QC log', data=table_content, file_name=f"{table_choice}.csv", mime='text/csv')
+
 
         return None
 
