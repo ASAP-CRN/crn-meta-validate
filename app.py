@@ -143,13 +143,15 @@ def read_CDE(metadata_version:str="v3.0-beta", local=False):
         sheet_name = "ASAP_CDE_v2"
     elif metadata_version == "v2.1":
         sheet_name = "ASAP_CDE_v2.1"
-    elif metadata_version in ["v3.0","v3.0-beta"]:
+    elif metadata_version == "v3.0":
+        sheet_name = "ASAP_CDE_v3.0"
+    elif metadata_version == "v3.0-beta":
         sheet_name = "ASAP_CDE_v3.0-beta"
     else:
-        sheet_name = "ASAP_CDE_v2.1"
+        sheet_name = "ASAP_CDE_v3.0"
 
 
-    if metadata_version in ["v1","v2","v2.1","v3.0-beta"]:
+    if metadata_version in ["v1","v2","v2.1","v3.0","v3.0-beta"]:
         print(f"metadata_version: {sheet_name}")
     else:
         print(f"Unsupported metadata_version: {sheet_name}")
@@ -192,7 +194,7 @@ def main():
     with col1:
         metadata_version = st.selectbox( 
                                 "choose meta version👇",
-                                ["v3.0-beta","v2.1","v2","v1"],
+                                ["v3.0","v3.0-beta","v2.1","v2","v1"],
                                 # index=None,
                                 # placeholder="Select TABLE..",
                             )
