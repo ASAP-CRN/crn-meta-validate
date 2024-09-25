@@ -21,6 +21,7 @@ STUDY,sample_types,"enumeration of samples in this collection. e.g. Brain Region
 STUDY,types_of_samples,"Sample Type. :   
 Description of samples.  e.g.: late-stage PD and control postmortem brains",String,Required,,,,,
 STUDY,DUA_version,DUA Version. :   ASAP Access & Use Policy,String,Required,,,,,
+STUDY,metadata_tables,List of Metadata tables for this dataset.,String,Required,,,New for v3,,
 STUDY,PI_ORCID,PI ORCID.:   Principle investigator ,String,Optional,,,,,
 STUDY,PI_google_scholar_id,PI Google Scholar ID.:   ,String,Optional,,,,,
 STUDY,preprocessing_references,Preprocessing References.:   Github repository link or similar code reference plus electronic lab notes detailing all data generation steps and quality control summaries.  Analysis scripts for additional processing will also create valuable context.,String,Optional,,,,,
@@ -46,6 +47,7 @@ SUBJECT,sex,Sex.:   Genetically derived sex. ,Enum,Required,"[""Male"", ""Female
 SUBJECT,age_at_collection,Age at Collection.:   Numerical age of subject at sample collection. Unit of years in decimal format.,Float,Required,,,,,HUMAN
 SUBJECT,race,Race.:   Reported race of subject. NINDS CDE for race. NOT genetic race.,Enum,Required,"[""American Indian or Alaska Native"", ""Asian"", ""White"", ""Black or African American"", ""Multi-racial"", ""Native Hawaiian or Other Pacific Islander"", ""Other"", ""Unknown"", ""Not Reported""]",,,,HUMAN
 SUBJECT,primary_diagnosis,"Primary Diagnosis.:   The diagnosis of the subject.  Because subjucts could have multple diagnoses, this is the PRIMARY diagnosis. ",Enum,Required,"[""Healthy Control"", ""Idiopathic PD"", ""Alzheimer’s disease"", ""Frontotemporal dementia"", ""Corticobasal syndrome"", ""Dementia with Lewy bodies"", ""Dopa-responsive dystonia"", ""Essential tremor"", ""Hemiparkinson/hemiatrophy syndrome"", ""Juvenile autosomal recessive parkinsonism"", ""Motor neuron disease with parkinsonism"", ""Multiple system atrophy"", ""Neuroleptic-induced parkinsonism"", ""Normal pressure hydrocephalus"", ""Progressive supranuclear palsy"", ""Psychogenic parkinsonism"", ""Vascular parkinsonism"", ""No PD nor other neurological disorder"", ""Spinocerebellar Ataxia (SCA)"", ""Prodromal non-motor PD"", ""Prodromal motor PD"", ""Other neurological disorder""]",,,,HUMAN
+SUBJECT,primary_diagnosis_text,"Primary Diagnosis Text.:   If the primary_diagnosis is ""Other neurological disorders"" diagnosis must be specified here. ",string,Optional,,,change for v3,,HUMAN
 ,ASAP_sample_id,ASAP Sample ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,,,,,
 ,ASAP_subject_id,ASAP Subject ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,can be assigned NULL for datasets where subject doesn't make sense,,,,
 ,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,,,,,
@@ -59,7 +61,7 @@ SAMPLE,repeated_sample,Repeated Sample.:   Repeated Sample indicator.  This will
 SAMPLE,batch,"Batch.:   Label to enumerate the batch. This will probablby numerica, but could be coded as letters.",String,Required,,,,,
 SAMPLE,organism,"Organism.:   Organism of the subject. Currently this is ONLY: ""Human""",Enum,Required,"[""Human"", ""Mouse"",""Dog"",""Fly"",""Other""]",,change for v3,,
 SAMPLE,tissue,"Tissue.:   Type of tissue.  e.g. ""Brain"" or other organ.  For this PMDBS database it should always be ""Brain"".  ""Colon"", ""iPSC"", ""Blood"",  ""CSF"", etc.",String,Required,,,,,
-,assay_type,Type of Assay. Refers to the ASSAY_* table. Expand as nescessary,Enum,Required,"['scRNAseq','snRNAseq','bulkRNAseq']",,new for v3,,
+SAMPLE,assay_type,Type of Assay. Refers to the ASSAY_* table. Expand as nescessary,Enum,Required,"['scRNAseq','snRNAseq','bulkRNAseq']",,new for v3,,
 SAMPLE,condition_id,experimental condition,String,Required,,,new for v3,,
 SAMPLE,organism_ontology_term_id,"Organism Ontology Term ID.:   NCBITaxon e.g. 9606 for Homo Sapiens, 10090 for mouse",Enum,Required,"[""NCBITaxon:9606"",""NCBITaxon:10090""]",,change for v3,,
 SAMPLE,time,"Time.:   Time from baseline in days. Units in days, 0 is baseline to facilitate longitudinal analysis.",Float,Optional,,,change for v3,,
@@ -82,7 +84,7 @@ SAMPLE,suspension_type,"Suspension Type.:   Cell, nucleus, or na, as correspondi
 ASSAY_RNAseq,sample_id,"Sample ID.:   ID of each individual sample used in the study (e.g. cortex of anterior cingulate gyrus); if from the same brain several regions are included in the study, each region (i.e. each sample) has different ID and listed as a separate entry",String,Required,,,,,
 ASSAY_RNAseq,tissue,"Tissue.:   Type of tissue.  e.g. ""Brain"" or other organ.  For this PMDBS database it should always be ""Brain"". ",String,Required,,,,,
 ASSAY_RNAseq,technology,Technology.:   Technology used for the assay.  e.g. 'sN' for single Nuclei or 'sC' for single Cell.,Enum,Required,"['SN','SC','Spatial','Bulk','Seq','Array']",,,,
-ASSAY_RNAseq,omic,"Omic.:   Readout type. This will be ""RNA"" for most of the ASAP CRN data.",Enum,Required,"['RNA','DNA','Hi-C','ATAC','Protein']",,,,
+ASSAY_RNAseq,omic,"Omic.:   Readout type. This will be ""RNA"" for most of the ASAP CRN data.",Enum,Required,"['RNA','DNA','Hi-C','ATAC','Protein']",,consider removing,,
 ASSAY_RNAseq,RIN,RIN.:  RNA integrity number (RIN) is an algorithm for assigning integrity values to RNA measurements. RIN on sample received (performed by team/lab/3rd party)?,Float,Required,,,,,
 ASSAY_RNAseq,molecular_source,"Molecular Source.:   The molecular source of the data could be DNA, RNA or protein, for example.  Initially this will be RNA.",Enum,Required,"[""Total RNA"", ""PolyA RNA"", ""Cytoplasmic RNA"", ""Nuclear RNA"", ""Genomic DNA"", ""Protein"", ""Other""]",,,,
 ASSAY_RNAseq,input_cell_count,Input Cell Count.:   Total count of cells (single cell or single nuclei) that were originally isolated and processed for capture. I.e. cell suspension concentration * volume injected.,Integer,Required,,,,,
@@ -124,7 +126,6 @@ CLINPATH,subject_id,Subject ID.:   Can be multiple samples from each Subject,Str
 CLINPATH,source_subject_id,Source Sample ID.:   ID provided by Brain bank or other source,String,Required,,SUBJECT,,,
 CLINPATH,duration_pmi,Duration of Pmi.:   Post Mortem Interval (PMI) between death and autopsy start. Units in hours,Float,Required,,SUBJECT,,,
 CLINPATH,age_at_death,Age at Death.:   Age in years when the donor from which the sample is derived died,String,Required,,,,,
-CLINPATH,primary_diagnosis_text,"Primary Diagnosis Text.:   If the primary_diagnosis is ""Other neurological disorders"" diagnosis must be specified here. ",string,Optional,,,change for v3,,PMDBS
 CLINPATH,AMPPD_id,AMP-PD ID.:   The AMP-PD ID if subhect has samples in AMP-PD. NULL if not in AMP-PD,String,Optional,,,change for v3,,PMDBS
 CLINPATH,GP2_id,GP2 ID if subject has samples  in GP2. NULL if not in GP2,String,Optional,,,change for v3,,PMDBS
 CLINPATH,ethnicity,Ethnicity.:   Reported ethnicity of subject. NINDS CDE for ethnicity. NOT genetic race.,Enum ,Optional,"[""Hispanic or Latino"", ""Not Hispanic or Latino"", ""Unknown"", ""Not Reported""]",,change for v3,,PMDBS
