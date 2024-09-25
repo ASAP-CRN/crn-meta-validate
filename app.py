@@ -78,7 +78,7 @@ def read_file(data_file):
     for col in df.select_dtypes(include='object').columns:
         df[col] = df[col].str.encode('latin1', errors='replace').str.decode('utf-8', errors='replace')
 
-    df.replace({"":NULL, pd.NA:NULL}, inplace=True)
+    df.replace({"":NULL, pd.NA:NULL, "none":NULL}, inplace=True)
 
     return df
 
@@ -254,11 +254,16 @@ def main():
     # perform the valadation
     retval = validate_table(df, table_choice, CDE, report)
 
+
+    df_out, out = report_dat[table_choice]
+
+
     if retval == 0:
         report.add_error(f"{table_choice} table has discrepancies!! 👎 Please try again.")
 
 
     report.add_divider()
+
 
 
     retval = 1

@@ -21,7 +21,7 @@ except ImportError:
         def divider(self):
             pass
     st = DummyStreamlit()
-    print("Streamlit NOT successfully")
+    print("Streamlit NOT successfully imported")
 
 NULL = "NA"
 
@@ -160,13 +160,35 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
             if datatype.item() == "Integer":
                 # recode "Unknown" as NULL
+                print(f"recoding {field} as int")
+
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                df[field].apply(lambda x: int(x) if x!=NULL else x )
+                try:
+                    df[field].apply(lambda x: int(x) if x!=NULL else x )
+                except Exception as e:
+                    # print(e)
+                    # print(f"Error in {field}")
+                    invalid_values = df[field].unique()
+                    n_invalid = invalid_values.shape[0]
+                    valstr = 'int or NULL'
+                    invalstr = ', '.join(map(my_str,invalid_values))
+                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                    
                 # test that all are integer or NULL, flag NULL entries
             elif datatype.item() == "Float":
                 # recode "Unknown" as NULL
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                df[field].apply(lambda x: float(x) if x!=NULL else x )
+                try:
+                    df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
+                except Exception as e:
+                    # print(e)
+                    # print(f"Error in {field}")
+                    invalid_values = df[field].unique()
+                    n_invalid = invalid_values.shape[0]
+                    valstr = 'float or NULL'
+                    invalstr = ', '.join(map(my_str,invalid_values))
+                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+
                 # test that all are float or NULL, flag NULL entries
             elif datatype.item() == "Enum":
 
@@ -216,4 +238,4 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
         out.add_markdown(f"No invalid entries found in Enum fields.")
 
 
-    return df, out
+    return df.copy(), out
