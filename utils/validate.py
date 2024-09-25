@@ -170,10 +170,10 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
                     # print(f"Error in {field}")
                     invalid_values = df[field].unique()
                     n_invalid = invalid_values.shape[0]
-                    valstr = 'int or NULL'
+                    valstr = "int or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-                    
+
                 # test that all are integer or NULL, flag NULL entries
             elif datatype.item() == "Float":
                 # recode "Unknown" as NULL
@@ -185,7 +185,7 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
                     # print(f"Error in {field}")
                     invalid_values = df[field].unique()
                     n_invalid = invalid_values.shape[0]
-                    valstr = 'float or NULL'
+                    valstr = "float or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
 

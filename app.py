@@ -275,17 +275,17 @@ def main():
             st.runtime.legacy_caching.clear_cache()
 
         report_content = report.get_log()
-        table_content = df.to_csv(index=False)
+        table_content = df_out.to_csv(index=False)
         #from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
             st.runtime.legacy_caching.clear_cache()
 
         # Download button
-        st.download_button('📥 Download your QC log', data=report_content, file_name=f"{table_choice}.md", mime='text/markdown')
+        st.download_button("📥 Download your QC log", data=report_content, file_name=f"{table_choice}.md", mime="text/markdown")
 
         # Download button
-        st.download_button('📥 Download your sanitized .csv', data=table_content, file_name=f"{table_choice}_sanitized.csv", mime='text/csv')
+        st.download_button("📥 Download a sanitized .csv (NULL-> 'NA' )", data=table_content, file_name=f"{table_choice}_sanitized.csv", mime="text/csv")
 
 
         return None
