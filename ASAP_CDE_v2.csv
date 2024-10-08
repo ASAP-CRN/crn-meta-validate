@@ -1,5 +1,5 @@
 Table,Field,Description,DataType,Required,Validation
-STUDY,ASAP_team_name,"ASAP Team Name:   Name of the ASAP CRN Team. i.e. ""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"",etc.",Enum,Required,"[""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"", ""TEAM-JAKOBSSON"", ""TEAM-SHERZER"", ""TEAM-SULZER"", ""TEAM-VOET"", ""TEAM-WOOD""]"
+STUDY,ASAP_team_name,"ASAP Team Name:   Name of the ASAP CRN Team. i.e. ""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"",etc.",Enum,Required,"[""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"", ""TEAM-JAKOBSSON"", ""TEAM-SCHERZER"", ""TEAM-SULZER"", ""TEAM-VOET"", ""TEAM-WOOD""]"
 STUDY,ASAP_lab_name,Lab Name. :   Lab name that is submitting dataset for the ASAP CRN Team.,String,Required,
 STUDY,project_name,Project Name:   A Title of the overall project. A unique and clear title of the Team's project.,String,Required,
 STUDY,team_dataset_id,"The ""project_name"" is often too verbose for practical use, so adding a short ""ID"" will be helpful for coding team components of datasets (i.e. ASAP_dataset_id) Team level dataset name. A one or two word descriptor joined by ""_"" to distinguish this dataset from other datasets this team might submit",String,Required,
@@ -9,7 +9,7 @@ STUDY,PI_full_name,"Principal Investigator Name.:   Full name of the lab Princip
 STUDY,PI_email,Principal Investigator E-mail.:   E-mail address of the Principle Investigator of the Lab submitting the data.,String,Required,
 STUDY,contributor_names,"Contributor(s).:   Names of all contributors to the dataset. Format:  First name, Initial, Last name ; First name, Initial, Last name ; ...",String,Required,
 STUDY,submitter_name,Data Submitter Name.:   Full name of individual submitting data.,String,Required,
-STUDY,submitter_name,Data Submitter E-Mail.:   Email address of individual submitting data.,String,Required,
+STUDY,submitter_email,Data Submitter E-Mail.:   Email address of individual submitting data.,String,Required,
 STUDY,ASAP_grant_id,ASAP Grant ID.:   ID of the ASAP grant funding the study.  e.g. ASAP-000xxx,String,Required,
 STUDY,other_funding_source,Other Funding.:   Details of other funding contributing to data generation.,String,Required,
 STUDY,publication_DOI,bioRxiv DOI.:   Digital Object Identifer for pre-print(s). NA if not available.,String,Required,
@@ -32,8 +32,8 @@ PROTOCOL,protocols_io_DOI,Protocols.io DOI.:   Digital Object Identifier (DOI) f
 PROTOCOL,other_reference,Other Reference.:   Link to technology/platform protocol(s) if not available in protocols.io,String,Optional,
 SUBJECT,subject_id,The Subject ID.  This will be a unique ID for the subject.  Please submit the subject ID used internally.  In the harmonized dataset this may be modified by the ASAP team to prevent naming collisions.  ,String,Required,
 SUBJECT,source_subject_id,Source Subject ID.:   Subject ID issued by providing brain bank.,String,Required,
-SUBJECT,AMPPD_id,AMP-PD ID.:   The AMP-PD ID if sample is also present in AMP-PD. NA if not in AMP-PD,String,Required,
-SUBJECT,GP2_id,GP2 ID if sample is also present in GP2:   GP2 ID if sample is also present in GP2. NA if not in GP2,String,Required,
+SUBJECT,AMPPD_id,AMP-PD ID.:   The AMP-PD ID if subhect has samples in AMP-PD. NULL if not in AMP-PD,String,Required,
+SUBJECT,GP2_id,GP2 ID if subject has samples  in GP2. NULL if not in GP2,String,Required,
 SUBJECT,biobank_name,Biobank Name.:   Name of the biobank from which the samples were sourced.,String,Required,
 SUBJECT,organism,"Organism.:   Organism of the subject. Currently this is ONLY: ""Human""",Enum,Required,"[""Human"", ""Mouse"",""Dog"",""Fly"",""Other""]"
 SUBJECT,sex,Sex.:   Genetically derived sex. ,Enum,Required,"[""Male"", ""Female"",""Intersex"",""Unnown""]"
@@ -141,3 +141,12 @@ DATA,time,"Time.:   Time from baseline in days. Units in days, 0 is baseline to 
 DATA,header,Header.:   What are the primary header labels?,String,Required,
 DATA,annotation,"Annotation.:   Additional annotation columns present in file. I.e. 'tissue','UMI','barcode','cluster', or'cell location' ... Additional colunns in the annData or HDF files when relevant to technologies like single cell or spatial. ['SNP','ENSG','interval'] SNP is rsID or positional annotation. Interval is in chr_start_stop format. ENSG is ensemble ID.",String,Required,
 DATA,configuration_file,"Configuration File.:   Incl. software version, reference assembly, parameters for analysis, in YAML format",String,Required,
+,,,,,
+,,,,,
+STUDY,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,
+STUDY,ASAP_team_id,ASAP Team ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,
+SUBJECT,ASAP_subject_id,ASAP Subject ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,
+SAMPLE,ASAP_sample_id,ASAP Sample ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,
+SAMPLE,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,
+PROTOCOL,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,
+CLINPATH,ASAP_subject_id,ASAP Subject ID. Unique ID issued by ASAP CRN Cloud.  ,String,Required,

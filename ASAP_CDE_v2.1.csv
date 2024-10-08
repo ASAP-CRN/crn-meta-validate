@@ -9,7 +9,7 @@ STUDY,PI_full_name,"Principal Investigator Name.:   Full name of the lab Princip
 STUDY,PI_email,Principal Investigator E-mail.:   E-mail address of the Principle Investigator of the Lab submitting the data.,String,Required,
 STUDY,contributor_names,"Contributor(s).:   Names of all contributors to the dataset. Format:  First name, Initial, Last name ; First name, Initial, Last name ; ...",String,Required,
 STUDY,submitter_name,Data Submitter Name.:   Full name of individual submitting data.,String,Required,
-STUDY,submitter_name,Data Submitter E-Mail.:   Email address of individual submitting data.,String,Required,
+STUDY,submitter_email,Data Submitter E-Mail.:   Email address of individual submitting data.,String,Required,
 STUDY,ASAP_grant_id,ASAP Grant ID.:   ID of the ASAP grant funding the study.  e.g. ASAP-000xxx,String,Required,
 STUDY,other_funding_source,Other Funding.:   Details of other funding contributing to data generation.,String,Required,
 STUDY,publication_DOI,bioRxiv DOI.:   Digital Object Identifer for pre-print(s). NA if not available.,String,Required,
@@ -33,8 +33,8 @@ PROTOCOL,protocols_io_DOI,Protocols.io DOI.:   Digital Object Identifier (DOI) f
 PROTOCOL,other_reference,Other Reference.:   Link to technology/platform protocol(s) if not available in protocols.io,String,Optional,
 SUBJECT,subject_id,The Subject ID.  This will be a unique ID for the subject.  Please submit the subject ID used internally.  In the harmonized dataset this may be modified by the ASAP team to prevent naming collisions.  ,String,Required,
 SUBJECT,source_subject_id,Source Subject ID.:   Subject ID issued by providing brain bank.,String,Required,
-SUBJECT,AMPPD_id,AMP-PD ID.:   The AMP-PD ID if sample is also present in AMP-PD. NA if not in AMP-PD,String,Required,
-SUBJECT,GP2_id,GP2 ID if sample is also present in GP2:   GP2 ID if sample is also present in GP2. NA if not in GP2,String,Required,
+SUBJECT,AMPPD_id,AMP-PD ID.:   The AMP-PD ID if subhect has samples in AMP-PD. NULL if not in AMP-PD,String,Required,
+SUBJECT,GP2_id,GP2 ID if subject has samples  in GP2. NULL if not in GP2,String,Required,
 SUBJECT,biobank_name,Biobank Name.:   Name of the biobank from which the samples were sourced.,String,Required,
 SUBJECT,organism,"Organism.:   Organism of the subject. Currently this is ONLY: ""Human""",Enum,Required,"[""Human"", ""Mouse"",""Dog"",""Fly"",""Other""]"
 SUBJECT,sex,Sex.:   Genetically derived sex. ,Enum,Required,"[""Male"", ""Female"",""Intersex"",""Unnown""]"
@@ -125,6 +125,7 @@ SAMPLE,suspension_type,"Suspension Type.:   Cell, nucleus, or na, as correspondi
 SAMPLE,DV200,DV200.:   Value is the percentage of RNA fragments larger than 200 nucleotides.,Float,Optional,
 SAMPLE,pm_PH,Post-mortem PH.:   PH measured in the tissue. PH is designated as a number ranging between 0 and 14.,Float,Optional,(0-14)
 SAMPLE,donor_id,Donor ID.:   free-text identifier that distinguishes the unique individual that data were derived from. Included for compatibilty with CELLxGENE.,String,Optional,
+SAMPLE,alternate_sample_id,Alternate sample identifier,String,Optional,
 DATA,sample_id,"Sample ID.:   ID of each individual sample used in the study (e.g. cortex of anterior cingulate gyrus); if from the same brain several regions are included in the study, each region (i.e. each sample) has different ID and listed as a separate entry",String,Required,
 DATA,replicate,"Replicate.:   Indicator for replicates of the sample.  Replicates could be biological or tecnical.  Indicate biological replicates as capitalized ""Rep"" + replicated number (i.e. Rep1, Rep2, etc) and technical replicates with lowercase ""rep"" + replicate number (i.e., rep1, rep2 etc.)",String,Required,
 DATA,replicate_count,"Replicate Count.:   Number of replicates of this sample.  Typically this will be 1, but if replicates have been collected indicate how many total.",Integer,Required,
@@ -141,4 +142,5 @@ DATA,content,Content.:   What is the variable measurement values? ,Enum,Required
 DATA,time,"Time.:   Time from baseline in days. Units in days, 0 is baseline to facilitate longitudinal analysis.",Float,Required,
 DATA,header,Header.:   What are the primary header labels?,String,Required,
 DATA,annotation,"Annotation.:   Additional annotation columns present in file. I.e. 'tissue','UMI','barcode','cluster', or'cell location' ... Additional colunns in the annData or HDF files when relevant to technologies like single cell or spatial. ['SNP','ENSG','interval'] SNP is rsID or positional annotation. Interval is in chr_start_stop format. ENSG is ensemble ID.",String,Required,
+DATA,configuration_file,"Configuration File.:   Incl. software version, reference assembly, parameters for analysis, in YAML format",String,Required,
 DATA,configuration_file,"Configuration File.:   Incl. software version, reference assembly, parameters for analysis, in YAML format",String,Required,

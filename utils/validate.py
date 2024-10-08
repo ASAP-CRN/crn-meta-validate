@@ -53,6 +53,8 @@ def read_meta_table(table_path):
     # drop the first column if it is just the index
     if table_df.columns[0] == "Unnamed: 0":
         table_df = table_df.drop(columns=["Unnamed: 0"])
+        
+    table_df.replace({"":NULL, pd.NA:NULL, "none":NULL, "nan":NULL, "Nan":NULL}, inplace=True)
 
     return table_df
 
@@ -236,6 +238,11 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
             out.add_markdown(str_out)
     else:
         out.add_markdown(f"No invalid entries found in Enum fields.")
+
+
+    for field in df.columns:
+        if field not in specific_cde_df["Field"].values:
+            out.add_error(f"Extra field in {table_name}: {field}")
 
 
     return df.copy(), out
