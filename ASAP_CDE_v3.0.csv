@@ -1,7 +1,7 @@
 Table,Field,Description,DataType,Required,Validation
 ,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,
 ,ASAP_team_id,ASAP Team ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,
-STUDY,ASAP_team_name,"ASAP Team Name:   Name of the ASAP CRN Team. i.e. ""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"",etc.",Enum,Required,"[""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"", ""TEAM-JAKOBSSON"", ""TEAM-SCHERZER"", ""TEAM-SULZER"", ""TEAM-VOET"", ""TEAM-WOOD"",""TEAM-RIO"", "" TEAM-EDWARDS"",""TEAM-VILA"",""TEAM-KIRIK"""
+STUDY,ASAP_team_name,"ASAP Team Name:   Name of the ASAP CRN Team. i.e. ""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"",etc.",Enum,Required,"[""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"", ""TEAM-JAKOBSSON"", ""TEAM-SCHERZER"", ""TEAM-SULZER"", ""TEAM-VOET"", ""TEAM-WOOD"",""TEAM-RIO"", "" TEAM-EDWARDS"",""TEAM-VILA"",""TEAM-KIRIK""]"
 STUDY,ASAP_lab_name,Lab Name. :   Lab name that is submitting dataset for the ASAP CRN Team.,String,Required,
 STUDY,project_name,Project Name:   A Title of the overall project. A unique and clear title of the Team's project.,String,Required,
 STUDY,team_dataset_id,"The ""project_name"" is often too verbose for practical use, so adding a short ""ID"" will be helpful for coding team components of datasets (i.e. ASAP_dataset_id) Team level dataset name. A one or two word descriptor joined by ""_"" to distinguish this dataset from other datasets this team might submit",String,Required,
