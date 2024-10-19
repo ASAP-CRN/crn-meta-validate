@@ -131,7 +131,7 @@ def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.Data
 
 # can't cache read_ASAP_CDE so copied code here
 @st.cache_data
-def read_CDE(metadata_version:str="v3.0-beta", local=False):
+def read_CDE_old(metadata_version:str="v3.0-beta", local=False):
     """
     Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
     """
@@ -171,6 +171,57 @@ def read_CDE(metadata_version:str="v3.0-beta", local=False):
 
     # drop rows with no table name (i.e. ASAP_ids)
     CDE_df.dropna(subset=['Table'], inplace=True)
+
+    return CDE_df
+
+@st.cache_data
+def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
+    """
+    Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
+    """
+    # Construct the path to CSD.csv
+    GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
+
+    if metadata_version == "v1":
+        sheet_name = "ASAP_CDE_v1"
+    elif metadata_version == "v2":
+        sheet_name = "ASAP_CDE_v2"
+    elif metadata_version == "v2.1":
+        sheet_name = "ASAP_CDE_v2.1"
+    elif metadata_version == "v3.0-beta":
+        sheet_name = "ASAP_CDE_v3.0-beta"
+    elif metadata_version in ["v3","v3.0", "v3.0.0"]:
+        sheet_name = "ASAP_CDE_v3.0"
+    else:
+        sheet_name = "ASAP_CDE_v3.0"
+
+
+    if metadata_version in ["v1","v2","v2.1","v3","v3.0","v3.0-beta"]:
+        print(f"metadata_version: {sheet_name}")
+    else:
+        print(f"Unsupported metadata_version: {sheet_name}")
+        return 0,0
+    
+    cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
+    print(cde_url)
+    if local:
+        cde_url = f"{sheet_name}.csv"
+
+    
+    try:
+        CDE_df = pd.read_csv(cde_url)
+        read_source = "url" if not local else "local file"
+        print(f"read {read_source}")
+    except:
+        CDE_df = pd.read_csv(f"{sheet_name}.csv")
+        print("read local file")
+
+    # drop rows with no table name (i.e. ASAP_ids)
+    CDE_df = CDE_df[["Table", "Field", "Description", "DataType", "Required", "Validation", "Shared_key"]]
+    CDE_df = CDE_df.dropna(subset=['Table'])
+    CDE_df = CDE_df.reset_index(drop=True)
+    CDE_df = CDE_df.drop_duplicates()
+    # force extraneous columns to be dropped.
 
     return CDE_df
 
