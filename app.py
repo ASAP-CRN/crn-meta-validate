@@ -182,6 +182,7 @@ def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
     # Construct the path to CSD.csv
     GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
 
+    column_list = ["Table", "Field", "Description", "DataType", "Required", "Validation"]
     if metadata_version == "v1":
         sheet_name = "ASAP_CDE_v1"
     elif metadata_version == "v2":
@@ -195,6 +196,9 @@ def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
     else:
         sheet_name = "ASAP_CDE_v3.0"
 
+    # add the Shared_key column for v3
+    if metadata_version in ["v3","v3.0","v3.0-beta"]:
+        column_list += ["Shared_key"]
 
     if metadata_version in ["v1","v2","v2.1","v3","v3.0","v3.0-beta"]:
         print(f"metadata_version: {sheet_name}")
@@ -207,7 +211,6 @@ def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
     if local:
         cde_url = f"{sheet_name}.csv"
 
-    
     try:
         CDE_df = pd.read_csv(cde_url)
         read_source = "url" if not local else "local file"
@@ -217,7 +220,7 @@ def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
         print("read local file")
 
     # drop rows with no table name (i.e. ASAP_ids)
-    CDE_df = CDE_df[["Table", "Field", "Description", "DataType", "Required", "Validation", "Shared_key"]]
+    CDE_df = CDE_df[column_list]
     CDE_df = CDE_df.dropna(subset=['Table'])
     CDE_df = CDE_df.reset_index(drop=True)
     CDE_df = CDE_df.drop_duplicates()
