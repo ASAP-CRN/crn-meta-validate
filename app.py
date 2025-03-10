@@ -109,9 +109,12 @@ def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.Data
     df = dfs[table_choice]
 
     hack = False
+    table_choice = table_choice.upper()
     # hack to match all ASSAY tables
     if table_choice.startswith("ASSAY"):
         hack = True
+
+
 
     # specific_cde_df = CDE_df[CDE_df['Table'] == table_choice]
     specific_cde_df = CDE_df[CDE_df['Table'].str.startswith(table_choice)]
@@ -122,6 +125,7 @@ def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.Data
     else:
         specific_cde_df = specific_cde_df[specific_cde_df['Table'] == table_choice]
 
+    # print(specific_cde_df)
     #TODO: make sure that the loaded table is in the CDE
     dat = (df,specific_cde_df)
 
@@ -193,14 +197,16 @@ def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
         sheet_name = "ASAP_CDE_v3.0-beta"
     elif metadata_version in ["v3","v3.0", "v3.0.0"]:
         sheet_name = "ASAP_CDE_v3.0"
+    elif metadata_version in ["v3.1"]:
+        sheet_name = "ASAP_CDE_v3.1"
     else:
-        sheet_name = "ASAP_CDE_v3.0"
+        sheet_name = "ASAP_CDE_v3.1"
 
     # add the Shared_key column for v3
-    if metadata_version in ["v3","v3.0","v3.0-beta"]:
+    if metadata_version in ["v3.1", "v3","v3.0","v3.0-beta"]:
         column_list += ["Shared_key"]
 
-    if metadata_version in ["v1","v2","v2.1","v3","v3.0","v3.0-beta"]:
+    if metadata_version in ["v1","v2","v2.1","v3","v3.0","v3.0-beta", "v3.1"]:
         print(f"metadata_version: {sheet_name}")
     else:
         print(f"Unsupported metadata_version: {sheet_name}")
@@ -248,7 +254,7 @@ def main():
     with col1:
         metadata_version = st.selectbox( 
                                 "choose meta version👇",
-                                ["v3.0","v3.0-beta","v2.1","v2","v1"],
+                                ["v3.1", "v3.0","v3.0-beta","v2.1","v2","v1"],
                                 # index=None,
                                 # placeholder="Select TABLE..",
                             )
