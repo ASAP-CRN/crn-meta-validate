@@ -16,6 +16,7 @@ Contributors:
     @AMCalejandro : https://github.com/AMCalejandro
 
 """
+
 # conda create -n sl11 python=3.11 pip streamlit pandas
 
 import pandas as pd
@@ -32,15 +33,15 @@ GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
 
 
 st.set_page_config(
-    page_title='ASAP CRN metadata data QC',
+    page_title="ASAP CRN metadata data QC",
     page_icon="✅",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'Get help': "https://github.com/ergonyc/asap_sc_collect",
-        'Report a bug': "mailto:henrie@datatecnica.com",
-        'About': "# This is a header. This is an *extremely* cool app!"
-    }
+        "Get help": "https://github.com/ergonyc/asap_sc_collect",
+        "Report a bug": "mailto:henrie@datatecnica.com",
+        "About": "# This is a header. This is an *extremely* cool app!",
+    },
 )
 
 load_css("css/css.css")
@@ -51,11 +52,11 @@ load_css("css/css.css")
 #     read csv or xlsx file and return a dataframe
 #     """
 #     if data_file.type == "text/csv":
-#         df = pd.read_csv(data_file,dtype=dtypes_dict)        
+#         df = pd.read_csv(data_file,dtype=dtypes_dict)
 #         # df = read_meta_table(table_path,dtypes_dict)
 #     # assume that the xlsx file remembers the dtypes
 #     elif data_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-#         df = pd.read_excel(data_file, sheet_name=0)
+#         df = pd.read_excel(data_file, resource_fname=0)
 #     return df
 # Function to read a table with the specified data types
 
@@ -65,22 +66,30 @@ def read_file(data_file):
     """
     TODO: depricate dtypes
     """
-    encoding = 'latin1'
+    encoding = "latin1"
 
     if data_file.type == "text/csv":
         print(f"reading {data_file.name} txt/csv, encoding={encoding}")
-        df = pd.read_csv(data_file, dtype="str", encoding=encoding)        
+        df = pd.read_csv(data_file, dtype="str", encoding=encoding)
         # df = read_meta_table(table_path,dtypes_dict)
     # assume that the xlsx file remembers the dtypes
-    elif data_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-        df = pd.read_excel(data_file, sheet_name=0)
+    elif (
+        data_file.type
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ):
+        df = pd.read_excel(data_file, resource_fname=0)
 
-    for col in df.select_dtypes(include='object').columns:
-        df[col] = df[col].str.encode('latin1', errors='replace').str.decode('utf-8', errors='replace')
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = (
+            df[col]
+            .str.encode("latin1", errors="replace")
+            .str.decode("utf-8", errors="replace")
+        )
 
-    df.replace({"":NULL, pd.NA:NULL, "none":NULL}, inplace=True)
+    df.replace({"": NULL, pd.NA: NULL, "none": NULL}, inplace=True)
 
     return df
+
 
 # def read_file(data_file):
 #     try:
@@ -89,21 +98,25 @@ def read_file(data_file):
 #         df = _read_file(data_file, encoding='latin1')
 #         print(f"read 'latin1' file")
 #     return df
-    
+
+
 @st.cache_data
 def load_data(data_files):
     """
     Load data from a files and cache it, return a dictionary of dataframe
     """
 
-    tables = [dat_f.name.split('.')[0] for dat_f in data_files]
+    tables = [dat_f.name.split(".")[0] for dat_f in data_files]
     print(tables)
-    dfs = { dat_f.name.split('.')[0]:read_file(dat_f) for dat_f in data_files }
+    dfs = {dat_f.name.split(".")[0]: read_file(dat_f) for dat_f in data_files}
 
-    return tables,dfs
+    return tables, dfs
+
 
 @st.cache_data
-def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.DataFrame):
+def setup_report_data(
+    report_dat: dict, table_choice: str, dfs: dict, CDE_df: pd.DataFrame
+):
     # TODO:  hack in a way to select all "ASSAY*" tables
 
     df = dfs[table_choice]
@@ -114,20 +127,19 @@ def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.Data
     if table_choice.startswith("ASSAY"):
         hack = True
 
-
-
     # specific_cde_df = CDE_df[CDE_df['Table'] == table_choice]
-    specific_cde_df = CDE_df[CDE_df['Table'].str.startswith(table_choice)]
-
+    specific_cde_df = CDE_df[CDE_df["Table"].str.startswith(table_choice)]
 
     if hack:
-        specific_cde_df = specific_cde_df[specific_cde_df['Table'].str.startswith("ASSAY")]
+        specific_cde_df = specific_cde_df[
+            specific_cde_df["Table"].str.startswith("ASSAY")
+        ]
     else:
-        specific_cde_df = specific_cde_df[specific_cde_df['Table'] == table_choice]
+        specific_cde_df = specific_cde_df[specific_cde_df["Table"] == table_choice]
 
     # print(specific_cde_df)
-    #TODO: make sure that the loaded table is in the CDE
-    dat = (df,specific_cde_df)
+    # TODO: make sure that the loaded table is in the CDE
+    dat = (df, specific_cde_df)
 
     report_dat[table_choice] = dat
     return report_dat
@@ -135,104 +147,112 @@ def setup_report_data(report_dat:dict,table_choice:str, dfs:dict, CDE_df:pd.Data
 
 # can't cache read_ASAP_CDE so copied code here
 @st.cache_data
-def read_CDE_old(metadata_version:str="v3.0-beta", local=False):
+def read_CDE_old(metadata_version: str = "v3.0-beta", local=False):
     """
     Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
     """
     # Construct the path to CSD.csv
 
     if metadata_version == "v1":
-        sheet_name = "ASAP_CDE_v1"
+        resource_fname = "ASAP_CDE_v1"
     elif metadata_version == "v2":
-        sheet_name = "ASAP_CDE_v2"
+        resource_fname = "ASAP_CDE_v2"
     elif metadata_version == "v2.1":
-        sheet_name = "ASAP_CDE_v2.1"
+        resource_fname = "ASAP_CDE_v2.1"
     elif metadata_version == "v3.0":
-        sheet_name = "ASAP_CDE_v3.0"
+        resource_fname = "ASAP_CDE_v3.0"
     elif metadata_version == "v3.0-beta":
-        sheet_name = "ASAP_CDE_v3.0-beta"
+        resource_fname = "ASAP_CDE_v3.0-beta"
     else:
-        sheet_name = "ASAP_CDE_v3.0"
+        resource_fname = "ASAP_CDE_v3.0"
 
-
-    if metadata_version in ["v1","v2","v2.1","v3.0","v3.0-beta"]:
-        print(f"metadata_version: {sheet_name}")
+    if metadata_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta"]:
+        print(f"metadata_version: {resource_fname}")
     else:
-        print(f"Unsupported metadata_version: {sheet_name}")
-        return 0,0
-    
-    cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        print(f"Unsupported metadata_version: {resource_fname}")
+        return 0, 0
+
+    cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={resource_fname}"
     if local:
-        cde_url = f"{sheet_name}.csv"
-    
+        cde_url = f"{resource_fname}.csv"
+
     try:
         CDE_df = pd.read_csv(cde_url)
         read_source = "url" if not local else "local file"
         print(f"read {read_source}")
     except:
-        CDE_df = pd.read_csv(f"{sheet_name}.csv")
+        CDE_df = pd.read_csv(f"{resource_fname}.csv")
         print("read local file")
 
     # drop rows with no table name (i.e. ASAP_ids)
-    CDE_df.dropna(subset=['Table'], inplace=True)
+    CDE_df.dropna(subset=["Table"], inplace=True)
 
     return CDE_df
 
+
 @st.cache_data
-def read_CDE(metadata_version:str="v3.0", local:str|bool|Path=False):
+def read_CDE(metadata_version: str = "v3.0", local: str | bool | Path = False):
     """
     Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
     """
     # Construct the path to CSD.csv
     GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
 
-    column_list = ["Table", "Field", "Description", "DataType", "Required", "Validation"]
+    column_list = [
+        "Table",
+        "Field",
+        "Description",
+        "DataType",
+        "Required",
+        "Validation",
+    ]
     if metadata_version == "v1":
-        sheet_name = "ASAP_CDE_v1"
+        resource_fname = "ASAP_CDE_v1"
     elif metadata_version == "v2":
-        sheet_name = "ASAP_CDE_v2"
+        resource_fname = "ASAP_CDE_v2"
     elif metadata_version == "v2.1":
-        sheet_name = "ASAP_CDE_v2.1"
+        resource_fname = "ASAP_CDE_v2.1"
     elif metadata_version == "v3.0-beta":
-        sheet_name = "ASAP_CDE_v3.0-beta"
-    elif metadata_version in ["v3","v3.0", "v3.0.0"]:
-        sheet_name = "ASAP_CDE_v3.0"
+        resource_fname = "ASAP_CDE_v3.0-beta"
+    elif metadata_version in ["v3", "v3.0", "v3.0.0"]:
+        resource_fname = "ASAP_CDE_v3.0"
     elif metadata_version in ["v3.1"]:
-        sheet_name = "ASAP_CDE_v3.1"
+        resource_fname = "ASAP_CDE_v3.1"
     else:
-        sheet_name = "ASAP_CDE_v3.1"
+        resource_fname = "ASAP_CDE_v3.1"
 
     # add the Shared_key column for v3
-    if metadata_version in ["v3.1", "v3","v3.0","v3.0-beta"]:
+    if metadata_version in ["v3.1", "v3", "v3.0", "v3.0-beta"]:
         column_list += ["Shared_key"]
 
-    if metadata_version in ["v1","v2","v2.1","v3","v3.0","v3.0-beta", "v3.1"]:
-        print(f"metadata_version: {sheet_name}")
+    if metadata_version in ["v1", "v2", "v2.1", "v3", "v3.0", "v3.0-beta", "v3.1"]:
+        print(f"metadata_version: {resource_fname}")
     else:
-        print(f"Unsupported metadata_version: {sheet_name}")
-        return 0,0
-    
+        print(f"Unsupported metadata_version: {resource_fname}")
+        return 0, 0
+
     cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
     print(cde_url)
     if local:
-        cde_url = f"{sheet_name}.csv"
+        cde_url = f"{resource_fname}.csv"
 
     try:
         CDE_df = pd.read_csv(cde_url)
         read_source = "url" if not local else "local file"
         print(f"read {read_source}")
     except:
-        CDE_df = pd.read_csv(f"{sheet_name}.csv")
+        CDE_df = pd.read_csv(f"{resource_fname}.csv")
         print("read local file")
 
     # drop rows with no table name (i.e. ASAP_ids)
     CDE_df = CDE_df[column_list]
-    CDE_df = CDE_df.dropna(subset=['Table'])
+    CDE_df = CDE_df.dropna(subset=["Table"])
     CDE_df = CDE_df.reset_index(drop=True)
     CDE_df = CDE_df.drop_duplicates()
     # force extraneous columns to be dropped.
 
     return CDE_df
+
 
 # @st.cache_data
 # def convert_df(df):
@@ -243,48 +263,52 @@ def main():
 
     # Provide template
     st.markdown('<p class="big-font">ASAP scRNAseq </p>', unsafe_allow_html=True)
-    st.title('metadata data QC')
-    st.markdown("""<p class="medium-font"> This app is intended to make sure ASAP Cloud 
+    st.title("metadata data QC")
+    st.markdown(
+        """<p class="medium-font"> This app is intended to make sure ASAP Cloud 
                 Platform contributions follow the ASAP CRN CDE conventions. </p> 
                 <p> v0.2, updated 07Nov2023. </p> 
-                """, unsafe_allow_html=True)
+                """,
+        unsafe_allow_html=True,
+    )
 
     col1, col2 = st.columns(2)
 
     with col1:
-        metadata_version = st.selectbox( 
-                                "choose meta version👇",
-                                ["v3.1", "v3.0","v3.0-beta","v2.1","v2","v1"],
-                                # index=None,
-                                # placeholder="Select TABLE..",
-                            )
+        metadata_version = st.selectbox(
+            "choose meta version👇",
+            ["v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
+            # index=None,
+            # placeholder="Select TABLE..",
+        )
     with col2:
-        st.markdown(f'[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)')
+        st.markdown(
+            f"[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)"
+        )
 
     # Load CDE from local csv
     CDE_df = read_CDE(metadata_version, local=True)
-
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
     st.sidebar.title("Upload")
     # st.write(dtypes_dict)
     # st.write(CDE_df)
-    data_files = st.sidebar.file_uploader("\tMETADATA tables:", type=['xlsx', 'csv'],accept_multiple_files=True)
+    data_files = st.sidebar.file_uploader(
+        "\tMETADATA tables:", type=["xlsx", "csv"], accept_multiple_files=True
+    )
 
-
-    if data_files is None or len(data_files)==0: 
+    if data_files is None or len(data_files) == 0:
         st.sidebar.error("Please load data first.")
         st.stop()
         tables_loaded = False
-    elif len(data_files)>0:
+    elif len(data_files) > 0:
         tables, dfs = load_data(data_files)
         tables_loaded = True
         report_dat = dict()
-    else: # should be impossible
-        st.error('Something went wrong with the file upload. Please try again.')
+    else:  # should be impossible
+        st.error("Something went wrong with the file upload. Please try again.")
         st.stop()
         tables_loaded = False
-
 
     if tables_loaded:
         st.sidebar.success(f"N={len(tables)} Tables loaded successfully")
@@ -293,13 +317,13 @@ def main():
         col1, col2 = st.columns(2)
 
         with col1:
-            table_choice = st.selectbox( 
+            table_choice = st.selectbox(
                 "Choose the TABLE to validate 👇",
                 tables,
                 # index=None,
                 # placeholder="Select TABLE..",
             )
-        with col2:  
+        with col2:
             # st.write('You selected:', table_choice)
             st.success(f"You selected: {table_choice}")
 
@@ -310,45 +334,52 @@ def main():
     report = ReportCollector()
 
     # unpack data
-    df,CDE = report_dat[table_choice]
+    df, CDE = report_dat[table_choice]
 
     st.success(f"Validating n={df.shape[0]} rows from {table_choice}")
     # perform the valadation
     retval = validate_table(df, table_choice, CDE, report)
 
-
     df_out, out = report_dat[table_choice]
 
-
     if retval == 0:
-        report.add_error(f"{table_choice} table has discrepancies!! 👎 Please try again.")
-
+        report.add_error(
+            f"{table_choice} table has discrepancies!! 👎 Please try again."
+        )
 
     report.add_divider()
-
-
 
     retval = 1
     if retval == 1:
         # st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', unsafe_allow_html=True )
-        #from streamlit.scriptrunner import RerunException
+        # from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
             st.runtime.legacy_caching.clear_cache()
 
         report_content = report.get_log()
         table_content = df_out.to_csv(index=False)
-        #from streamlit.scriptrunner import RerunException
+
+        # from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
             st.runtime.legacy_caching.clear_cache()
 
         # Download button
-        st.download_button("📥 Download your QC log", data=report_content, file_name=f"{table_choice}.md", mime="text/markdown")
+        st.download_button(
+            "📥 Download your QC log",
+            data=report_content,
+            file_name=f"{table_choice}.md",
+            mime="text/markdown",
+        )
 
         # Download button
-        st.download_button("📥 Download a sanitized .csv (NULL-> 'NA' )", data=table_content, file_name=f"{table_choice}_sanitized.csv", mime="text/csv")
-
+        st.download_button(
+            "📥 Download a sanitized .csv (NULL-> 'NA' )",
+            data=table_content,
+            file_name=f"{table_choice}_sanitized.csv",
+            mime="text/csv",
+        )
 
         return None
 
@@ -356,7 +387,6 @@ def main():
 if __name__ == "__main__":
 
     main()
-
 
     # # sex for qc
     # st.subheader('Create "biological_sex_for_qc"')
