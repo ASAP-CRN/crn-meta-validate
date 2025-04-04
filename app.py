@@ -107,7 +107,6 @@ def load_data(data_files):
     """
 
     tables = [dat_f.name.split(".")[0] for dat_f in data_files]
-    print(tables)
     dfs = {dat_f.name.split(".")[0]: read_file(dat_f) for dat_f in data_files}
 
     return tables, dfs
@@ -121,27 +120,23 @@ def setup_report_data(
 
     df = dfs[table_choice]
 
-    hack = False
-    table_choice = table_choice.upper()
-    # hack to match all ASSAY tables
-    if table_choice.startswith("ASSAY"):
-        hack = True
+    # hack = False
+    # table_choice = table_choice.upper()
+    # # hack to match all ASSAY tables
+    # if table_choice.startswith("ASSAY_"):
+    #     hack = True
+    #     specific_cde_df = CDE_df[CDE_df["Table"].str.startswith("ASSAY_")]
 
-    # specific_cde_df = CDE_df[CDE_df['Table'] == table_choice]
-    specific_cde_df = CDE_df[CDE_df["Table"].str.startswith(table_choice)]
+    # else:
+    #     specific_cde_df = CDE_df[CDE_df["Table"].str.startswith(table_choice)]
 
-    if hack:
-        specific_cde_df = specific_cde_df[
-            specific_cde_df["Table"].str.startswith("ASSAY")
-        ]
-    else:
-        specific_cde_df = specific_cde_df[specific_cde_df["Table"] == table_choice]
-
+    specific_cde_df = CDE_df[CDE_df["Table"] == table_choice]
     # print(specific_cde_df)
     # TODO: make sure that the loaded table is in the CDE
     dat = (df, specific_cde_df)
 
     report_dat[table_choice] = dat
+
     return report_dat
 
 
@@ -250,7 +245,6 @@ def read_CDE(metadata_version: str = "v3.0", local: str | bool | Path = False):
     CDE_df = CDE_df.reset_index(drop=True)
     CDE_df = CDE_df.drop_duplicates()
     # force extraneous columns to be dropped.
-
     return CDE_df
 
 
@@ -267,7 +261,7 @@ def main():
     st.markdown(
         """<p class="medium-font"> This app is intended to make sure ASAP Cloud 
                 Platform contributions follow the ASAP CRN CDE conventions. </p> 
-                <p> v0.2, updated 07Nov2023. </p> 
+                <p> v0.3, updated 01April2025. </p> 
                 """,
         unsafe_allow_html=True,
     )
@@ -276,7 +270,7 @@ def main():
 
     with col1:
         metadata_version = st.selectbox(
-            "choose meta version👇",
+            "choose metadata schema version👇",
             ["v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
             # index=None,
             # placeholder="Select TABLE..",
@@ -330,10 +324,14 @@ def main():
     # once tables are loaded make a dropdown to choose which one to validate
 
     # initialize the data structure and instance of ReportCollector
+
     report_dat = setup_report_data(report_dat, table_choice, dfs, CDE_df)
     report = ReportCollector()
 
     # unpack data
+    print(f"{report_dat.keys()=}")
+    print(table_choice)
+
     df, CDE = report_dat[table_choice]
 
     st.success(f"Validating n={df.shape[0]} rows from {table_choice}")

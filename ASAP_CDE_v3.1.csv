@@ -1,4 +1,4 @@
-path,Field,Description,DataType,Required,Validation,Shared_key,V0,comment,denormalized,source relavent
+Table,Field,Description,DataType,Required,Validation,Shared_key,V0,comment,denormalized,source relavent
 ,ASAP_dataset_id,ASAP Dataset ID. Unique ID issued by ASAP CRN Cloud. ,String,Assigned,,1,,,,
 ,ASAP_team_id,ASAP Team ID. Unique ID issued by ASAP CRN Cloud.  ,String,Assigned,,1,,,,
 STUDY,ASAP_team_name,"ASAP Team Name:   Name of the ASAP CRN Team. i.e. ""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"",etc.",Enum,Required,"[""TEAM-LEE"",""TEAM-HAFLER"",""TEAM-HARDY"", ""TEAM-JAKOBSSON"", ""TEAM-SCHERZER"", ""TEAM-SULZER"", ""TEAM-VOET"", ""TEAM-WOOD"",""TEAM-RIO"", ""TEAM-EDWARDS"",""TEAM-VILA"",""TEAM-KIRIK"", ""TEAM-BIEDERER""]",0,,,,
