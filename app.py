@@ -431,7 +431,7 @@ def main():
         )
 
     # Load CDE from local csv
-    CDE_df = read_CDE(metadata_version, local=True)
+    CDE_df = read_CDE(metadata_version, local=False)
 
     # add a call to action to load the files in the sidebar
     if not table_success:
