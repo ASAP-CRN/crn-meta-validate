@@ -112,18 +112,14 @@ def read_file(data_file):
     TODO: depricate dtypes
     """
 
-    def sanitize_string(s):
-        """Replace smart quotes with straight quotes and other problematic characters."""
-        if not isinstance(s, str):
-            return s
+    def sanitize_validation_string(validation_str):
+        """Sanitize validation strings by replacing smart quotes with straight quotes."""
+        if not isinstance(validation_str, str):
+            return validation_str
         return (
-            s.replace('"', '"')
+            validation_str.replace('"', '"')
             .replace('"', '"')
-            .replace(
-                """, "'")
-                .replace(""",
-                "'",
-            )
+            .replace(""", "'").replace(""", "'")
             .replace("…", "...")
         )
 
@@ -147,11 +143,11 @@ def read_file(data_file):
             .str.decode("utf-8", errors="replace")
         )
     for col in df.columns:
-        df[col] = table_df[col].apply(sanitize_validation_string)
+        df[col] = df[col].apply(sanitize_validation_string)
 
     # drop the first column if it is just the index incase it was saved with index = True
     if df.columns[0] == "Unnamed: 0":
-        df = table_df.drop(columns=["Unnamed: 0"])
+        df = df.drop(columns=["Unnamed: 0"])
         print("dropped Unnamed: 0")
 
     # drop rows with all null values
