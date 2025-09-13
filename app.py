@@ -32,6 +32,51 @@ GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
 # Initial page config
 
 
+MOUSE_TABLES = [
+    "STUDY",
+    "PROTOCOL",
+    "SAMPLE",
+    "MOUSE",
+    "CONDITION",
+    "DATA",
+]
+
+PMDBS_TABLES = [
+    "STUDY",
+    "PROTOCOL",
+    "SUBJECT",
+    "SAMPLE",
+    "DATA",
+    "PMDBS",
+    "CLINPATH",
+    "CONDITION",
+]
+
+
+CELL_TABLES = [
+    "STUDY",
+    "PROTOCOL",
+    "SAMPLE",
+    "CELL",
+    "CONDITION",
+    "DATA",
+]
+
+IPSC_TABLES = CELL_TABLES.copy()
+
+SUPPORTED_METADATA_VERSIONS = [
+    "v3.3",
+    "v3.2",
+    "v3.2-beta",
+    "v3.1",
+    "v3",
+    "v3.0",
+    "v3.0-beta",
+    "v2.1",
+    "v2",
+    "v1",
+]
+
 st.set_page_config(
     page_title="ASAP CRN metadata data QC",
     page_icon="✅",
@@ -66,6 +111,22 @@ def read_file(data_file):
     """
     TODO: depricate dtypes
     """
+
+    def sanitize_string(s):
+        """Replace smart quotes with straight quotes and other problematic characters."""
+        if not isinstance(s, str):
+            return s
+        return (
+            s.replace('"', '"')
+            .replace('"', '"')
+            .replace(
+                """, "'")
+                .replace(""",
+                "'",
+            )
+            .replace("…", "...")
+        )
+
     encoding = "latin1"
 
     if data_file.type == "text/csv":
@@ -85,10 +146,22 @@ def read_file(data_file):
             .str.encode("latin1", errors="replace")
             .str.decode("utf-8", errors="replace")
         )
+    for col in df.columns:
+        df[col] = table_df[col].apply(sanitize_validation_string)
 
-    df.replace({"": NULL, pd.NA: NULL, "none": NULL}, inplace=True)
+    # drop the first column if it is just the index incase it was saved with index = True
+    if df.columns[0] == "Unnamed: 0":
+        df = table_df.drop(columns=["Unnamed: 0"])
+        print("dropped Unnamed: 0")
 
-    return df
+    # drop rows with all null values
+    df.dropna(how="all", inplace=True)
+    df.fillna(NULL, inplace=True)
+    df.replace(
+        {"": NULL, pd.NA: NULL, "none": NULL, "nan": NULL, "Nan": NULL}, inplace=True
+    )
+
+    return df.reset_index(drop=True)
 
 
 # def read_file(data_file):
@@ -140,53 +213,11 @@ def setup_report_data(
     return report_dat
 
 
-# can't cache read_ASAP_CDE so copied code here
 @st.cache_data
-def read_CDE_old(metadata_version: str = "v3.0-beta", local=False):
-    """
-    Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
-    """
-    # Construct the path to CSD.csv
-
-    if metadata_version == "v1":
-        resource_fname = "ASAP_CDE_v1"
-    elif metadata_version == "v2":
-        resource_fname = "ASAP_CDE_v2"
-    elif metadata_version == "v2.1":
-        resource_fname = "ASAP_CDE_v2.1"
-    elif metadata_version == "v3.0":
-        resource_fname = "ASAP_CDE_v3.0"
-    elif metadata_version == "v3.0-beta":
-        resource_fname = "ASAP_CDE_v3.0-beta"
-    else:
-        resource_fname = "ASAP_CDE_v3.0"
-
-    if metadata_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta"]:
-        print(f"metadata_version: {resource_fname}")
-    else:
-        print(f"Unsupported metadata_version: {resource_fname}")
-        return 0, 0
-
-    cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={resource_fname}"
-    if local:
-        cde_url = f"{resource_fname}.csv"
-
-    try:
-        CDE_df = pd.read_csv(cde_url)
-        read_source = "url" if not local else "local file"
-        print(f"read {read_source}")
-    except:
-        CDE_df = pd.read_csv(f"{resource_fname}.csv")
-        print("read local file")
-
-    # drop rows with no table name (i.e. ASAP_ids)
-    CDE_df.dropna(subset=["Table"], inplace=True)
-
-    return CDE_df
-
-
-@st.cache_data
-def read_CDE(metadata_version: str = "v3.0", local: str | bool | Path = False):
+def read_CDE(
+    metadata_version: str = "v3.2",
+    local: bool = False,
+):
     """
     Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
     """
@@ -201,6 +232,11 @@ def read_CDE(metadata_version: str = "v3.0", local: str | bool | Path = False):
         "Required",
         "Validation",
     ]
+
+    include_asap_ids = False
+    include_aliases = False
+
+    # set up fallback
     if metadata_version == "v1":
         resource_fname = "ASAP_CDE_v1"
     elif metadata_version == "v2":
@@ -213,44 +249,103 @@ def read_CDE(metadata_version: str = "v3.0", local: str | bool | Path = False):
         resource_fname = "ASAP_CDE_v3.0"
     elif metadata_version in ["v3.1"]:
         resource_fname = "ASAP_CDE_v3.1"
+    elif metadata_version in ["v3.2", "v3.2-beta"]:
+        resource_fname = "ASAP_CDE_v3.2"
+    elif metadata_version == "v3.3":
+        resource_fname = "ASAP_CDE_v3.3"
     else:
-        resource_fname = "ASAP_CDE_v3.1"
+        resource_fname = "ASAP_CDE_v3.2"
 
     # add the Shared_key column for v3
-    if metadata_version in ["v3.1", "v3", "v3.0", "v3.0-beta"]:
-        column_list += ["Shared_key"]
+    if metadata_version in [
+        "v3.3",
+        "v3.2",
+        "v3.2-beta",
+        "v3.1",
+        "v3",
+        "v3.0",
+        "v3.0-beta",
+    ]:
+        column_list.append("Shared_key")
+        # column_list += ["Shared_key"]
 
-    if metadata_version in ["v1", "v2", "v2.1", "v3", "v3.0", "v3.0-beta", "v3.1"]:
+    # insert "DisplayName" after "Field"
+    if metadata_version in ["v3.2", "v3.2-beta", "v3.3"]:
+        column_list.insert(2, "DisplayName")
+
+    if metadata_version in SUPPORTED_METADATA_VERSIONS:
         print(f"metadata_version: {resource_fname}")
     else:
         print(f"Unsupported metadata_version: {resource_fname}")
-        return 0, 0
 
     cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
     print(cde_url)
+
     if local:
-        cde_url = f"{resource_fname}.csv"
+        root = Path(__file__).parent
+        cde_url = root / f"resource/{resource_fname}.csv"
+        print(f"reading from resource/{resource_fname}.csv")
+    else:
+        print(f"reading from googledoc {cde_url}")
 
     try:
+        # if metadata_version == "v3.2":
+        #     metadata_version = "CDE_final"
+        # cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
+
         CDE_df = pd.read_csv(cde_url)
-        read_source = "url" if not local else "local file"
-        print(f"read {read_source}")
+        print(f"read CDE")
+
+        # read_source = "url" if not local_path else "local file"
     except:
-        CDE_df = pd.read_csv(f"{resource_fname}.csv")
-        print("read local file")
+        # import requests
+
+        # # download the cde_url to a temp file
+        # print(f"downloading {cde_url} to {resource_fname}.csv")
+        # response = requests.get(cde_url)
+        # response.raise_for_status()  # Check if the request was successful
+        # # save to ../../resource/CDE/
+        # new_resource_fname = f"../../resource/CDE/_{resource_fname}.csv"
+        # with open(new_resource_fname, "wb") as file:
+        #     file.write(response.content)
+
+        # CDE_df = pd.read_csv(new_resource_fname)
+        # print(f"exception:read local file: {new_resource_fname}")
+        root = Path(__file__).parent
+        CDE_df = pd.read_csv(f"{root}/resource/{resource_fname}.csv")
+        print(f"exception:read fallback file: ./resource/{resource_fname}.csv")
+
+    # drop ASAP_ids if not requested
+    if not include_asap_ids:
+        CDE_df = CDE_df[CDE_df["Required"] != "Assigned"]
+        CDE_df = CDE_df.reset_index(drop=True)
+        # print(f"dropped ASAP_ids")
+
+    # drop Alias if not requested
+    if not include_aliases:
+        CDE_df = CDE_df[CDE_df["Required"] != "Alias"]
+        CDE_df = CDE_df.reset_index(drop=True)
+        # print(f"dropped Alias")
 
     # drop rows with no table name (i.e. ASAP_ids)
-    CDE_df = CDE_df[column_list]
+    CDE_df = CDE_df.loc[:, column_list]
     CDE_df = CDE_df.dropna(subset=["Table"])
     CDE_df = CDE_df.reset_index(drop=True)
     CDE_df = CDE_df.drop_duplicates()
-    # force extraneous columns to be dropped.
+
+    # force Shared_key to be int
+    if metadata_version in [
+        "v3.3",
+        "v3.2",
+        "v3.2-beta",
+        "v3.1",
+        "v3",
+        "v3.0",
+        "v3.0-beta",
+    ]:
+        CDE_df["Shared_key"] = CDE_df["Shared_key"].fillna(0).astype(int)
+
     return CDE_df
-
-
-# @st.cache_data
-# def convert_df(df):
-#    return df.to_csv(index=False).encode('utf-8')
 
 
 def main():
@@ -271,7 +366,7 @@ def main():
     with col1:
         metadata_version = st.selectbox(
             "choose metadata schema version👇",
-            ["v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
+            ["v3.2", "v3.3", "v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
             # index=None,
             # placeholder="Select TABLE..",
         )
@@ -279,9 +374,76 @@ def main():
         st.markdown(
             f"[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)"
         )
+        st.write(f"metadata_version: {metadata_version}")
+
+    # add a pull down to select the dataset source in first column
+    with col1:
+        dataset_source = st.selectbox(
+            "choose dataset 'source'",
+            ["PMDBS", "CELL", "IPSC", "MOUSE"],
+            index=None,
+            placeholder="Select TABLE..",
+        )
+    with col2:
+        # add a pull down to select dataset type in the second column
+        dataset_type = st.selectbox(
+            "choose dataset 'type'",
+            ["RNAseq", "PROTEOMICS", "ATAC"],
+            index=None,
+            placeholder="Select TABLE..",
+        )
+
+    # add a checkbox to indicate if we are dealing with a Spatial dataset
+    with col1:
+        is_spatial = st.checkbox("Is this a Spatial dataset?")
+    with col2:
+        st.write(f"is_spatial: {is_spatial}")
+
+    table_success = False
+
+    if dataset_source == "PMDBS":
+        table_list = PMDBS_TABLES
+    elif dataset_source == "CELL":
+        table_list = CELL_TABLES
+    elif dataset_source == "IPSC":
+        table_list = IPSC_TABLES
+    elif dataset_source == "MOUSE":
+        table_list = MOUSE_TABLES
+    else:
+        table_list = []
+
+    if dataset_type in ["RNAseq", "ATAC"]:
+        table_list.append("ASSAY_RNAseq")
+        table_success = True
+    elif dataset_type == "PROTEOMICS":
+        table_list.append("PROTEOMICS")
+        table_success = True
+    else:
+        print(f"dataset_type: {dataset_type} not supported")
+        tabe_success = False
+
+    if is_spatial:
+        table_list.append("SPATIAL")
+        spatial_text = " (Spatial)"
+    else:
+        spatial_text = ""
+
+    # print the table list
+    if len(table_list) > 0:
+        st.write(
+            f"Your {spatial_text} {dataset_type}  dataset's tables should be: {table_list}"
+        )
 
     # Load CDE from local csv
     CDE_df = read_CDE(metadata_version, local=True)
+
+    # add a call to action to load the files in the sidebar
+    if not table_success:
+        st.error("Please select a dataset source and type.")
+        st.stop()
+    else:
+        st.sidebar.success(f"Please load your metadata tables")
+        st.success(f"↖️ Please load your metadata tables")
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
     st.sidebar.title("Upload")

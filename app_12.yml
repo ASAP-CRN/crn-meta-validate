@@ -1,10 +1,10 @@
-#conda env create -f app_11.yml 
+#conda env create -f app_12.yml 
 
-name: slapp
+name: sl12
 channels:
 - conda-forge
 dependencies:
-- python=3.11
+- python=3.12
 - pip
 - pip:
   - pandas
