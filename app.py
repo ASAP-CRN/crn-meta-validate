@@ -445,8 +445,11 @@ def main():
     st.sidebar.title("Upload")
     # st.write(dtypes_dict)
     # st.write(CDE_df)
+    metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
-        "\tMETADATA tables:", type=["xlsx", "csv"], accept_multiple_files=True
+        f"\Load your Dataset's METADATA tables ⬇️:\n{metadata_tables_text}",
+        type=["xlsx", "csv"],
+        accept_multiple_files=True,
     )
 
     if data_files is None or len(data_files) == 0:
