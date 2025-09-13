@@ -447,7 +447,7 @@ def main():
     # st.write(CDE_df)
     metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
-        f"\Load your Dataset's METADATA tables ⬇️:\n{metadata_tables_text}",
+        f"Load your Dataset's METADATA tables ⬇️:\n{metadata_tables_text}",
         type=["xlsx", "csv"],
         accept_multiple_files=True,
     )
