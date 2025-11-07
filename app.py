@@ -179,7 +179,6 @@ def load_data(data_files):
 
 @st.cache_data
 def read_CDE(
-    # defaults if not passed by User
     cde_version: str = SUPPORTED_METADATA_VERSIONS[0],
     local: bool = False,
 ):
@@ -252,12 +251,13 @@ def read_CDE(
             st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
             st.stop()
     else:
+        cde_version_ = cde_version + "_"
         cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={cde_version}"
         st.info(f"Reading CDE {cde_version} from Google doc")
         try:
             cde_dataframe = pd.read_csv(cde_url)
         except:
-            st.error(f"ERROR!!! Could not read CDE from Google doc {cde_url}")
+            st.error(f"ERROR!!! Could not read CDE from Google doc")
             st.stop()
 
     # drop ASAP_ids if not requested
@@ -310,6 +310,9 @@ def setup_report_data(
 ################################
 
 def main():
+    # Initialize file uploader key in session state
+    if 'file_uploader_key' not in st.session_state:
+        st.session_state.file_uploader_key = 0
 
     # Provide template
     st.markdown('<p class="big-font">ASAP CRN metadata quality control (QC) app</p>', unsafe_allow_html=True)
@@ -409,10 +412,6 @@ def main():
         st.info("Please select a `dataset source` and `dataset type`")
         st.stop()
 
-    # Add version at the bottom of sidebar
-    st.sidebar.caption(app_version)
-    st.sidebar.markdown("---")
-    
     # Once the run settings are established, add a selector for the app mode on the sidebar.
     st.sidebar.title("Upload files to validate 👇")
     
@@ -424,38 +423,47 @@ def main():
         f"Expected files: \n{table_list_formatted}",
         type=["csv"],
         accept_multiple_files=True,
+        key=f"file_uploader_{st.session_state.file_uploader_key}"
     )
 
     if data_files is None or len(data_files) == 0:
-        st.stop()
         tables_loaded = False
     elif len(data_files) > 0:
         table_names, input_dataframes_dic = load_data(data_files)
         tables_loaded = True
         validation_report_dic = dict()
+        # Display summary and detailed list in sidebar
+        st.sidebar.success(f"N={len(table_names)} files loaded")
     else:  # should be impossible
         st.error("Something went wrong with the file upload. Please try again.")
         st.stop()
         tables_loaded = False
 
-    if tables_loaded:
-        st.sidebar.success(f"N={len(table_names)} Tables loaded successfully")
-        st.sidebar.info(f'loaded Tables : {", ".join(map(str, table_names))}')
+    # Add Reset button and version at the bottom of sidebar (always visible)
+    st.sidebar.markdown("---")
+    if st.sidebar.button("Reset App", use_container_width=True, type="primary"):
+        # Clear all cached data
+        st.cache_data.clear()
+        # Increment the file uploader key to reset it
+        st.session_state.file_uploader_key += 1
+        st.rerun()
+    st.sidebar.caption(app_version)
 
-        col1, col2 = st.columns(2)
+    # Stop here if no files loaded
+    if not tables_loaded:
+        st.stop()
 
-        with col1:
-            # selected_table_name = st.selectbox(
-            #     "Choose the file to validate 👇",
-            #     table_names,
-            # )
-            st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
-                        unsafe_allow_html=True)
-            selected_table_name = st.selectbox(
-                "",
-                table_names,
-                label_visibility="collapsed",
-            )
+    # Create file selection dropdown in main area
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
+                    unsafe_allow_html=True)
+        selected_table_name = st.selectbox(
+            "",
+            table_names,
+            label_visibility="collapsed",
+        )
 
     # once tables are loaded make a dropdown to choose which one to validate
     # initialize the data structure and instance of ReportCollector
@@ -463,13 +471,10 @@ def main():
     report = ReportCollector()
 
     # unpack data
-    print(f"{validation_report_dic.keys()=}")
-    print(selected_table_name)
-
     selected_table, cde_rules = validation_report_dic[selected_table_name]
 
     # perform the validation
-    st.success(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
+    st.info(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
     status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
     validated_output_df, validation_output = validation_report_dic[selected_table_name]
 
