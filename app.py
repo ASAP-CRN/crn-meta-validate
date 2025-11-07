@@ -1,5 +1,5 @@
 """
-ASAP CRN metadata data quality control (QC) app
+ASAP CRN metadata quality control (QC) app
 
 https://github.com/ASAP-CRN/crn-meta-validate
 
@@ -27,10 +27,10 @@ CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID
 
 use_local = False  # Set to True to read CDE from local resource folder
 
-app_version = "v0.4 (November 2024)"
+app_version = "ASAP CRN metadata QC app v0.4"
 report_bug_email = ("mailto:javier.diazmejia@dnastack.com")
 get_help_url = "https://github.com/ASAP-CRN/crn-meta-validate"
-page_header = "ASAP CRN metadata data quality control (QC) app"
+page_header = "ASAP CRN metadata quality control (QC) app"
 
 ################################
 #### Imports
@@ -201,23 +201,23 @@ def read_CDE(
 
     # set up fallback
     if cde_version == "v1":
-        resource_fname = "ASAP_CDE_v1"
+        cd_version_file_name = "ASAP_CDE_v1"
     elif cde_version == "v2":
-        resource_fname = "ASAP_CDE_v2"
+        cd_version_file_name = "ASAP_CDE_v2"
     elif cde_version == "v2.1":
-        resource_fname = "ASAP_CDE_v2.1"
+        cd_version_file_name = "ASAP_CDE_v2.1"
     elif cde_version == "v3.0-beta":
-        resource_fname = "ASAP_CDE_v3.0-beta"
+        cd_version_file_name = "ASAP_CDE_v3.0-beta"
     elif cde_version in ["v3", "v3.0", "v3.0.0"]:
-        resource_fname = "ASAP_CDE_v3.0"
+        cd_version_file_name = "ASAP_CDE_v3.0"
     elif cde_version in ["v3.1"]:
-        resource_fname = "ASAP_CDE_v3.1"
+        cd_version_file_name = "ASAP_CDE_v3.1"
     elif cde_version in ["v3.2", "v3.2-beta"]:
-        resource_fname = "ASAP_CDE_v3.2"
+        cd_version_file_name = "ASAP_CDE_v3.2"
     elif cde_version == "v3.3":
-        resource_fname = "ASAP_CDE_v3.3"
+        cd_version_file_name = "ASAP_CDE_v3.3"
     else:
-        st.error(f"Unsupported cde_version: {cde_version}.")
+        st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
         st.stop()
 
     # add the Shared_key column (only for CDE v3)
@@ -237,20 +237,19 @@ def read_CDE(
         column_list.insert(2, "DisplayName")
 
     # ensure we are using a supported CDE version
-    if cde_version in SUPPORTED_METADATA_VERSIONS:
-        print(f"cde_version: {resource_fname}")
-    else:
-        print(f"Unsupported cde_version: {resource_fname}")
+    if cde_version not in SUPPORTED_METADATA_VERSIONS:
+        st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
+        st.stop()
 
     # read from CDE from either local file or Google doc
     if local == True:
         root = Path(__file__).parent
-        cde_local = root / f"resource/{resource_fname}.csv"
+        cde_local = root / f"resource/{cd_version_file_name}.csv"
         st.info(f"Reading CDE {cde_version} from local resource/")
         try:
             cde_dataframe = pd.read_csv(cde_local)
         except:
-            st.error(f"Could not read CDE from local resource/{cde_local}")
+            st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
             st.stop()
     else:
         cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={cde_version}"
@@ -258,7 +257,7 @@ def read_CDE(
         try:
             cde_dataframe = pd.read_csv(cde_url)
         except:
-            st.error(f"Could not read CDE from Google doc {cde_url}.")
+            st.error(f"ERROR!!! Could not read CDE from Google doc {cde_url}")
             st.stop()
 
     # drop ASAP_ids if not requested
@@ -407,28 +406,27 @@ def main():
 
     # add a call to action to load the files in the sidebar
     if not table_success:
-        st.error("Please select a dataset source and type.")
+        st.info("Please select a `dataset source` and `dataset type`")
         st.stop()
 
-    # Once the run settings are established, add a selector for the app mode on the sidebar.
-    st.sidebar.title("Upload")
-    
     # Add version at the bottom of sidebar
-    st.sidebar.markdown("---")
     st.sidebar.caption(app_version)
+    st.sidebar.markdown("---")
+    
+    # Once the run settings are established, add a selector for the app mode on the sidebar.
+    st.sidebar.title("Upload files to validate 👇")
     
     # Load CDE
     cde_dataframe = read_CDE(cde_version, local=use_local)
 
     metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
-        f"Load your dataset's metadata CSV files: \n{metadata_tables_text}",
+        f"Expected files: \n{table_list_formatted}",
         type=["csv"],
         accept_multiple_files=True,
     )
 
     if data_files is None or len(data_files) == 0:
-        st.sidebar.error("Please load data first.")
         st.stop()
         tables_loaded = False
     elif len(data_files) > 0:
@@ -447,9 +445,16 @@ def main():
         col1, col2 = st.columns(2)
 
         with col1:
+            # selected_table_name = st.selectbox(
+            #     "Choose the file to validate 👇",
+            #     table_names,
+            # )
+            st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
+                        unsafe_allow_html=True)
             selected_table_name = st.selectbox(
-                "Choose the TABLE to validate 👇",
+                "",
                 table_names,
+                label_visibility="collapsed",
             )
 
     # once tables are loaded make a dropdown to choose which one to validate

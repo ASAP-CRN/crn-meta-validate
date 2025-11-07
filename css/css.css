@@ -18,3 +18,18 @@ div.stButton > button:first-child {
     padding-bottom: 10px !important;
     font-size: 20px;
 }
+
+/* Hide the default "Drag and drop files here" text */
+.st-emotion-cache-ysg2um.e1d2qte93 {
+    display: none !important;
+}
+
+/* Add your custom text */
+[data-testid="stFileUploader"] section::before {
+    content: "Drag and drop files HERE or click 'Browse files'";
+    display: block;
+    font-size: 17px;
+    color: #e4e6f0;
+    text-align: center;
+    padding: 10px;
+}
