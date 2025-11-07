@@ -1,11 +1,11 @@
 """
-ASAP scRNAseq metadata data QC app
+ASAP CRN metadata data quality control (QC) app
 
 https://github.com/ASAP-CRN/crn-meta-validate
 
 v0.2 (CDE version v2), 20 August 2023
 v0.3 (CDE version v3), 01 April 2025
-v0.4 (CDE version v3), DAY November 2024
+v0.4 (CDE version v3.3), 07 November 2025
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -16,17 +16,34 @@ Contributors:
 
 """
 
-import pandas as pd
-import streamlit as st
-
-from pathlib import Path
-
-from utils.validate import validate_table, ReportCollector, load_css, NULL
+################################
+#### Configuration
+################################
 
 # Google Spreadsheet ID for ASAP CDE
 # GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8" ## CDE v1, v2 and v2.1
 GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE v3 series
 CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
+
+use_local = False  # Set to True to read CDE from local resource folder
+
+app_version = "v0.4 (November 2024)"
+report_bug_email = ("mailto:javier.diazmejia@dnastack.com")
+get_help_url = "https://github.com/ASAP-CRN/crn-meta-validate"
+page_header = "ASAP CRN metadata data quality control (QC) app"
+
+################################
+#### Imports
+################################
+
+import pandas as pd
+import streamlit as st
+from pathlib import Path
+from utils.validate import validate_table, ReportCollector, load_css, NULL
+
+################################
+#### Expected Table Schemas and CDE Versions
+################################
 
 ## Mouse scRNAseq and Spatial
 MOUSE_TABLES = [
@@ -62,6 +79,7 @@ CELL_TABLES = [
 
 IPSC_TABLES = CELL_TABLES.copy()
 
+## First element is default in the dropdown menu
 SUPPORTED_METADATA_VERSIONS = [
     "v3.3",
     "v3.2",
@@ -75,24 +93,28 @@ SUPPORTED_METADATA_VERSIONS = [
     "v1",
 ]
 
+################################
+#### App Setup
+################################
+
 st.set_page_config(
-    page_title="ASAP CRN metadata data QC",
+    page_title=f"{page_header}",
     page_icon="✅",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        "Get help": "https://github.com/ASAP-CRN/crn-meta-validate",
-        "Report a bug": "mailto:javier.diazmejia@dnastack.com",
-        "About": "# ASAP scRNAseq metadata data QC app",
+        "Get help": get_help_url,
+        "Report a bug": report_bug_email,
+        "About": f"#{page_header}",
     },
 )
 
 load_css("css/css.css")
 
 # TODO: set up dataclasses to hold the data
-def read_file(data_file):
+def read_csv(data_file):
     """
-    TODO: depricate dtypes
+    TODO: implement other infile formats
     """
 
     def sanitize_validation_string(validation_str):
@@ -109,78 +131,62 @@ def read_file(data_file):
     encoding = "latin1"
 
     if data_file.type == "text/csv":
-        print(f"reading {data_file.name} txt/csv, encoding={encoding}")
-        df = pd.read_csv(data_file, dtype="str", encoding=encoding)
-        # df = read_meta_table(table_path,dtypes_dict)
-    # assume that the xlsx file remembers the dtypes
-    elif (
-        data_file.type
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ):
-        df = pd.read_excel(data_file, resource_fname=0)
+        print(f"reading {data_file.name} csv, encoding={encoding}")
+        table_df = pd.read_csv(data_file, dtype="str", encoding=encoding)
+    else:
+        st.error(f"Unsupported file type: {data_file.type}")
+        st.stop() 
 
-    for col in df.select_dtypes(include="object").columns:
-        df[col] = (
-            df[col]
+    for col in table_df.select_dtypes(include="object").columns:
+        table_df[col] = (
+            table_df[col]
             .str.encode("latin1", errors="replace")
             .str.decode("utf-8", errors="replace")
         )
-    for col in df.columns:
-        df[col] = df[col].apply(sanitize_validation_string)
+    for col in table_df.columns:
+        table_df[col] = table_df[col].apply(sanitize_validation_string)
 
     # drop the first column if it is just the index incase it was saved with index = True
-    if df.columns[0] == "Unnamed: 0":
-        df = df.drop(columns=["Unnamed: 0"])
+    if table_df.columns[0] == "Unnamed: 0":
+        table_df = table_df.drop(columns=["Unnamed: 0"])
         print("dropped Unnamed: 0")
 
     # drop rows with all null values
-    df.dropna(how="all", inplace=True)
-    df.fillna(NULL, inplace=True)
-    df.replace(
+    table_df.dropna(how="all", inplace=True)
+    table_df.fillna(NULL, inplace=True)
+    table_df.replace(
         {"": NULL, pd.NA: NULL, "none": NULL, "nan": NULL, "Nan": NULL}, inplace=True
     )
+    return table_df.reset_index(drop=True)
 
-    return df.reset_index(drop=True)
+
+################################
+#### Load input tables
+################################
 
 @st.cache_data
 def load_data(data_files):
     """
-    Load data from a files and cache it, return a dictionary of dataframe
+    Load data from files and cache it, return a list of table names and a dictionary of dataframes
     """
+    table_names = [data_file.name.split(".")[0] for data_file in data_files]
+    input_dataframes_dict = {data_file.name.split(".")[0]: read_csv(data_file) for data_file in data_files}
+    return table_names, input_dataframes_dict
 
-    tables = [dat_f.name.split(".")[0] for dat_f in data_files]
-    dfs = {dat_f.name.split(".")[0]: read_file(dat_f) for dat_f in data_files}
-
-    return tables, dfs
-
-
-@st.cache_data
-def setup_report_data(
-    report_dat: dict, table_choice: str, dfs: dict, CDE_df: pd.DataFrame
-):
-    # TODO:  hack in a way to select all "ASSAY*" tables
-
-    df = dfs[table_choice]
-
-    specific_cde_df = CDE_df[CDE_df["Table"] == table_choice]
-    # TODO: make sure that the loaded table is in the CDE
-    dat = (df, specific_cde_df)
-
-    report_dat[table_choice] = dat
-
-    return report_dat
-
+################################
+#### Load CDE
+################################
 
 @st.cache_data
 def read_CDE(
-    metadata_version: str = "v3.2",
+    # defaults if not passed by User
+    cde_version: str = SUPPORTED_METADATA_VERSIONS[0],
     local: bool = False,
 ):
     """
-    Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
+    Load CDE and cache it, return a dataframe and dictionary of dtypes
     """
     # Construct the path to CSD.csv
-
     column_list = [
         "Table",
         "Field",
@@ -194,27 +200,28 @@ def read_CDE(
     include_aliases = False
 
     # set up fallback
-    if metadata_version == "v1":
+    if cde_version == "v1":
         resource_fname = "ASAP_CDE_v1"
-    elif metadata_version == "v2":
+    elif cde_version == "v2":
         resource_fname = "ASAP_CDE_v2"
-    elif metadata_version == "v2.1":
+    elif cde_version == "v2.1":
         resource_fname = "ASAP_CDE_v2.1"
-    elif metadata_version == "v3.0-beta":
+    elif cde_version == "v3.0-beta":
         resource_fname = "ASAP_CDE_v3.0-beta"
-    elif metadata_version in ["v3", "v3.0", "v3.0.0"]:
+    elif cde_version in ["v3", "v3.0", "v3.0.0"]:
         resource_fname = "ASAP_CDE_v3.0"
-    elif metadata_version in ["v3.1"]:
+    elif cde_version in ["v3.1"]:
         resource_fname = "ASAP_CDE_v3.1"
-    elif metadata_version in ["v3.2", "v3.2-beta"]:
+    elif cde_version in ["v3.2", "v3.2-beta"]:
         resource_fname = "ASAP_CDE_v3.2"
-    elif metadata_version == "v3.3":
+    elif cde_version == "v3.3":
         resource_fname = "ASAP_CDE_v3.3"
     else:
-        resource_fname = "ASAP_CDE_v3.2"
+        st.error(f"Unsupported cde_version: {cde_version}.")
+        st.stop()
 
-    # add the Shared_key column for v3
-    if metadata_version in [
+    # add the Shared_key column (only for CDE v3)
+    if cde_version in [
         "v3.3",
         "v3.2",
         "v3.2-beta",
@@ -224,55 +231,54 @@ def read_CDE(
         "v3.0-beta",
     ]:
         column_list.append("Shared_key")
-        # column_list += ["Shared_key"]
 
     # insert "DisplayName" after "Field"
-    if metadata_version in ["v3.2", "v3.2-beta", "v3.3"]:
+    if cde_version in ["v3.2", "v3.2-beta", "v3.3"]:
         column_list.insert(2, "DisplayName")
 
-    if metadata_version in SUPPORTED_METADATA_VERSIONS:
-        print(f"metadata_version: {resource_fname}")
+    # ensure we are using a supported CDE version
+    if cde_version in SUPPORTED_METADATA_VERSIONS:
+        print(f"cde_version: {resource_fname}")
     else:
-        print(f"Unsupported metadata_version: {resource_fname}")
+        print(f"Unsupported cde_version: {resource_fname}")
 
-    cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
-    print(cde_url)
-
-    if local:
+    # read from CDE from either local file or Google doc
+    if local == True:
         root = Path(__file__).parent
-        cde_url = root / f"resource/{resource_fname}.csv"
-        print(f"reading from resource/{resource_fname}.csv")
+        cde_local = root / f"resource/{resource_fname}.csv"
+        st.info(f"Reading CDE {cde_version} from local resource/")
+        try:
+            cde_dataframe = pd.read_csv(cde_local)
+        except:
+            st.error(f"Could not read CDE from local resource/{cde_local}")
+            st.stop()
     else:
-        print(f"reading from googledoc {cde_url}")
-
-    try:
-        CDE_df = pd.read_csv(cde_url)
-        print(f"read CDE")
-    except:
-        root = Path(__file__).parent
-        CDE_df = pd.read_csv(f"{root}/resource/{resource_fname}.csv")
-        print(f"exception:read fallback file: ./resource/{resource_fname}.csv")
+        cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={cde_version}"
+        st.info(f"Reading CDE {cde_version} from Google doc")
+        try:
+            cde_dataframe = pd.read_csv(cde_url)
+        except:
+            st.error(f"Could not read CDE from Google doc {cde_url}.")
+            st.stop()
 
     # drop ASAP_ids if not requested
     if not include_asap_ids:
-        CDE_df = CDE_df[CDE_df["Required"] != "Assigned"]
-        CDE_df = CDE_df.reset_index(drop=True)
-        # print(f"dropped ASAP_ids")
+        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Assigned"]
+        cde_dataframe = cde_dataframe.reset_index(drop=True)
 
     # drop Alias if not requested
     if not include_aliases:
-        CDE_df = CDE_df[CDE_df["Required"] != "Alias"]
-        CDE_df = CDE_df.reset_index(drop=True)
-        # print(f"dropped Alias")
+        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
+        cde_dataframe = cde_dataframe.reset_index(drop=True)
 
     # drop rows with no table name (i.e. ASAP_ids)
-    CDE_df = CDE_df.loc[:, column_list]
-    CDE_df = CDE_df.dropna(subset=["Table"])
-    CDE_df = CDE_df.reset_index(drop=True)
-    CDE_df = CDE_df.drop_duplicates()
+    cde_dataframe = cde_dataframe.loc[:, column_list]
+    cde_dataframe = cde_dataframe.dropna(subset=["Table"])
+    cde_dataframe = cde_dataframe.reset_index(drop=True)
+    cde_dataframe = cde_dataframe.drop_duplicates()
 
     # force Shared_key to be int
-    if metadata_version in [
+    if cde_version in [
         "v3.3",
         "v3.2",
         "v3.2-beta",
@@ -281,10 +287,28 @@ def read_CDE(
         "v3.0",
         "v3.0-beta",
     ]:
-        CDE_df["Shared_key"] = CDE_df["Shared_key"].fillna(0).astype(int)
+        cde_dataframe["Shared_key"] = cde_dataframe["Shared_key"].fillna(0).astype(int)
+    return cde_dataframe
 
-    return CDE_df
+################################
+#### Run a table and return results
+################################
 
+@st.cache_data
+def setup_report_data(
+    report_data_dict: dict, selected_table: str, input_dataframes_dict: dict, cde_dataframe: pd.DataFrame
+):
+    # TODO: implement in a way to select all "ASSAY*" tables
+    submit_table_df = input_dataframes_dict[selected_table]
+    table_specific_cde = cde_dataframe[cde_dataframe["Table"] == selected_table]
+    # TODO: make sure that the loaded table is in the CDE
+    table_data = (submit_table_df, table_specific_cde)
+    report_data_dict[selected_table] = table_data
+    return report_data_dict
+
+################################
+#### Main app
+################################
 
 def main():
 
@@ -292,55 +316,56 @@ def main():
     st.markdown('<p class="big-font">ASAP CRN metadata quality control (QC) app</p>', unsafe_allow_html=True)
     st.markdown(
         f"""
-        This app assists ASAP Team data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.)
-        before uploading them to ASAP CRN Cloud Google Buckets.
+        This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
+        PROTOCOL.csv, etc.) before uploading them to ASAP CRN Cloud Google buckets.
         
         * Helps to fix common issues like filling out missing values.
-        * Suggests corrections like identifying missing columns and data value mismatches 
-        based on the ASAP CRN controlled vocabularies [Common Data Elements]({CDE_GOOGLE_SHEET_URL}).
-        * Version v0.4 (DAY/Nov/2025).
+        * Suggests corrections like identifying missing columns and value mismatches vs. 
+        the ASAP CRN controlled vocabularies [(Common Data Elements)]({CDE_GOOGLE_SHEET_URL}).
         """,
         unsafe_allow_html=True,
     )
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
+    # add a pull down to select the dataset source
     with col1:
-        metadata_version = st.selectbox(
-            "1) Choose metadata schema version",
-            ["v3.2", "v3.3", "v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
-            # index=None,
+        st.markdown('<h3 style="font-size: 20px;">1. Choose dataset source</h3>',
+                    unsafe_allow_html=True)
+        dataset_source = st.selectbox(
+            "",
+            ["PMDBS", "CELL", "IPSC", "MOUSE"],
+            label_visibility="collapsed",
+            index=None,
+            # placeholder="Select dataset source",
+        )
+        
+    # add a pull down to select dataset type
+    with col2:
+        st.markdown('<h3 style="font-size: 20px;">2. Choose dataset type</h3>',
+                    unsafe_allow_html=True)
+        dataset_type = st.selectbox(
+            "",
+            ["RNAseq", "PROTEOMICS", "ATAC"],
+            label_visibility="collapsed",
+            index=None,
             # placeholder="Select TABLE..",
         )
-    # with col2:
-        # st.markdown(
-        #     f"[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)"
-        # )
-        # st.write(f"metadata_version: {metadata_version}")
 
-    # add a pull down to select the dataset source in first column
-    with col1:
-        dataset_source = st.selectbox(
-            "2) Choose dataset 'source'",
-            ["PMDBS", "CELL", "IPSC", "MOUSE"],
-            index=None,
-            placeholder="Select TABLE..",
-        )
-    with col2:
-        # add a pull down to select dataset type in the second column
-        dataset_type = st.selectbox(
-            "3) Choose dataset 'type'",
-            ["RNAseq", "PROTEOMICS", "ATAC"],
-            index=None,
-            placeholder="Select TABLE..",
+    # add a pull down to select CDE
+    with col3:
+        st.markdown('<h3 style="font-size: 20px;">3. Choose metadata schema version</h3>',
+                    unsafe_allow_html=True)
+        cde_version = st.selectbox(
+            "",
+            SUPPORTED_METADATA_VERSIONS,
+            label_visibility="collapsed",
         )
 
     # add a checkbox to indicate if we are dealing with a Spatial dataset
     with col1:
         is_spatial = st.checkbox("Is this a Spatial dataset?")
-    # with col2:
-    #     st.write(f"is_spatial: {is_spatial}")
-    
+
     table_success = False
 
     if dataset_source == "PMDBS":
@@ -372,23 +397,29 @@ def main():
 
     # print the table list
     if len(table_list) > 0:
+        table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
         st.write(
-            f"Your {spatial_text} {dataset_type}  dataset's tables should be: {table_list}"
+            f"Your {spatial_text} {dataset_type}  dataset's tables should be:\n{table_list_formatted}"
         )
 
-    # Load CDE from local csv
-    CDE_df = read_CDE(metadata_version, local=False)
+    # # Load CDE
+    # cde_dataframe = read_CDE(cde_version, local=use_local)
 
     # add a call to action to load the files in the sidebar
     if not table_success:
         st.error("Please select a dataset source and type.")
         st.stop()
-    # else:
-    #     st.sidebar.success(f"Please load your metadata tables")
-        # st.success(f"↖️ Please load your metadata tables")
 
-    # Once we have the dependencies, add a selector for the app mode on the sidebar.
+    # Once the run settings are established, add a selector for the app mode on the sidebar.
     st.sidebar.title("Upload")
+    
+    # Add version at the bottom of sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.caption(app_version)
+    
+    # Load CDE
+    cde_dataframe = read_CDE(cde_version, local=use_local)
+
     metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
         f"Load your dataset's metadata CSV files: \n{metadata_tables_text}",
@@ -401,66 +432,60 @@ def main():
         st.stop()
         tables_loaded = False
     elif len(data_files) > 0:
-        tables, dfs = load_data(data_files)
+        table_names, input_dataframes_dic = load_data(data_files)
         tables_loaded = True
-        report_dat = dict()
+        validation_report_dic = dict()
     else:  # should be impossible
         st.error("Something went wrong with the file upload. Please try again.")
         st.stop()
         tables_loaded = False
 
     if tables_loaded:
-        st.sidebar.success(f"N={len(tables)} Tables loaded successfully")
-        st.sidebar.info(f'loaded Tables : {", ".join(map(str, tables))}')
+        st.sidebar.success(f"N={len(table_names)} Tables loaded successfully")
+        st.sidebar.info(f'loaded Tables : {", ".join(map(str, table_names))}')
 
         col1, col2 = st.columns(2)
 
         with col1:
-            table_choice = st.selectbox(
+            selected_table_name = st.selectbox(
                 "Choose the TABLE to validate 👇",
-                tables,
-                # index=None,
-                # placeholder="Select TABLE..",
+                table_names,
             )
-        with col2:
-            # st.write('You selected:', table_choice)
-            st.success(f"You selected: {table_choice}")
 
     # once tables are loaded make a dropdown to choose which one to validate
     # initialize the data structure and instance of ReportCollector
-    report_dat = setup_report_data(report_dat, table_choice, dfs, CDE_df)
+    validation_report_dic = setup_report_data(validation_report_dic, selected_table_name, input_dataframes_dic, cde_dataframe)
     report = ReportCollector()
 
     # unpack data
-    print(f"{report_dat.keys()=}")
-    print(table_choice)
+    print(f"{validation_report_dic.keys()=}")
+    print(selected_table_name)
 
-    df, CDE = report_dat[table_choice]
+    selected_table, cde_rules = validation_report_dic[selected_table_name]
 
-    st.success(f"Validating n={df.shape[0]} rows from {table_choice}")
-    # perform the valadation
-    retval = validate_table(df, table_choice, CDE, report)
+    # perform the validation
+    st.success(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
+    status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
+    validated_output_df, validation_output = validation_report_dic[selected_table_name]
 
-    df_out, out = report_dat[table_choice]
-
-    if retval == 0:
+    if status_code == 0:
         report.add_error(
-            f"{table_choice} table has discrepancies!! 👎 Please try again."
+            f"{selected_table_name} table has discrepancies!! 👎 Please try again."
         )
 
     report.add_divider()
 
-    retval = 1
-    if retval == 1:
-        # st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', 
-        # unsafe_allow_html=True )
+    status_code = 1
+    if status_code == 1:
+        st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', 
+        unsafe_allow_html=True )
         # from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
             st.runtime.legacy_caching.clear_cache()
 
         report_content = report.get_log()
-        table_content = df_out.to_csv(index=False)
+        table_content = validated_output_df.to_csv(index=False)
 
         # from streamlit.scriptrunner import RerunException
         def cach_clean():
@@ -471,7 +496,7 @@ def main():
         st.download_button(
             "📥 Download your QC log",
             data=report_content,
-            file_name=f"{table_choice}.md",
+            file_name=f"{selected_table_name}.md",
             mime="text/markdown",
         )
 
@@ -479,7 +504,7 @@ def main():
         st.download_button(
             "📥 Download a sanitized .csv (NULL-> 'NA' )",
             data=table_content,
-            file_name=f"{table_choice}_sanitized.csv",
+            file_name=f"{selected_table_name}_sanitized.csv",
             mime="text/csv",
         )
 
