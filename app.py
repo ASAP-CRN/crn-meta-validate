@@ -1,23 +1,20 @@
 """
-ASAP scRNAseq metadata data QC
+ASAP scRNAseq metadata data QC app
 
+https://github.com/ASAP-CRN/crn-meta-validate
 
-https://github.com/asap_sc_collect
+v0.2 (CDE version v2), 20 August 2023
+v0.3 (CDE version v3), 01 April 2025
+v0.4 (CDE version v3), DAY November 2024
 
-v0.2
-
-metadata version v2
-20 August 2023
-
-Author:
-    @ergonyc : https://github.com/ergonyc
+Authors:
+- [Andy Henrie](https://github.com/ergonyc)
+- [Javier Diaz](https://github.com/jdime)
 
 Contributors:
-    @AMCalejandro : https://github.com/AMCalejandro
+- [Alejandro Marinez](https://github.com/AMCalejandro)
 
 """
-
-# conda create -n sl11 python=3.11 pip streamlit pandas
 
 import pandas as pd
 import streamlit as st
@@ -26,12 +23,12 @@ from pathlib import Path
 
 from utils.validate import validate_table, ReportCollector, load_css, NULL
 
-# google id for ASAP_CDE sheet
-# GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8"
-GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
-# Initial page config
+# Google Spreadsheet ID for ASAP CDE
+# GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8" ## CDE v1, v2 and v2.1
+GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE v3 series
+CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
 
-
+## Mouse scRNAseq and Spatial
 MOUSE_TABLES = [
     "STUDY",
     "PROTOCOL",
@@ -41,6 +38,7 @@ MOUSE_TABLES = [
     "DATA",
 ]
 
+## Human scRNAseq and Spatial
 PMDBS_TABLES = [
     "STUDY",
     "PROTOCOL",
@@ -52,7 +50,7 @@ PMDBS_TABLES = [
     "CONDITION",
 ]
 
-
+## Cell line scRNAseq
 CELL_TABLES = [
     "STUDY",
     "PROTOCOL",
@@ -83,28 +81,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        "Get help": "https://github.com/ergonyc/asap_sc_collect",
-        "Report a bug": "mailto:henrie@datatecnica.com",
-        "About": "# This is a header. This is an *extremely* cool app!",
+        "Get help": "https://github.com/ASAP-CRN/crn-meta-validate",
+        "Report a bug": "mailto:javier.diazmejia@dnastack.com",
+        "About": "# ASAP scRNAseq metadata data QC app",
     },
 )
 
 load_css("css/css.css")
-
-# # Define some custom functions
-# def read_file(data_file,dtypes_dict):
-#     """
-#     read csv or xlsx file and return a dataframe
-#     """
-#     if data_file.type == "text/csv":
-#         df = pd.read_csv(data_file,dtype=dtypes_dict)
-#         # df = read_meta_table(table_path,dtypes_dict)
-#     # assume that the xlsx file remembers the dtypes
-#     elif data_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-#         df = pd.read_excel(data_file, resource_fname=0)
-#     return df
-# Function to read a table with the specified data types
-
 
 # TODO: set up dataclasses to hold the data
 def read_file(data_file):
@@ -159,16 +142,6 @@ def read_file(data_file):
 
     return df.reset_index(drop=True)
 
-
-# def read_file(data_file):
-#     try:
-#         df = _read_file(data_file)
-#     except UnicodeDecodeError:
-#         df = _read_file(data_file, encoding='latin1')
-#         print(f"read 'latin1' file")
-#     return df
-
-
 @st.cache_data
 def load_data(data_files):
     """
@@ -189,18 +162,7 @@ def setup_report_data(
 
     df = dfs[table_choice]
 
-    # hack = False
-    # table_choice = table_choice.upper()
-    # # hack to match all ASSAY tables
-    # if table_choice.startswith("ASSAY_"):
-    #     hack = True
-    #     specific_cde_df = CDE_df[CDE_df["Table"].str.startswith("ASSAY_")]
-
-    # else:
-    #     specific_cde_df = CDE_df[CDE_df["Table"].str.startswith(table_choice)]
-
     specific_cde_df = CDE_df[CDE_df["Table"] == table_choice]
-    # print(specific_cde_df)
     # TODO: make sure that the loaded table is in the CDE
     dat = (df, specific_cde_df)
 
@@ -218,7 +180,6 @@ def read_CDE(
     Load CDE from local csv and cache it, return a dataframe and dictionary of dtypes
     """
     # Construct the path to CSD.csv
-    GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc"
 
     column_list = [
         "Table",
@@ -285,28 +246,9 @@ def read_CDE(
         print(f"reading from googledoc {cde_url}")
 
     try:
-        # if metadata_version == "v3.2":
-        #     metadata_version = "CDE_final"
-        # cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={metadata_version}"
-
         CDE_df = pd.read_csv(cde_url)
         print(f"read CDE")
-
-        # read_source = "url" if not local_path else "local file"
     except:
-        # import requests
-
-        # # download the cde_url to a temp file
-        # print(f"downloading {cde_url} to {resource_fname}.csv")
-        # response = requests.get(cde_url)
-        # response.raise_for_status()  # Check if the request was successful
-        # # save to ../../resource/CDE/
-        # new_resource_fname = f"../../resource/CDE/_{resource_fname}.csv"
-        # with open(new_resource_fname, "wb") as file:
-        #     file.write(response.content)
-
-        # CDE_df = pd.read_csv(new_resource_fname)
-        # print(f"exception:read local file: {new_resource_fname}")
         root = Path(__file__).parent
         CDE_df = pd.read_csv(f"{root}/resource/{resource_fname}.csv")
         print(f"exception:read fallback file: ./resource/{resource_fname}.csv")
@@ -347,13 +289,17 @@ def read_CDE(
 def main():
 
     # Provide template
-    st.markdown('<p class="big-font">ASAP scRNAseq </p>', unsafe_allow_html=True)
-    st.title("metadata data QC")
+    st.markdown('<p class="big-font">ASAP CRN metadata quality control (QC) app</p>', unsafe_allow_html=True)
     st.markdown(
-        """<p class="medium-font"> This app is intended to make sure ASAP Cloud 
-                Platform contributions follow the ASAP CRN CDE conventions. </p> 
-                <p> v0.3, updated 01April2025. </p> 
-                """,
+        f"""
+        This app assists ASAP Team data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.)
+        before uploading them to ASAP CRN Cloud Google Buckets.
+        
+        * Helps to fix common issues like filling out missing values.
+        * Suggests corrections like identifying missing columns and data value mismatches 
+        based on the ASAP CRN controlled vocabularies [Common Data Elements]({CDE_GOOGLE_SHEET_URL}).
+        * Version v0.4 (DAY/Nov/2025).
+        """,
         unsafe_allow_html=True,
     )
 
@@ -361,21 +307,21 @@ def main():
 
     with col1:
         metadata_version = st.selectbox(
-            "choose metadata schema version👇",
+            "1) Choose metadata schema version",
             ["v3.2", "v3.3", "v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
             # index=None,
             # placeholder="Select TABLE..",
         )
-    with col2:
-        st.markdown(
-            f"[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)"
-        )
-        st.write(f"metadata_version: {metadata_version}")
+    # with col2:
+        # st.markdown(
+        #     f"[ASAP CDE](https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing)"
+        # )
+        # st.write(f"metadata_version: {metadata_version}")
 
     # add a pull down to select the dataset source in first column
     with col1:
         dataset_source = st.selectbox(
-            "choose dataset 'source'",
+            "2) Choose dataset 'source'",
             ["PMDBS", "CELL", "IPSC", "MOUSE"],
             index=None,
             placeholder="Select TABLE..",
@@ -383,7 +329,7 @@ def main():
     with col2:
         # add a pull down to select dataset type in the second column
         dataset_type = st.selectbox(
-            "choose dataset 'type'",
+            "3) Choose dataset 'type'",
             ["RNAseq", "PROTEOMICS", "ATAC"],
             index=None,
             placeholder="Select TABLE..",
@@ -392,9 +338,9 @@ def main():
     # add a checkbox to indicate if we are dealing with a Spatial dataset
     with col1:
         is_spatial = st.checkbox("Is this a Spatial dataset?")
-    with col2:
-        st.write(f"is_spatial: {is_spatial}")
-
+    # with col2:
+    #     st.write(f"is_spatial: {is_spatial}")
+    
     table_success = False
 
     if dataset_source == "PMDBS":
@@ -437,18 +383,16 @@ def main():
     if not table_success:
         st.error("Please select a dataset source and type.")
         st.stop()
-    else:
-        st.sidebar.success(f"Please load your metadata tables")
-        st.success(f"↖️ Please load your metadata tables")
+    # else:
+    #     st.sidebar.success(f"Please load your metadata tables")
+        # st.success(f"↖️ Please load your metadata tables")
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
     st.sidebar.title("Upload")
-    # st.write(dtypes_dict)
-    # st.write(CDE_df)
     metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
-        f"Load your Dataset's METADATA tables ⬇️:\n{metadata_tables_text}",
-        type=["xlsx", "csv"],
+        f"Load your dataset's metadata CSV files: \n{metadata_tables_text}",
+        type=["csv"],
         accept_multiple_files=True,
     )
 
@@ -483,9 +427,7 @@ def main():
             st.success(f"You selected: {table_choice}")
 
     # once tables are loaded make a dropdown to choose which one to validate
-
     # initialize the data structure and instance of ReportCollector
-
     report_dat = setup_report_data(report_dat, table_choice, dfs, CDE_df)
     report = ReportCollector()
 
@@ -510,7 +452,8 @@ def main():
 
     retval = 1
     if retval == 1:
-        # st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', unsafe_allow_html=True )
+        # st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', 
+        # unsafe_allow_html=True )
         # from streamlit.scriptrunner import RerunException
         def cach_clean():
             time.sleep(1)
@@ -546,28 +489,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-    # # sex for qc
-    # st.subheader('Create "biological_sex_for_qc"')
-    # st.text('Count per sex group')
-    # st.write(data.sex.value_counts())
-
-    # sexes=data.sex.dropna().unique()
-    # n_sexes = st.columns(len(sexes))
-    # mapdic={}
-    # for i, x in enumerate(n_sexes):
-    #     with x:
-    #         sex = sexes[i]
-    #         mapdic[sex]=x.selectbox(f"[{sex}]: For QC, please pick a word below",sexes,key=i)
-    #                             # ["Male", "Female","Intersex","Unnown"], key=i)
-    # data['sex_qc'] = data.sex.replace(mapdic)
-
-    # # cross-tabulation
-    # st.text('=== sex_qc x sex ===')
-    # xtab = data.pivot_table(index='sex_qc', columns='sex', margins=True,
-    #                         values='subject_id', aggfunc='count', fill_value=0)
-    # st.write(xtab)
-
-    # sex_conf = st.checkbox('Confirm sex_qc?')
-    # if sex_conf:
-    #     st.info('Thank you')

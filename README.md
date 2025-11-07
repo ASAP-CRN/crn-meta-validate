@@ -1,5 +1,5 @@
 # crn-meta-validate
-v3 metadata validator for ASAP CRN metadata
+Metadata validator for ASAP CRN metadata (v0.4)
 
 <!-- PROJECT SHIELDS -->
 <!--
@@ -91,10 +91,10 @@ If you have questions, please send us an email to [EMAIL](mailto:abc@def) descri
 ### Installation 
 1. Clone the github repository
 ```bash
-git clone git@github.com:ergonyc/asap_sc_collect.git 
+git clone git@github.com:ASAP-CRN/crn-meta-validate.git
 ```
 
-2. Make sure you have access to some paths hard coded within the app not added on the github remote
+2. Make sure you have access to the CDE spreadsheet hard coded within the app
 
 3. Build the docker container that contains the app
 ```bash
