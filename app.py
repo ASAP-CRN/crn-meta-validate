@@ -244,16 +244,15 @@ def read_CDE(
     if local == True:
         root = Path(__file__).parent
         cde_local = root / f"resource/{cd_version_file_name}.csv"
-        st.info(f"Reading CDE {cde_version} from local resource/")
+        st.info(f"Using CDE {cde_version} from local resource/")
         try:
             cde_dataframe = pd.read_csv(cde_local)
         except:
             st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
             st.stop()
     else:
-        cde_version_ = cde_version + "_"
         cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={cde_version}"
-        st.info(f"Reading CDE {cde_version} from Google doc")
+        st.info(f"Using CDE {cde_version} from Google doc")
         try:
             cde_dataframe = pd.read_csv(cde_url)
         except:
@@ -328,35 +327,38 @@ def main():
         unsafe_allow_html=True,
     )
 
+    ############
+    #### Set dropdown menus for run settings
     col1, col2, col3 = st.columns(3)
 
-    # add a pull down to select the dataset source
+    # Drop down menu to select dataset source
+    # Currently, it includes both species and tissue/cell source. Will separate later.
     with col1:
-        st.markdown('<h3 style="font-size: 20px;">1. Choose dataset source</h3>',
-                    unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 20px;">1. Choose dataset source <span style="color: red;">*</span></h3>',
+            unsafe_allow_html=True)
         dataset_source = st.selectbox(
             "",
-            ["HUMAN", "CELL", "IPSC", "MOUSE"],
+            ["HUMAN", "MOUSE", "CELL", "IPSC"],
             label_visibility="collapsed",
             index=None,
             # placeholder="Select dataset source",
         )
-        
-    # add a pull down to select dataset type
+
+    # Drop down menu to select dataset type (i.e. modality)
     with col2:
-        st.markdown('<h3 style="font-size: 20px;">2. Choose dataset type</h3>',
+        st.markdown('<h3 style="font-size: 20px;">2. Choose modality <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
         dataset_type = st.selectbox(
             "",
-            ["RNAseq", "PROTEOMICS", "ATAC"],
+            ["scRNA-seq", "Bulk RNAseq", "PROTEOMICS", "ATAC", "SPATIAL"],
             label_visibility="collapsed",
             index=None,
             # placeholder="Select TABLE..",
         )
 
-    # add a pull down to select CDE
+    # Drop down menu to select CDE
     with col3:
-        st.markdown('<h3 style="font-size: 20px;">3. Choose metadata schema version</h3>',
+        st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version (optional)</h3>',
                     unsafe_allow_html=True)
         cde_version = st.selectbox(
             "",
@@ -364,58 +366,73 @@ def main():
             label_visibility="collapsed",
         )
 
-    # add a checkbox to indicate if we are dealing with a Spatial dataset
-    with col1:
-        is_spatial = st.checkbox("Is this a Spatial dataset?")
-
-    table_success = False
+    ############
+    #### Determine expected tables based on run settings
+    table_list = []
+    dataset_source_success = False
+    modality_success = False
 
     if dataset_source == "HUMAN":
         table_list = HUMAN_TABLES
+        dataset_source_success = True
     elif dataset_source == "MOUSE":
         table_list = MOUSE_TABLES
+        dataset_source_success = True  
     elif dataset_source == "CELL":
         table_list = CELL_TABLES
+        dataset_source_success = True
     elif dataset_source == "IPSC":
         table_list = IPSC_TABLES
+        dataset_source_success = True
     else:
-        st.error(f"ERROR!!! unexpected dataset source = {dataset_source}")
-        st.stop()
+        dataset_source_success = False
 
-    if dataset_type in ["RNAseq", "ATAC"]:
+    modality_success = False
+    if dataset_type in ["scRNA-seq"]:
         table_list.append("ASSAY_RNAseq")
-        table_success = True
+        modality_success = True
+    elif dataset_type in ["Bulk RNAseq"]:
+        table_list.append("ASSAY_RNAseq")
+        modality_success = True
+    elif dataset_type in ["ATAC"]:
+        table_list.append("ASSAY_RNAseq")
+        modality_success = True
+    elif dataset_type in ["SPATIAL"]:
+        table_list.append("SPATIAL")
+        modality_success = True
     elif dataset_type == "PROTEOMICS":
         table_list.append("PROTEOMICS")
-        table_success = True
+        modality_success = True
     else:
-        print(f"dataset_type: {dataset_type} not supported")
-        table_success = False
+        modality_success = False
 
-    if is_spatial:
-        table_list.append("SPATIAL")
-        spatial_text = " (Spatial)"
-    else:
-        spatial_text = ""
+    ############
+    #### Print expected tables and load data files
+
+    # Request user to select dataset source and type if not done
+    if not dataset_source_success or not modality_success:
+        # st.info("Select a **`dataset source`** and a **`modality`**")
+        # st.markdown('<p style="background-color: #d1ecf1; padding: 10px; border-radius: 5px; color: #0c5460;">Select a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">dataset source</code> and a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">modality</code></p>', unsafe_allow_html=True)
+        st.stop()
 
     # print the table list
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
         st.write(
-            f"Your {spatial_text} {dataset_type}  dataset's tables should be:\n{table_list_formatted}"
+            # f"Expect {dataset_source} + {dataset_type} tables = \n{table_list_formatted}"
         )
-
-    # add a call to action to load the files in the sidebar
-    if not table_success:
-        st.info("Please select a `dataset source` and a `dataset type`")
+    else:
+        st.error("No expected tables found for the selected dataset source and type")
         st.stop()
 
-    # Once the run settings are established, add a selector for the app mode on the sidebar.
-    st.sidebar.title("Upload files to validate")
-    
+
     # Load CDE
     cde_dataframe = read_CDE(cde_version, local=use_local)
 
+    ############
+    #### Provide left-side bar for file upload and app reset
+    st.sidebar.title("Upload files to validate")
+    
     metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
         f"Expected files: \n{table_list_formatted}",
