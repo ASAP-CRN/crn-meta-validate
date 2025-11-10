@@ -47,8 +47,6 @@ Metadata validator for ASAP CRN metadata (v0.4)
 
 Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contributors_ to QC their metadata **`{TABLE}.csv` files** (incl. STUDY.csv, PROTOCOL.csv, SUBJECT.csv, etc.). The app will look for and fix common issues (e.g. fill out missing values with NA) and suggest changes that _data contributors_ need to address to align files to ASAP CRN standards.
 
-If you have questions, please send us an email to [EMAIL](mailto:abc@def) describing the issue, include the *log.txt file(s) that you get from the app (see below) and a screenshot of the run setup.
-
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
 <!-- GETTING STARTED / WEB APP -->
@@ -133,7 +131,7 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- CONTACT -->
 ## Contact
-Please send us an email to [EMAIL](mailto:abc@def) describing the issue, include the *log.txt file(s) that you get from the app (see below) and a screenshot of the run setup.
+Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, include the *log.txt file(s) that you get from the app (see below) and a screenshot of the run setup.
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
