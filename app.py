@@ -415,7 +415,7 @@ def main():
         # st.markdown('<p style="background-color: #d1ecf1; padding: 10px; border-radius: 5px; color: #0c5460;">Select a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">dataset source</code> and a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">modality</code></p>', unsafe_allow_html=True)
         st.stop()
 
-    # print the table list
+    # Print the table list
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
         st.write(
@@ -456,6 +456,14 @@ def main():
 
     # Add Reset button and version at the bottom of sidebar (always visible)
     st.sidebar.markdown("---")
+    st.markdown("""
+                <style>
+                div.stButton > button[kind="primary"] {
+                border: 2px solid #1f77b4 !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+    
     if st.sidebar.button("Reset App", use_container_width=True, type="primary"):
         # Clear all cached data
         st.cache_data.clear()
@@ -463,7 +471,7 @@ def main():
         st.session_state.file_uploader_key += 1
         st.rerun()
 
-    ## Show app version
+    ## Add app version
     st.sidebar.caption(app_version)
 
     # Stop here if no files loaded
@@ -482,29 +490,27 @@ def main():
             label_visibility="collapsed",
         )
 
-    # once tables are loaded make a dropdown to choose which one to validate
-    # initialize the data structure and instance of ReportCollector
+    # Dropdown to choose table to validate
+    # Collect results via ReportCollector
     validation_report_dic = setup_report_data(validation_report_dic, selected_table_name, input_dataframes_dic, cde_dataframe)
     report = ReportCollector()
 
-    # unpack data
+    # Unpack data
     selected_table, cde_rules = validation_report_dic[selected_table_name]
 
-    # perform the validation
+    # Perform the validation
     st.info(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
     status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
     validated_output_df, validation_output = validation_report_dic[selected_table_name]
-
     if status_code == 0:
         report.add_error(
             f"{selected_table_name} table has discrepancies!! 👎 Please try again."
         )
-
     report.add_divider()
 
-    status_code = 1
+    status_code = 1 # force success for download
     if status_code == 1:
-        st.markdown('<p class="medium-font"> You have <it>confirmed</it> your meta-data package meets all the ASAP CRN requirements. </p>', 
+        st.markdown('<p class="medium-font"> Download logs and a sanitized .csv </p>',
         unsafe_allow_html=True )
         # from streamlit.scriptrunner import RerunException
         def cach_clean():
