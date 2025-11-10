@@ -29,7 +29,7 @@ div.stButton > button:first-child {
     content: "Drag and drop files HERE or click 'Browse files'";
     display: block;
     font-size: 17px;
-    color: #e4e6f0;
+    color: #666668;
     text-align: center;
     padding: 10px;
 }

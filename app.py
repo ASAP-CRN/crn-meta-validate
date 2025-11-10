@@ -1,7 +1,11 @@
 """
 ASAP CRN metadata quality control (QC) app
 
+GitHub repository:
 https://github.com/ASAP-CRN/crn-meta-validate
+
+Web app production version: https://asap-meta-qc.streamlit.app/
+Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app/
 
 v0.2 (CDE version v2), 20 August 2023
 v0.3 (CDE version v3), 01 April 2025
@@ -54,6 +58,9 @@ MOUSE_TABLES = [
     "CONDITION",
     "DATA",
 ]
+
+### There is HUMAN and PMDBS in the bucket names (cross compare)
+### Follow Matt's nomenclature
 
 ## Human scRNAseq and Spatial
 HUMAN_TABLES = [
@@ -358,7 +365,7 @@ def main():
 
     # Drop down menu to select CDE
     with col3:
-        st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version (optional)</h3>',
+        st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version</h3>',
                     unsafe_allow_html=True)
         cde_version = st.selectbox(
             "",
@@ -411,29 +418,24 @@ def main():
 
     # Request user to select dataset source and type if not done
     if not dataset_source_success or not modality_success:
-        # st.info("Select a **`dataset source`** and a **`modality`**")
-        # st.markdown('<p style="background-color: #d1ecf1; padding: 10px; border-radius: 5px; color: #0c5460;">Select a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">dataset source</code> and a <code style="font-size: 18px; background-color: #b8daff; padding: 2px 4px; border-radius: 3px;">modality</code></p>', unsafe_allow_html=True)
+        # Make pause until user selects dataset_source_success and modality_success
         st.stop()
 
     # Print the table list
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
-        st.write(
-            # f"Expect {dataset_source} + {dataset_type} tables = \n{table_list_formatted}"
-        )
     else:
         st.error("No expected tables found for the selected dataset source and type")
         st.stop()
 
-
-    # Load CDE
+    ############
+    #### Load CDE
     cde_dataframe = read_CDE(cde_version, local=use_local)
 
     ############
     #### Provide left-side bar for file upload and app reset
     st.sidebar.title("Upload files to validate")
     
-    metadata_tables_text = " ".join([f"\t{t}, \n " for t in table_list])
     data_files = st.sidebar.file_uploader(
         f"Expected files: \n{table_list_formatted}",
         type=["csv"],
@@ -447,14 +449,14 @@ def main():
         table_names, input_dataframes_dic = load_data(data_files)
         tables_loaded = True
         validation_report_dic = dict()
-        # Display summary and detailed list in sidebar
         st.sidebar.success(f"N={len(table_names)} files loaded")
     else:
         st.error("Something went wrong with the file upload. Please try again.")
         st.stop()
         tables_loaded = False
 
-    # Add Reset button and version at the bottom of sidebar (always visible)
+    ############
+    #### Add Reset button and version info to sidebar
     st.sidebar.markdown("---")
     st.markdown("""
                 <style>
@@ -465,21 +467,22 @@ def main():
                 """, unsafe_allow_html=True)
     
     if st.sidebar.button("Reset App", use_container_width=True, type="primary"):
-        # Clear all cached data
-        st.cache_data.clear()
-        # Increment the file uploader key to reset it
-        st.session_state.file_uploader_key += 1
+        st.cache_data.clear() # Clear all cached data
+        st.session_state.file_uploader_key += 1 # Increment the file uploader key to reset it
         st.rerun()
 
     ## Add app version
     st.sidebar.caption(app_version)
 
-    # Stop here if no files loaded
+
+    ############
+    #### Pause if no files loaded
     if not tables_loaded:
         st.stop()
 
-    # Create file selection dropdown in main area
-    col1, col2 = st.columns(2)
+    ############
+    #### Create file selection dropdown and run validation
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
@@ -490,7 +493,6 @@ def main():
             label_visibility="collapsed",
         )
 
-    # Dropdown to choose table to validate
     # Collect results via ReportCollector
     validation_report_dic = setup_report_data(validation_report_dic, selected_table_name, input_dataframes_dic, cde_dataframe)
     report = ReportCollector()
@@ -507,6 +509,9 @@ def main():
             f"{selected_table_name} table has discrepancies!! 👎 Please try again."
         )
     report.add_divider()
+
+    ############
+    #### Display validation results and download buttons
 
     status_code = 1 # force success for download
     if status_code == 1:
@@ -540,9 +545,7 @@ def main():
             file_name=f"{selected_table_name}_sanitized.csv",
             mime="text/csv",
         )
-
         return None
-
 
 if __name__ == "__main__":
 

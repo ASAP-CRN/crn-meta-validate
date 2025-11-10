@@ -1,7 +1,7 @@
 # imports
 import pandas as pd
 
-# wrape this in try/except to make suing the ReportCollector portable
+# wrape this in try/except to make using the ReportCollector portable
 # probably an abstract base class would be better
 try:
     import streamlit as st
@@ -156,14 +156,10 @@ def validate_table_old(df: pd.DataFrame, table_name: str, specific_cde_df: pd.Da
             else:
                 missing_optional.append(field)
 
-            # print(f"missing {opt_req} column {field}")
-
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
             if datatype.item() == "Integer":
-                # recode "Unknown" as NULL
                 print(f"recoding {field} as int")
-
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
                 try:
                     df[field].apply(lambda x: int(x) if x!=NULL else x )
@@ -240,12 +236,9 @@ def validate_table_old(df: pd.DataFrame, table_name: str, specific_cde_df: pd.Da
     else:
         out.add_markdown(f"No invalid entries found in Enum fields.")
 
-
     for field in df.columns:
         if field not in specific_cde_df["Field"].values:
             out.add_error(f"Extra field in {table_name}: {field}")
-
-
     return df.copy(), out
 
 
@@ -278,15 +271,11 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
             if datatype.item() == "Integer":
-                # recode "Unknown" as NULL
                 print(f"recoding {field} as int")
-
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
                 try:
                     df[field].apply(lambda x: int(x) if x!=NULL else x )
                 except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
                     invalid_values = df[field].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "int or NULL ('NA')"
@@ -295,22 +284,16 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
 
                 # test that all are integer or NULL, flag NULL entries
             elif datatype.item() == "Float":
-                # recode "Unknown" as NULL
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
                 try:
                     df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
                 except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
                     invalid_values = df[field].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "float or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-
-                # test that all are float or NULL, flag NULL entries
             elif datatype.item() == "Enum":
-
                 valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
                 valid_values += [NULL]
                 entries = df[field]
@@ -344,7 +327,6 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
             df[field] = NULL
 
     if len(null_fields) > 0:
-        # print(f"{opt_req} {field} has {n_null}/{df.shape[0]} NULL entries ")
         out.add_error(f"{len(null_fields)} Fields with empty (NULL) values:")
         for opt_req, field, count in null_fields:
             out.add_markdown(f"\n\t- {field}: {count}/{total_rows} empty rows ({opt_req})")

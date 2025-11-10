@@ -111,6 +111,9 @@ docker run -d -p 8080:8080 <docker-container-name>
 streamlit run app.py
 ```
 
+### Staging web app
+Staging [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch
+
 ### Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have a suggestion that would make this better, please do this and thanks again!
 1. Fork the Project
