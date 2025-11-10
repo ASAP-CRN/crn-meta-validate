@@ -50,7 +50,6 @@ import pandas as pd
 import streamlit as st
 from pathlib import Path
 from utils.validate import validate_table, ReportCollector, load_css, NULL
-from utils.cde import read_CDE, NULL
 
 ################################
 #### Expected Table Schemas and CDE Versions
