@@ -52,14 +52,11 @@ Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contri
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-**Note:** If you have multiple datasets to validate, complete steps 1-9 for each dataset separately.
-
 1. Go to the [web app](https://asap-meta-qc.streamlit.app/)
 2. In the drop-down menus, specify the following for your dataset:
     * Species
-    * Modality
     * Tissue/Cell origin
-    * Common Data Elements version (CDE, i.e., ASAP CRN controlled vocabularies; the latest version is used by default)
+    * Modality
 3. A left-side menu will appear. Click `Browse files` and upload your `{TABLE}.csv` files
 4. Files will be uploaded automatically, and global status messages will appear in the left-side menu
 5. In the `Choose a TABLE to validate` drop-down menu, select the {TABLE} you want to validate
@@ -72,9 +69,13 @@ Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contri
       * `Download a sanitized {TABLE}.csv`
         * An updated file with common issues fixed (e.g., missing values filled with NA)
     * **If no issues are found**, a `No issues found` message will appear
-7. Repeat steps 5-6 for each {TABLE}.csv file you uploaded
+7. Repeat steps 5-6 for each `{TABLE}.csv` file you uploaded
 8. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
-9. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](mailto:abc@def). We will notify you if any issues are found.
+9. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.
+
+**Notes:**    
+a) If you have multiple datasets to validate, complete steps 1-8 for each dataset separately.     
+b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled vocabularies) will be used automatically. [Contact us](#contact) if you need a different version or have questions.
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
