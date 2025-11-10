@@ -11,6 +11,8 @@ v0.2 (CDE version v2), 20 August 2023
 v0.3 (CDE version v3), 01 April 2025
 v0.4 (CDE version v3.3), 07 November 2025
 
+Notes: CDE version is hardcoded by variable cde_default below.
+
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
@@ -24,14 +26,15 @@ Contributors:
 #### Configuration
 ################################
 
+cde_default = "v3.3"  # CDE version to use
+use_local = False  # Set to True to read CDE from local resource folder
+app_version = "Metadata QC app v0.4" + f" (CDE {cde_default})"
+
 # Google Spreadsheet ID for ASAP CDE
 # GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8" ## CDE v1, v2 and v2.1
 GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE v3 series
 CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
 
-use_local = False  # Set to True to read CDE from local resource folder
-
-app_version = "ASAP CRN metadata QC app v0.4"
 report_bug_email = ("mailto:javier.diazmejia@dnastack.com")
 get_help_url = "https://github.com/ASAP-CRN/crn-meta-validate"
 page_header = "ASAP CRN metadata quality control (QC) app"
@@ -86,7 +89,6 @@ CELL_TABLES = [
 
 IPSC_TABLES = CELL_TABLES.copy()
 
-## First element is default in the dropdown menu
 SUPPORTED_METADATA_VERSIONS = [
     "v3.3",
     "v3.2",
@@ -116,6 +118,7 @@ st.set_page_config(
     },
 )
 
+## Load CSS (text size, colors, etc.)
 load_css("css/css.css")
 
 # TODO: set up dataclasses to hold the data
@@ -184,9 +187,10 @@ def load_data(data_files):
 #### Load CDE
 ################################
 
+
 @st.cache_data
 def read_CDE(
-    cde_version: str = SUPPORTED_METADATA_VERSIONS[0],
+    cde_version: str = cde_default,
     local: bool = False,
 ):
     """
@@ -359,19 +363,18 @@ def main():
             "",
             ["scRNA-seq", "Bulk RNAseq", "PROTEOMICS", "ATAC", "SPATIAL"],
             label_visibility="collapsed",
-            index=None,
-            # placeholder="Select TABLE..",
+            index=None
         )
 
-    # Drop down menu to select CDE
-    with col3:
-        st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version</h3>',
-                    unsafe_allow_html=True)
-        cde_version = st.selectbox(
-            "",
-            SUPPORTED_METADATA_VERSIONS,
-            label_visibility="collapsed",
-        )
+    # # Drop down menu to select CDE
+    # with col3:
+    #     st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version</h3>',
+    #                 unsafe_allow_html=True)
+    #     cde_version = st.selectbox(
+    #         "",
+    #         SUPPORTED_METADATA_VERSIONS,
+    #         label_visibility="collapsed",
+    #     )
 
     ############
     #### Determine expected tables based on run settings
@@ -430,7 +433,7 @@ def main():
 
     ############
     #### Load CDE
-    cde_dataframe = read_CDE(cde_version, local=use_local)
+    cde_dataframe = read_CDE(cde_default, local=use_local)
 
     ############
     #### Provide left-side bar for file upload and app reset
