@@ -319,7 +319,7 @@ def main():
     st.markdown(
         f"""
         This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
-        PROTOCOL.csv, etc.) before uploading them to ASAP CRN Cloud Google buckets.
+        PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
         
         * Helps to fix common issues like filling out missing values.
         * Suggests corrections like identifying missing columns and value mismatches vs. 
@@ -389,7 +389,7 @@ def main():
         table_success = True
     else:
         print(f"dataset_type: {dataset_type} not supported")
-        tabe_success = False
+        table_success = False
 
     if is_spatial:
         table_list.append("SPATIAL")
@@ -404,16 +404,13 @@ def main():
             f"Your {spatial_text} {dataset_type}  dataset's tables should be:\n{table_list_formatted}"
         )
 
-    # # Load CDE
-    # cde_dataframe = read_CDE(cde_version, local=use_local)
-
     # add a call to action to load the files in the sidebar
     if not table_success:
-        st.info("Please select a `dataset source` and `dataset type`")
+        st.info("Please select a `dataset source` and a `dataset type`")
         st.stop()
 
     # Once the run settings are established, add a selector for the app mode on the sidebar.
-    st.sidebar.title("Upload files to validate 👇")
+    st.sidebar.title("Upload files to validate")
     
     # Load CDE
     cde_dataframe = read_CDE(cde_version, local=use_local)
@@ -447,6 +444,8 @@ def main():
         # Increment the file uploader key to reset it
         st.session_state.file_uploader_key += 1
         st.rerun()
+
+    ## Show app version
     st.sidebar.caption(app_version)
 
     # Stop here if no files loaded
