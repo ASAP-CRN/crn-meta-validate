@@ -56,13 +56,13 @@ MOUSE_TABLES = [
 ]
 
 ## Human scRNAseq and Spatial
-PMDBS_TABLES = [
+HUMAN_TABLES = [
     "STUDY",
     "PROTOCOL",
     "SUBJECT",
     "SAMPLE",
     "DATA",
-    "PMDBS",
+    "HUMAN",
     "CLINPATH",
     "CONDITION",
 ]
@@ -336,7 +336,7 @@ def main():
                     unsafe_allow_html=True)
         dataset_source = st.selectbox(
             "",
-            ["PMDBS", "CELL", "IPSC", "MOUSE"],
+            ["HUMAN", "CELL", "IPSC", "MOUSE"],
             label_visibility="collapsed",
             index=None,
             # placeholder="Select dataset source",
@@ -370,16 +370,17 @@ def main():
 
     table_success = False
 
-    if dataset_source == "PMDBS":
-        table_list = PMDBS_TABLES
+    if dataset_source == "HUMAN":
+        table_list = HUMAN_TABLES
+    elif dataset_source == "MOUSE":
+        table_list = MOUSE_TABLES
     elif dataset_source == "CELL":
         table_list = CELL_TABLES
     elif dataset_source == "IPSC":
         table_list = IPSC_TABLES
-    elif dataset_source == "MOUSE":
-        table_list = MOUSE_TABLES
     else:
-        table_list = []
+        st.error(f"ERROR!!! unexpected dataset source = {dataset_source}")
+        st.stop()
 
     if dataset_type in ["RNAseq", "ATAC"]:
         table_list.append("ASSAY_RNAseq")
@@ -431,7 +432,7 @@ def main():
         validation_report_dic = dict()
         # Display summary and detailed list in sidebar
         st.sidebar.success(f"N={len(table_names)} files loaded")
-    else:  # should be impossible
+    else:
         st.error("Something went wrong with the file upload. Please try again.")
         st.stop()
         tables_loaded = False
