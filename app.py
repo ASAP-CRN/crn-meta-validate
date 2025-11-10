@@ -7,11 +7,15 @@ https://github.com/ASAP-CRN/crn-meta-validate
 Web app production version: https://asap-meta-qc.streamlit.app/
 Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app/
 
-v0.2 (CDE version v2), 20 August 2023
-v0.3 (CDE version v3), 01 April 2025
-v0.4 (CDE version v3.3), 07 November 2025
+Webapp v0.2 (CDE version v2), 20 August 2023
+Webapp v0.3 (CDE version v3), 01 April 2025
+Webapp v0.4 (CDE version v3.3), 07 November 2025
 
-Notes: CDE version is hardcoded by variable cde_default below.
+Version notes:
+Webapp v0.4:
+* CDE version is hardcoded by variable cde_default and CDE dropdown removed
+* Added supported species, modality and tissue/cell source dropdowns to select expected tables
+* Added reset button to sidebar, reset cache and file uploader
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -26,18 +30,17 @@ Contributors:
 #### Configuration
 ################################
 
+webapp_version = "v0.4"  # web app version
 cde_default = "v3.3"  # CDE version to use
 use_local = False  # Set to True to read CDE from local resource folder
-app_version = "Metadata QC app v0.4" + f" (CDE {cde_default})"
+GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE Google Sheet ID
 
-# Google Spreadsheet ID for ASAP CDE
-# GOOGLE_SHEET_ID = "1xjxLftAyD0B8mPuOKUp5cKMKjkcsrp_zr9yuVULBLG8" ## CDE v1, v2 and v2.1
-GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE v3 series
-CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
-
-report_bug_email = ("mailto:javier.diazmejia@dnastack.com")
+report_bug_email = ("mailto:support@dnastack.com")
 get_help_url = "https://github.com/ASAP-CRN/crn-meta-validate"
 page_header = "ASAP CRN metadata quality control (QC) app"
+
+CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
+version_display = f"Metadata QC {webapp_version} (CDE {cde_default})"
 
 ################################
 #### Imports
@@ -47,47 +50,69 @@ import pandas as pd
 import streamlit as st
 from pathlib import Path
 from utils.validate import validate_table, ReportCollector, load_css, NULL
+from utils.cde import read_CDE, NULL
 
 ################################
 #### Expected Table Schemas and CDE Versions
 ################################
 
-## Mouse scRNAseq and Spatial
-MOUSE_TABLES = [
+# Note: 'Other' option will call only mandatory tables for a given category species/tissue/modality
+
+SUPPORTED_SPECIES = [
+    "Human",
+    "Mouse",
+    "Macaque Cyno",
+    "Macaque Rhesus",
+    "Other"
+]
+
+SUPPORTED_TISSUE_OR_CELL = [
+    "Post-mortem brain",
+    "Post-mortem skin",
+    "Embryonic fibroblast",
+    "Cell lines",
+    "iPSC",
+    "Fecal",
+    "Other"
+]
+
+SUPPORTED_MODALITY = [
+    "Single cell/nucleus RNA-seq",
+    "Bulk RNAseq",
+    "Spatial transcriptomics",
+    "ATAC-seq",
+    "MULTI-Seq",
+    "Multimodal Seq",
+    "Multiome",
+    "Genetics",
+    "Metagenome",
+    "MS Proteomics",
+    "Other MS -omics",
+    "Other"
+]
+
+## All datasets must have these tables
+MANDATORY_TABLES = [
     "STUDY",
     "PROTOCOL",
     "SAMPLE",
+    "DATA",
+    "CONDITION",
+]
+
+EXTRA_MOUSE_TABLES = [
     "MOUSE",
-    "CONDITION",
-    "DATA",
 ]
 
-### There is HUMAN and PMDBS in the bucket names (cross compare)
-### Follow Matt's nomenclature
-
-## Human scRNAseq and Spatial
-HUMAN_TABLES = [
-    "STUDY",
-    "PROTOCOL",
-    "SUBJECT",
-    "SAMPLE",
-    "DATA",
+EXTRA_HUMAN_TABLES = [
     "HUMAN",
+    "SUBJECT",
     "CLINPATH",
-    "CONDITION",
 ]
 
-## Cell line scRNAseq
-CELL_TABLES = [
-    "STUDY",
-    "PROTOCOL",
-    "SAMPLE",
+EXTRA_CELL_TABLES = [
     "CELL",
-    "CONDITION",
-    "DATA",
 ]
-
-IPSC_TABLES = CELL_TABLES.copy()
 
 SUPPORTED_METADATA_VERSIONS = [
     "v3.3",
@@ -113,8 +138,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         "Get help": get_help_url,
-        "Report a bug": report_bug_email,
-        "About": f"#{page_header}",
+        "About": f"ASAP CRN {version_display}",
     },
 )
 
@@ -187,7 +211,6 @@ def load_data(data_files):
 #### Load CDE
 ################################
 
-
 @st.cache_data
 def read_CDE(
     cde_version: str = cde_default,
@@ -210,22 +233,12 @@ def read_CDE(
     include_aliases = False
 
     # set up fallback
-    if cde_version == "v1":
-        cd_version_file_name = "ASAP_CDE_v1"
-    elif cde_version == "v2":
-        cd_version_file_name = "ASAP_CDE_v2"
-    elif cde_version == "v2.1":
-        cd_version_file_name = "ASAP_CDE_v2.1"
-    elif cde_version == "v3.0-beta":
-        cd_version_file_name = "ASAP_CDE_v3.0-beta"
-    elif cde_version in ["v3", "v3.0", "v3.0.0"]:
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3"]:
+        cd_version_file_name = "ASAP_CDE_" + cde_version
+    elif cde_version in ["v3", "v3.0.0"]:
         cd_version_file_name = "ASAP_CDE_v3.0"
-    elif cde_version in ["v3.1"]:
-        cd_version_file_name = "ASAP_CDE_v3.1"
-    elif cde_version in ["v3.2", "v3.2-beta"]:
+    elif cde_version in ["v3.2-beta"]:
         cd_version_file_name = "ASAP_CDE_v3.2"
-    elif cde_version == "v3.3":
-        cd_version_file_name = "ASAP_CDE_v3.3"
     else:
         st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
         st.stop()
@@ -342,75 +355,76 @@ def main():
     #### Set dropdown menus for run settings
     col1, col2, col3 = st.columns(3)
 
-    # Drop down menu to select dataset source
+    # Drop down menu to select species
     # Currently, it includes both species and tissue/cell source. Will separate later.
     with col1:
-        st.markdown('<h3 style="font-size: 20px;">1. Choose dataset source <span style="color: red;">*</span></h3>',
+        st.markdown('<h3 style="font-size: 20px;">1. Choose dataset species <span style="color: red;">*</span></h3>',
             unsafe_allow_html=True)
-        dataset_source = st.selectbox(
+        species = st.selectbox(
             "",
-            ["HUMAN", "MOUSE", "CELL", "IPSC"],
-            label_visibility="collapsed",
-            index=None,
-            # placeholder="Select dataset source",
-        )
-
-    # Drop down menu to select dataset type (i.e. modality)
-    with col2:
-        st.markdown('<h3 style="font-size: 20px;">2. Choose modality <span style="color: red;">*</span></h3>',
-                    unsafe_allow_html=True)
-        dataset_type = st.selectbox(
-            "",
-            ["scRNA-seq", "Bulk RNAseq", "PROTEOMICS", "ATAC", "SPATIAL"],
+            SUPPORTED_SPECIES,
             label_visibility="collapsed",
             index=None
         )
 
-    # # Drop down menu to select CDE
-    # with col3:
-    #     st.markdown('<h3 style="font-size: 20px;">3. Change metadata schema version</h3>',
-    #                 unsafe_allow_html=True)
-    #     cde_version = st.selectbox(
-    #         "",
-    #         SUPPORTED_METADATA_VERSIONS,
-    #         label_visibility="collapsed",
-    #     )
+    # Drop down menu to select tissue/cell source
+    with col2:
+        st.markdown('<h3 style="font-size: 20px;">2. Choose tissue/cell <span style="color: red;">*</span></h3>',
+                    unsafe_allow_html=True)
+        tissue_or_cell = st.selectbox(
+            "",
+            SUPPORTED_TISSUE_OR_CELL,
+            label_visibility="collapsed",
+            index=None
+        )
+
+    # Drop down menu to select modality
+    with col3:
+        st.markdown('<h3 style="font-size: 20px;">2. Choose modality <span style="color: red;">*</span></h3>',
+                    unsafe_allow_html=True)
+        modality = st.selectbox(
+            "",
+            SUPPORTED_MODALITY,
+            label_visibility="collapsed",
+            index=None
+        )
 
     ############
-    #### Determine expected tables based on run settings
+    #### Determine expected tables based on species, tissue/cell source and modality
     table_list = []
-    dataset_source_success = False
+    species_success = False
+    source_success = False
     modality_success = False
 
-    if dataset_source == "HUMAN":
+    if species == "HUMAN":
         table_list = HUMAN_TABLES
-        dataset_source_success = True
-    elif dataset_source == "MOUSE":
+        species_success = True
+    elif species == "MOUSE":
         table_list = MOUSE_TABLES
-        dataset_source_success = True  
-    elif dataset_source == "CELL":
+        species_success = True  
+    elif species == "CELL":
         table_list = CELL_TABLES
-        dataset_source_success = True
-    elif dataset_source == "IPSC":
+        species_success = True
+    elif species == "IPSC":
         table_list = IPSC_TABLES
-        dataset_source_success = True
+        species_success = True
     else:
-        dataset_source_success = False
+        species_success = False
 
     modality_success = False
-    if dataset_type in ["scRNA-seq"]:
+    if modality in ["single cell/nucleus RNA-seq"]:
         table_list.append("ASSAY_RNAseq")
         modality_success = True
-    elif dataset_type in ["Bulk RNAseq"]:
+    elif modality  in ["Bulk RNAseq"]:
         table_list.append("ASSAY_RNAseq")
         modality_success = True
-    elif dataset_type in ["ATAC"]:
+    elif modality in ["ATAC"]:
         table_list.append("ASSAY_RNAseq")
         modality_success = True
-    elif dataset_type in ["SPATIAL"]:
+    elif modality in ["SPATIAL"]:
         table_list.append("SPATIAL")
         modality_success = True
-    elif dataset_type == "PROTEOMICS":
+    elif modality == "PROTEOMICS":
         table_list.append("PROTEOMICS")
         modality_success = True
     else:
@@ -420,8 +434,8 @@ def main():
     #### Print expected tables and load data files
 
     # Request user to select dataset source and type if not done
-    if not dataset_source_success or not modality_success:
-        # Make pause until user selects dataset_source_success and modality_success
+    if not species_success or not modality_success:
+        # Make pause until user selects species_success and modality_success
         st.stop()
 
     # Print the table list
@@ -475,7 +489,7 @@ def main():
         st.rerun()
 
     ## Add app version
-    st.sidebar.caption(app_version)
+    st.sidebar.caption(version_display)
 
 
     ############
