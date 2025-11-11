@@ -246,7 +246,7 @@ def main():
 
             if modality in MODALITIES:
                 modality_success = True
-                if modality in ["single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
+                if modality in ["Single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
                     table_list.extend(["ASSAY_RNAseq"])
                 elif modality in ["Spatial transcriptomics"]:
                     table_list.extend(["SPATIAL"])

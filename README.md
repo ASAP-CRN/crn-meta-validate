@@ -57,10 +57,10 @@ Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contri
     * Species
     * Tissue/Cell origin
     * Modality
-3. A left-side menu will appear. Click `Browse files` and upload your `{TABLE}.csv` files
-4. Files will be uploaded automatically, and global status messages will appear in the left-side menu
-5. In the `Choose a TABLE to validate` drop-down menu, select the {TABLE} you want to validate
-    * It will be processed automatically, and log messages will appear
+3. A left-side menu will appear, showing the expected `{TABLE}.csv` files for your dataset. Drag & drop or click `Browse files` to upload your files.
+4. Files will be uploaded automatically and log messages will appear in the left-side menu.
+5. In the `Choose file to validate` drop-down menu, select the {TABLE} that you want to validate.
+    * It will be processed automatically, and log messages will appear underneath.
 6. Review the validation results:
     * **If issues are found**, two Download buttons will appear:
       * `Download your {TABLE}_log.txt`
@@ -93,7 +93,7 @@ b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled voc
 git clone git@github.com:ASAP-CRN/crn-meta-validate.git
 ```
 
-2. Make sure you have access to the CDE spreadsheet hard coded within the app
+2. Make sure that you have access to the CDE spreadsheet, link provided in `utils/cde.py`
 
 3. Build the docker container that contains the app
 ```bash
