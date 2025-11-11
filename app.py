@@ -13,9 +13,10 @@ Webapp v0.4 (CDE version v3.3), 07 November 2025
 
 Version notes:
 Webapp v0.4:
-* CDE version is hardcoded in resource/app_schema_{webapp_version}.json
+* CDE version is hardcoded in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
 * Added supported species, modality and tissue/cell source dropdowns to select expected tables
 * Added reset button to sidebar, reset cache and file uploader
+* Added app_schema to manage app configuration
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -34,6 +35,7 @@ import pandas as pd
 import streamlit as st
 from pathlib import Path
 import os, sys
+import re
 from utils.validate import validate_table, ReportCollector, load_css, NULL
 from utils.cde import read_CDE, get_table_cde
 
@@ -232,13 +234,15 @@ def main():
 
     if species in SPECIES:
         species_success = True
-        species_specific_table_key = f"{species.lower()}_specific"
+        species_specific_table_key = re.sub(r'\s+', '_', f"{species.lower()}_specific")
         table_list.extend(app_schema['table_names'][species_specific_table_key])
 
         if tissue_or_cell in TISSUES_OR_CELLS:
             tissue_or_cell_success = True
-            if tissue_or_cell in [app_schema['table_names']['cell_specific']]:
-                table_list.extend(app_schema['table_names']['cell_specific'])
+            if tissue_or_cell in ["iPSC", "Cell lines"]:
+                table_list.extend(["CELL"])
+            elif tissue_or_cell in ["Post-mortem brain"]:
+                table_list.extend(["PMDBS"])
 
             if modality in MODALITIES:
                 modality_success = True

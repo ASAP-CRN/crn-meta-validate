@@ -57,11 +57,14 @@
     "mouse_specific": [
       "MOUSE"
     ],
-    "rhesus_specific": [
+    "other_specific": [
+      ""
+    ],
+    "macaque_rhesus_specific": [
       "RHESUS"
     ],
-    "cyno_specific": [
-      "CYNO_SPECIFIC"
+    "macaque_cyno_specific": [
+      "CYNO"
     ],
     "cell_specific": [
       "CELL"
