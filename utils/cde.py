@@ -1,0 +1,268 @@
+"""
+CDE (Common Data Elements) loading utilities for ASAP CRN metadata QC app
+
+This module handles loading and processing of CDE definitions from either
+Google Sheets or local CSV files.
+"""
+
+import pandas as pd
+import streamlit as st
+from pathlib import Path
+from typing import Tuple, Dict, List
+
+@st.cache_data
+def read_CDE(
+    cde_version: str,
+    cde_google_sheet: str,
+    local: bool = False,
+    local_filename: str = None,
+) -> Tuple[pd.DataFrame, Dict[str, str]]:
+    """
+    Load CDE (Common Data Elements) and return a dataframe and dictionary of dtypes.
+    
+    Parameters
+    ----------
+    cde_version : str
+        Version of the CDE to load (e.g., 'v3.3', 'v3.2', 'v3.1', etc.)
+    cde_google_sheet : str
+        URL to the Google Sheets CDE document
+    local : bool, optional
+        If True, load from local file instead of Google Sheets (default: False)
+    local_filename : str, optional
+        Name of the local CDE file (without path or extension)
+        
+    Returns
+    -------
+    Tuple[pd.DataFrame, Dict[str, str]]
+        - CDE dataframe with columns: Table, Field, Description, DataType, Required, Validation, etc.
+        - Dictionary mapping table names to their dtypes
+        
+    Raises
+    ------
+    Streamlit error and stops execution if CDE cannot be loaded
+    """
+    
+    # Define column list based on CDE version
+    column_list = [
+        "Table",
+        "Field",
+        "Description",
+        "DataType",
+        "Required",
+        "Validation",
+    ]
+    
+    # Configuration flags
+    include_asap_ids = False
+    include_aliases = False
+    
+    # Determine local filename if not provided
+    if local_filename is None:
+        local_filename = get_cde_filename(cde_version)
+    
+    # Add version-specific columns
+    if cde_version in [
+        "v3.3",
+        "v3.2",
+        "v3.2-beta",
+        "v3.1",
+        "v3",
+        "v3.0",
+        "v3.0-beta",
+    ]:
+        column_list.append("Shared_key")
+    
+    # Insert "DisplayName" after "Field" for newer versions
+    if cde_version in ["v3.2", "v3.2-beta", "v3.3"]:
+        column_list.insert(2, "DisplayName")
+    
+    # Load CDE from either local file or Google Sheets
+    cde_dataframe = load_cde_data(
+        local=local,
+        local_filename=local_filename,
+        cde_google_sheet=cde_google_sheet,
+        cde_version=cde_version,
+    )
+    
+    # Filter and clean the dataframe
+    cde_dataframe = clean_cde_dataframe(
+        cde_dataframe,
+        column_list,
+        include_asap_ids,
+        include_aliases,
+        cde_version,
+    )
+    
+    # Create dtype dictionary
+    dtype_dict = create_dtype_dict(cde_dataframe)
+    
+    return cde_dataframe, dtype_dict
+
+def get_cde_filename(cde_version: str) -> str:
+    """
+    Get the appropriate CDE filename for the given version.
+    
+    Parameters
+    ----------
+    cde_version : str
+        Version of the CDE
+        
+    Returns
+    -------
+    str
+        Filename (without extension) for the CDE version
+        
+    Raises
+    ------
+    Streamlit error and stops execution if version is unsupported
+    """
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3"]:
+        return f"ASAP_CDE_{cde_version}"
+    elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
+        return "ASAP_CDE_v3.0"
+    elif cde_version in ["v3.2-beta"]: # defaults to v3.2
+        return "ASAP_CDE_v3.2"
+    else:
+        st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
+        st.stop()
+
+def load_cde_data(
+    local: bool,
+    local_filename: str,
+    cde_google_sheet: str,
+    cde_version: str,
+) -> pd.DataFrame:
+    """
+    Load CDE data from either local file or Google Sheets.
+    
+    Parameters
+    ----------
+    local : bool
+        If True, load from local file
+    local_filename : str
+        Name of the local CDE file
+    cde_google_sheet : str
+        URL to the Google Sheets CDE document
+    cde_version : str
+        Version of the CDE
+        
+    Returns
+    -------
+    pd.DataFrame
+        Raw CDE dataframe
+        
+    Raises
+    ------
+    Streamlit error and stops execution if loading fails
+    """
+    if local:
+        root = Path(__file__).parent.parent
+        cde_local = root / f"resource/{local_filename}.csv"
+        st.info(f"Using CDE {cde_version} from local resource/")
+        try:
+            return pd.read_csv(cde_local)
+        except Exception as try_exception:
+            st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
+            st.error(f"Error details: {str(try_exception)}")
+            st.stop()
+    else:
+        st.info(f"Using CDE {cde_version} from Google doc")
+        try:
+            return pd.read_csv(cde_google_sheet)
+        except Exception as try_exception:
+            st.error(f"ERROR!!! Could not read CDE from Google doc:\n{cde_google_sheet}")
+            st.error(f"Error details: {str(try_exception)}")
+            st.stop()
+
+def clean_cde_dataframe(
+    cde_dataframe: pd.DataFrame,
+    column_list: List[str],
+    include_asap_ids: bool,
+    include_aliases: bool,
+    cde_version: str,
+) -> pd.DataFrame:
+    """
+    Clean and filter the CDE dataframe.
+    
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        Raw CDE dataframe
+    column_list : List[str]
+        List of columns to keep
+    include_asap_ids : bool
+        Whether to include ASAP IDs
+    include_aliases : bool
+        Whether to include aliases
+    cde_version : str
+        Version of the CDE
+        
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned CDE dataframe
+    """
+    # Drop ASAP_ids if not requested
+    if not include_asap_ids:
+        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Assigned"]
+        cde_dataframe = cde_dataframe.reset_index(drop=True)
+    
+    # Drop Alias if not requested
+    if not include_aliases:
+        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
+        cde_dataframe = cde_dataframe.reset_index(drop=True)
+    
+    # Select only required columns and drop rows with no table name
+    cde_dataframe = cde_dataframe.loc[:, column_list]
+    cde_dataframe = cde_dataframe.dropna(subset=["Table"])
+    cde_dataframe = cde_dataframe.reset_index(drop=True)
+    cde_dataframe = cde_dataframe.drop_duplicates()
+    
+    # Force Shared_key to be int for v3+ versions
+    if cde_version in [
+        "v3.3",
+        "v3.2",
+        "v3.2-beta",
+        "v3.1",
+        "v3",
+        "v3.0",
+        "v3.0-beta",
+    ]:
+        cde_dataframe["Shared_key"] = cde_dataframe["Shared_key"].fillna(0).astype(int)
+    
+    return cde_dataframe
+
+def create_dtype_dict(cde_dataframe: pd.DataFrame) -> Dict[str, str]:
+    """
+    Create a dictionary mapping table names to their dtypes.
+    
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        Cleaned CDE dataframe
+        
+    Returns
+    -------
+    Dict[str, str]
+        Dictionary mapping table names to 'str' dtype
+    """
+    table_list = list(cde_dataframe["Table"].unique())
+    return {table: "str" for table in table_list}
+
+def get_table_cde(cde_dataframe: pd.DataFrame, table_name: str) -> pd.DataFrame:
+    """
+    Extract CDE rules for a specific table.
+    
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        Full CDE dataframe
+    table_name : str
+        Name of the table to extract rules for
+        
+    Returns
+    -------
+    pd.DataFrame
+        CDE rules for the specified table
+    """
+    return cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)

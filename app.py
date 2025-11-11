@@ -35,11 +35,12 @@ import streamlit as st
 from pathlib import Path
 import os, sys
 from utils.validate import validate_table, ReportCollector, load_css, NULL
+from utils.cde import read_CDE, get_table_cde
 
 webapp_version = "v0.4"
 
 ################################
-#### Load app schema
+#### Load app schema from JSON
 ################################
 root = Path(__file__).parent
 app_schema_path = root / f"resource/app_schema_{webapp_version}.json"
@@ -57,11 +58,11 @@ SPECIES = app_schema['table_categories']['species']
 TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
 MODALITIES = app_schema['table_categories']['modalities']
 
-# Extract table names
+# Extract mandatory table names
 MANDATORY_TABLES = app_schema['table_names']['mandatory']
 
 # Version display for UI
-version_display = f"Web app version {webapp_version} - CDE version {cde_version}"
+version_display = f"Web app {webapp_version} - CDE {cde_version}"
 
 ################################
 #### App Setup
@@ -144,105 +145,6 @@ def load_data(data_files):
     return table_names, input_dataframes_dict
 
 ################################
-#### Load CDE
-################################
-
-@st.cache_data
-def read_CDE(
-    cde_version: str = app_schema['cde_definition']['cde_version'],
-    local: bool = False,
-):
-    """
-    Load CDE and cache it, return a dataframe and dictionary of dtypes
-    """
-    # Construct the path to CSD.csv
-    column_list = [
-        "Table",
-        "Field",
-        "Description",
-        "DataType",
-        "Required",
-        "Validation",
-    ]
-
-    include_asap_ids = False
-    include_aliases = False
-
-    # set up fallback
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3"]:
-        cd_version_file_name = "ASAP_CDE_" + cde_version
-    elif cde_version in ["v3", "v3.0.0"]:
-        cd_version_file_name = "ASAP_CDE_v3.0"
-    elif cde_version in ["v3.2-beta"]:
-        cd_version_file_name = "ASAP_CDE_v3.2"
-    else:
-        st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
-        st.stop()
-
-    # add the Shared_key column (only for CDE v3)
-    if cde_version in [
-        "v3.3",
-        "v3.2",
-        "v3.2-beta",
-        "v3.1",
-        "v3",
-        "v3.0",
-        "v3.0-beta",
-    ]:
-        column_list.append("Shared_key")
-
-    # insert "DisplayName" after "Field"
-    if cde_version in ["v3.2", "v3.2-beta", "v3.3"]:
-        column_list.insert(2, "DisplayName")
-
-    # read from CDE from either local file or Google doc
-    if local == True:
-        root = Path(__file__).parent
-        cde_local = root / f"resource/{cd_version_file_name}.csv"
-        st.info(f"Using CDE {cde_version} from local resource/")
-        try:
-            cde_dataframe = pd.read_csv(cde_local)
-        except:
-            st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
-            st.stop()
-    else:
-        st.info(f"Using CDE {cde_version} from Google doc")
-        try:
-            cde_dataframe = pd.read_csv(cde_google_sheet)
-        except:
-            st.error(f"ERROR!!! Could not read CDE from Google doc:\n{cde_google_sheet}")
-            st.stop()
-
-    # drop ASAP_ids if not requested
-    if not include_asap_ids:
-        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Assigned"]
-        cde_dataframe = cde_dataframe.reset_index(drop=True)
-
-    # drop Alias if not requested
-    if not include_aliases:
-        cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
-        cde_dataframe = cde_dataframe.reset_index(drop=True)
-
-    # drop rows with no table name (i.e. ASAP_ids)
-    cde_dataframe = cde_dataframe.loc[:, column_list]
-    cde_dataframe = cde_dataframe.dropna(subset=["Table"])
-    cde_dataframe = cde_dataframe.reset_index(drop=True)
-    cde_dataframe = cde_dataframe.drop_duplicates()
-
-    # force Shared_key to be int
-    if cde_version in [
-        "v3.3",
-        "v3.2",
-        "v3.2-beta",
-        "v3.1",
-        "v3",
-        "v3.0",
-        "v3.0-beta",
-    ]:
-        cde_dataframe["Shared_key"] = cde_dataframe["Shared_key"].fillna(0).astype(int)
-    return cde_dataframe
-
-################################
 #### Run a table and return results
 ################################
 
@@ -310,7 +212,7 @@ def main():
 
     # Drop down menu to select modality
     with col3:
-        st.markdown('<h3 style="font-size: 20px;">2. Choose modality <span style="color: red;">*</span></h3>',
+        st.markdown('<h3 style="font-size: 20px;">3. Choose modality <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
         modality = st.selectbox(
             "",
@@ -331,35 +233,32 @@ def main():
     if species in SPECIES:
         species_success = True
         species_specific_table_key = f"{species.lower()}_specific"
-        table_list.append(app_schema['table_names'][species_specific_table_key])
+        table_list.extend(app_schema['table_names'][species_specific_table_key])
 
         if tissue_or_cell in TISSUES_OR_CELLS:
             tissue_or_cell_success = True
             if tissue_or_cell in [app_schema['table_names']['cell_specific']]:
-                table_list.append(app_schema['table_names']['cell_specific'])
+                table_list.extend(app_schema['table_names']['cell_specific'])
 
             if modality in MODALITIES:
                 modality_success = True
                 if modality in ["single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
-                    table_list.append("ASSAY_RNAseq")
+                    table_list.extend(["ASSAY_RNAseq"])
                 elif modality in ["Spatial transcriptomics"]:
-                    table_list.append("SPATIAL")
+                    table_list.extend(["SPATIAL"])
                 elif modality in ["MS Proteomics", "Other MS -omics"]:
-                    table_list.append("PROTEOMICS")
+                    table_list.extend(["PROTEOMICS"])
                 elif modality in ["MULTI-Seq", "Multimodal Seq", "Multiome", "Genetics", "Metagenome", "Other"]:
                     pass
 
-
     ############
-    #### Print expected tables and load data files
-
-    # Request user to select dataset source and type if not done
+    #### Pause until user selects species_success and modality_success
     if not species_success or not tissue_or_cell_success or not modality_success:
-        # Make pause until user selects species_success and modality_success
         st.info("Please select Species, Tissue/Cell, and Modality of your dataset")
         st.stop()
 
-    # Print the table list
+    ############
+    #### Print expected tables and load data files
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
@@ -368,7 +267,11 @@ def main():
 
     ############
     #### Load CDE
-    cde_dataframe = read_CDE(cde_version=cde_version, local=use_local)
+    cde_dataframe, dtype_dict = read_CDE(
+        cde_version=cde_version,
+        cde_google_sheet=cde_google_sheet,
+        local=use_local,
+    )
 
     ############
     #### Provide left-side bar for file upload and app reset
