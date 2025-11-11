@@ -61,17 +61,19 @@ Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contri
 4. Files will be uploaded automatically and log messages will appear in the left-side menu.
 5. In the `Choose file to validate` drop-down menu, select the {TABLE} that you want to validate.
     * It will be processed automatically, and log messages will appear underneath.
-6. Review the validation results:
+6. An initial file check will look for common issues (e.g. non-comma delimiters and empty values). The app will ask if you want it to fix those issues.
+7. A second check will compare the file contents vs. the latest version of the [ASAP CRN controlled vocabilaries (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
+8. Review the validation results:
     * **If issues are found**, two Download buttons will appear:
       * `Download your {TABLE}_log.txt`
-        * **ERRORS**: are issues that _data contributors_ **must** fix before uploading files to ASAP Google Cloud buckets
-        * **WARNINGS**: are issues that _data contributors_ **may optionally** address depending on the context
+        * **ERRORS**: are issues that _data contributors_ **must** fix before uploading files to ASAP Google Cloud buckets.
+        * **WARNINGS**: are issues that _data contributors_ **may optionally** address depending on the context.
       * `Download a sanitized {TABLE}.csv`
-        * An updated file with common issues fixed (e.g., missing values filled with NA)
+        * An updated file with common issues fixed (e.g., missing values filled with NA).
     * **If no issues are found**, a `No issues found` message will appear
-7. Repeat steps 5-6 for each `{TABLE}.csv` file you uploaded
-8. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
-9. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.
+9. Repeat steps 7-8 for each `{TABLE}.csv` file you uploaded.
+10. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
+11. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.
 
 **Notes:**    
 a) If you have multiple datasets to validate, complete steps 1-8 for each dataset separately.     

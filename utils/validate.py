@@ -74,17 +74,25 @@ class ReportCollector:
         else:
             self.publish_to_streamlit = False
 
-
     def add_markdown(self, msg):
         self.entries.append(("markdown", msg))
         if self.publish_to_streamlit:
             st.markdown(msg)
 
+    def add_success(self, msg):
+        self.entries.append(("success", msg))
+        if self.publish_to_streamlit:
+            st.success(msg)
 
     def add_error(self, msg):
         self.entries.append(("error", msg))
         if self.publish_to_streamlit:
             st.error(msg)
+
+    def add_warning(self, msg):
+        self.entries.append(("warning", msg))
+        if self.publish_to_streamlit:
+            st.warning(msg)
 
     def add_header(self, msg):
         self.entries.append(("header", msg))
@@ -114,9 +122,9 @@ class ReportCollector:
         report_content = []
         for msg_type, msg in self.entries:
             if msg_type == "markdown":
-                report_content += msg + '\n'
+                report_content += f"{msg}\n"
             elif msg_type == "error":
-                report_content += f"🚨⚠️❗ **{msg}**\n"
+                report_content += f"{msg}\n"
             elif msg_type == "header":
                 report_content += f"# {msg}\n"
             elif msg_type == "subheader":
@@ -133,115 +141,6 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-
-def validate_table_old(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
-    """
-    Validate the table against the specific table entries from the CDE
-    """
-    def my_str(x):
-        return f"'{str(x)}'"
-        
-    missing_required = []
-    missing_optional = []
-    null_fields = []
-    invalid_entries = []
-    total_rows = df.shape[0]
-    for field in specific_cde_df["Field"]:
-        entry_idx = specific_cde_df["Field"]==field
-
-        opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
-
-        if field not in df.columns:
-            if opt_req == "REQUIRED":
-                missing_required.append(field)
-            else:
-                missing_optional.append(field)
-
-        else:
-            datatype = specific_cde_df.loc[entry_idx,"DataType"]
-            if datatype.item() == "Integer":
-                print(f"recoding {field} as int")
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field].apply(lambda x: int(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "int or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-
-                # test that all are integer or NULL, flag NULL entries
-            elif datatype.item() == "Float":
-                # recode "Unknown" as NULL
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "float or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-
-                # test that all are float or NULL, flag NULL entries
-            elif datatype.item() == "Enum":
-
-                valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
-                valid_values += [NULL]
-                entries = df[field]
-                valid_entries = entries.apply(lambda x: x in valid_values)
-                invalid_values = entries[~valid_entries].unique()
-                n_invalid = invalid_values.shape[0]
-                if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_values))
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-            else: #dtype == String
-                pass
-            
-            n_null = (df[field]==NULL).sum()
-            if n_null > 0:            
-                null_fields.append((opt_req, field, n_null))
-
-
-    # now compose report...
-    if len(missing_required) > 0:
-        out.add_error(f"Missing Required Fields in {table_name}: {', '.join(missing_required)}")
-    else:
-        out.add_markdown(f"All required fields are present in *{table_name}* table.")
-
-    if len(missing_optional) > 0:
-        out.add_error(f"Missing Optional Fields in {table_name}: {', '.join(missing_optional)}")
-    
-
-    if len(null_fields) > 0:
-        # print(f"{opt_req} {field} has {n_null}/{df.shape[0]} NULL entries ")
-        out.add_error(f"{len(null_fields)} Fields with empty (NULL) values:")
-        for opt_req, field, count in null_fields:
-            out.add_markdown(f"\n\t- {field}: {count}/{total_rows} empty rows ({opt_req})")
-    else:
-        out.add_markdown(f"No empty entries (NULL) found .")
-
-
-    if len(invalid_entries) > 0:
-        out.add_error(f"{len(invalid_entries)} Fields with invalid entries:")
-        for opt_req, field, count, valstr, invalstr in invalid_entries:
-            str_out = f"- _*{field}*_:  invalid values 💩{invalstr}\n"
-            str_out += f"    - valid ➡️ {valstr}"
-            out.add_markdown(str_out)
-    else:
-        out.add_markdown(f"No invalid entries found in Enum fields.")
-
-    for field in df.columns:
-        if field not in specific_cde_df["Field"].values:
-            out.add_error(f"Extra field in {table_name}: {field}")
-    return df.copy(), out
-
 def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
     """
     Validate the table against the specific table entries from the CDE
@@ -251,101 +150,98 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
         
     missing_required = []
     missing_optional = []
-    null_fields = []
+    null_columns = []
     invalid_entries = []
     total_rows = df.shape[0]
-    for field in specific_cde_df["Field"]:
-        entry_idx = specific_cde_df["Field"]==field
+    for column in specific_cde_df["Field"]:
+        entry_idx = specific_cde_df["Field"]==column
 
         opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
 
-        if field not in df.columns:
+        if column not in df.columns:
             if opt_req == "REQUIRED":
-                missing_required.append(field)
+                missing_required.append(column)
             else:
-                missing_optional.append(field)
+                missing_optional.append(column)
 
-            # print(f"missing {opt_req} column {field}")
+            # print(f"missing {opt_req} column {column}")
 
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
             if datatype.item() == "Integer":
-                print(f"recoding {field} as int")
+                print(f"recoding {column} as int")
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
                 try:
-                    df[field].apply(lambda x: int(x) if x!=NULL else x )
+                    df[column].apply(lambda x: int(x) if x!=NULL else x )
                 except Exception as e:
-                    invalid_values = df[field].unique()
+                    invalid_values = df[column].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "int or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
 
                 # test that all are integer or NULL, flag NULL entries
             elif datatype.item() == "Float":
                 df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
                 try:
-                    df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
+                    df[column] = df[column].apply(lambda x: float(x) if x!=NULL else x )
                 except Exception as e:
-                    invalid_values = df[field].unique()
+                    invalid_values = df[column].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "float or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
             elif datatype.item() == "Enum":
                 valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
                 valid_values += [NULL]
-                entries = df[field]
+                entries = df[column]
                 valid_entries = entries.apply(lambda x: x in valid_values)
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
                     valstr = ', '.join(map(my_str, valid_values))
                     invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
             else: #dtype == String
                 pass
             
-            n_null = (df[field]==NULL).sum()
+            n_null = (df[column]==NULL).sum()
             if n_null > 0:            
-                null_fields.append((opt_req, field, n_null))
+                null_columns.append((opt_req, column, n_null))
 
 
     # now compose report...
     if len(missing_required) > 0:
-        out.add_error(f"Missing Required Fields in {table_name}: {', '.join(missing_required)}")
-        for field in missing_required:
-            df[field] = NULL
+        out.add_error(f"Missing required columns in {table_name}: {', '.join(missing_required)}")
+        for column in missing_required:
+            df[column] = NULL
 
     else:
-        out.add_markdown(f"All required fields are present in *{table_name}* table.")
+        out.add_success(f"OK -- All required columns are present in *{table_name}* table.")
 
     if len(missing_optional) > 0:
-        out.add_error(f"Missing Optional Fields in {table_name}: {', '.join(missing_optional)}")
-        for field in missing_optional:
-            df[field] = NULL
+        out.add_error(f"ERROR -- Missing optional columns in {table_name}: {', '.join(missing_optional)}")
+        for column in missing_optional:
+            df[column] = NULL
 
-    if len(null_fields) > 0:
-        out.add_error(f"{len(null_fields)} Fields with empty (NULL) values:")
-        for opt_req, field, count in null_fields:
-            out.add_markdown(f"\n\t- {field}: {count}/{total_rows} empty rows ({opt_req})")
+    if len(null_columns) > 0:
+        out.add_error(f"ERROR -- {len(null_columns)} columns with empty (NULL) values:")
+        for opt_req, column, count in null_columns:
+            out.add_markdown(f"\n\t- {column}: {count}/{total_rows} empty rows ({opt_req})")
     else:
-        out.add_markdown(f"No empty entries (NULL) found .")
-
+        out.add_success(f"OK -- No empty values (NULL) found\n")
 
     if len(invalid_entries) > 0:
-        out.add_error(f"{len(invalid_entries)} Fields with invalid entries:")
-        for opt_req, field, count, valstr, invalstr in invalid_entries:
-            str_out = f"- _*{field}*_:  invalid values 💩{invalstr}\n"
-            str_out += f"    - valid ➡️ {valstr}"
+        out.add_error(f"ERROR -- {len(invalid_entries)} columns with invalid values:")
+        for opt_req, column, count, valstr, invalstr in invalid_entries:
+            str_out = f"- Column _*{column}*_ has invalid values: {invalstr}\n"
+            str_out += f"    - expect: {valstr}\n"
             out.add_markdown(str_out)
     else:
-        out.add_markdown(f"No invalid entries found in Enum fields.")
+        out.add_success(f"No invalid values found in Enum columns\n")
 
-    for field in df.columns:
-        if field not in specific_cde_df["Field"].values:
-            out.add_error(f"Extra field in {table_name}: {field}")
-   
-
+    for column in df.columns:
+        if column not in specific_cde_df["Field"].values:
+            out.add_warning(f"Extra column in {table_name}: {column}")
 
     return df, out

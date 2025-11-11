@@ -9,14 +9,17 @@ Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit
 
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
-Webapp v0.4 (CDE version v3.3), 07 November 2025
+Webapp v0.4 (CDE version v3.3), 11 November 2025
 
 Version notes:
 Webapp v0.4:
-* CDE version is hardcoded in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
+* CDE version is provided in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
 * Added supported species, modality and tissue/cell source dropdowns to select expected tables
 * Added reset button to sidebar, reset cache and file uploader
 * Added app_schema to manage app configuration
+* Added Classes for DelimiterHandler and ProcessedDataLoader to utils/
+* Improved delimiter detection and handling logic
+* Improved file upload handling and status display
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -36,18 +39,22 @@ import streamlit as st
 from pathlib import Path
 import os, sys
 import re
+from io import StringIO
 from utils.validate import validate_table, ReportCollector, NULL
 from utils.cde import read_CDE, get_table_cde
+from utils.delimiter_handler import DelimiterHandler
+from utils.processed_data_loader import ProcessedDataLoader
 
 webapp_version = "v0.4"
+
+repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
 ################################
 #### Load app schema from JSON
 ################################
-root = Path(__file__).parent
-app_schema_path = root / f"resource/app_schema_{webapp_version}.json"
-with open(app_schema_path, "r") as f:
-    app_schema = json.load(f)
+app_schema_path = os.path.join(repo_root, "resource", f"app_schema_{webapp_version}.json")
+with open(app_schema_path, "r") as json_file:
+    app_schema = json.load(json_file)
 
 # Extract configuration from app_schema
 cde_version = app_schema['cde_definition']['cde_version']
@@ -84,12 +91,21 @@ st.set_page_config(
 def load_css(file_name):
    with open(file_name) as f:
       st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-      
-# TODO: set up dataclasses to hold the data
-def read_csv(data_file):
+
+def read_csv(data_file, delimiter_handler=None):
     """
-    TODO: implement other infile formats
+    Read CSV file. Delimiter handling is done before this is called.
+    This function should NOT contain any Streamlit widgets since it's called from cached function.
     """
+
+    # Ensure we have a DelimiterHandler instance when called without one (cached path)
+    if delimiter_handler is None:
+        try:
+            from delimiter_handler import DelimiterHandler
+        except Exception:
+            from utils.delimiter_handler import DelimiterHandler  # type: ignore
+        delimiter_handler = DelimiterHandler()
+
 
     def sanitize_validation_string(validation_str):
         """Sanitize validation strings by replacing smart quotes with straight quotes."""
@@ -104,13 +120,41 @@ def read_csv(data_file):
 
     encoding = "latin1"
 
-    if data_file.type == "text/csv":
-        print(f"reading {data_file.name} csv, encoding={encoding}")
-        table_df = pd.read_csv(data_file, dtype="str", encoding=encoding)
+    if data_file.type != "text/csv":
+        raise ValueError(f"Unsupported file type: {data_file.type}")
+    
+    # Read file content for delimiter detection
+    file_content = data_file.getvalue()
+    
+    # Detect delimiter
+    detected_delimiter, confidence, preview_df = delimiter_handler.detect_delimiter(file_content, data_file.name)
+    
+    # Get delimiter decision from session state
+    file_key = f"{data_file.name}_{data_file.size}"
+    
+    # Process file based on decision (if any)
+    if file_key in st.session_state.get('delimiter_decisions', {}):
+        decision = st.session_state.delimiter_decisions[file_key]
+        if decision == 'convert':
+            # Convert delimiter to comma
+            file_content = convert_delimiter(file_content, detected_delimiter, ',')
+            # Read converted content
+            table_df = pd.read_csv(StringIO(file_content), dtype="str", encoding=encoding)
+        else:
+            # Keep original delimiter
+            table_df = pd.read_csv(StringIO(file_content.decode(encoding)), 
+                                   sep=detected_delimiter, dtype="str", encoding=encoding)
     else:
-        st.error(f"Unsupported file type: {data_file.type}")
-        st.stop() 
+        # Default: read with detected or comma delimiter
+        print(f"reading {data_file.name} csv, encoding={encoding}, delimiter='{detected_delimiter}'")
+        if detected_delimiter == ',':
+            table_df = pd.read_csv(data_file, dtype="str", encoding=encoding)
+        else:
+            # Low confidence or already comma - just read it
+            table_df = pd.read_csv(StringIO(file_content.decode(encoding)), 
+                                   sep=detected_delimiter, dtype="str", encoding=encoding)
 
+    # Encoding fixes
     for col in table_df.select_dtypes(include="object").columns:
         table_df[col] = (
             table_df[col]
@@ -155,10 +199,8 @@ def load_data(data_files):
 def setup_report_data(
     report_data_dict: dict, selected_table: str, input_dataframes_dict: dict, cde_dataframe: pd.DataFrame
 ):
-    # TODO: implement in a way to select all "ASSAY*" tables
     submit_table_df = input_dataframes_dict[selected_table]
     table_specific_cde = get_table_cde(cde_dataframe, selected_table)
-    # TODO: make sure that the loaded table is in the CDE
     table_data = (submit_table_df, table_specific_cde)
     report_data_dict[selected_table] = table_data
     return report_data_dict
@@ -173,7 +215,7 @@ def main():
         st.session_state.file_uploader_key = 0
 
     # Provide template
-    st.markdown('<p class="big-font">ASAP CRN metadata quality control (QC) app</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="big-font">ASAP CRN metadata quality control (QC) app {webapp_version}</p>', unsafe_allow_html=True)
     st.markdown(
         f"""
         This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
@@ -182,13 +224,14 @@ def main():
         * Helps to fix common issues like filling out missing values.
         * Suggests corrections like identifying missing columns and value mismatches vs. 
         the ASAP CRN controlled vocabularies [(Common Data Elements)]({cde_google_sheet}).
+
         """,
         unsafe_allow_html=True,
     )
 
     ############
     ### Load CSS (text size, colors, etc.)
-    load_css("css/css.css")
+    load_css(os.path.join(repo_root, "css", "css.css"))
 
     ############
     #### Set dropdown menus for run settings
@@ -293,20 +336,8 @@ def main():
         key=f"file_uploader_{st.session_state.file_uploader_key}"
     )
 
-    if data_files is None or len(data_files) == 0:
-        tables_loaded = False
-    elif len(data_files) > 0:
-        table_names, input_dataframes_dic = load_data(data_files)
-        tables_loaded = True
-        validation_report_dic = dict()
-        st.sidebar.success(f"N={len(table_names)} files loaded")
-    else:
-        st.error("Something went wrong with the file upload. Please try again.")
-        st.stop()
-        tables_loaded = False
-
     ############
-    #### Add Reset button and version info to sidebar
+    #### Add Reset button and version info to sidebar (ALWAYS VISIBLE)
     st.sidebar.markdown("---")
     st.markdown("""
                 <style>
@@ -319,11 +350,125 @@ def main():
     if st.sidebar.button("Reset App", use_container_width=True, type="primary"):
         st.cache_data.clear() # Clear all cached data
         st.session_state.file_uploader_key += 1 # Increment the file uploader key to reset it
+        # Clear delimiter decisions and invalid files
+        if 'delimiter_decisions' in st.session_state:
+            st.session_state.delimiter_decisions = {}
+        if 'invalid_files' in st.session_state:
+            st.session_state.invalid_files = set()
         st.rerun()
 
-    ## Add app version
-    st.sidebar.caption(version_display)
+    ############
+    #### Initialize Delimiter Handler
+    delimiter_handler = DelimiterHandler()
 
+    ############
+    #### Detect file changes and clear processed state if files have changed
+    if data_files:
+        # Create a unique identifier for current uploaded files
+        current_files_signature = tuple(sorted(f"{f.name}_{f.size}" for f in data_files))
+        previous_signature = st.session_state.get("uploaded_files_signature")
+        
+        if previous_signature != current_files_signature:
+            # Files have changed, clear processed state and decisions
+            st.session_state["uploaded_files_signature"] = current_files_signature
+            st.session_state.pop("files_ready_for_validation", None)
+            # Note: We don't clear delimiter_decisions here as they will be repopulated
+
+    ############
+    #### Process uploaded files
+    if data_files is None or len(data_files) == 0:
+        tables_loaded = False
+    elif len(data_files) > 0:
+        # Check delimiter decisions BEFORE calling cached load_data()
+        # This prevents Streamlit widgets from being inside cached functions
+        if not delimiter_handler.check_delimiter_decisions(data_files):
+            # Waiting for user to make delimiter decisions
+            st.stop()
+        
+        # Get valid files only (exclude invalid files)
+        valid_files = [f for f in data_files if not delimiter_handler.is_file_invalid(f.name, f.size)]
+        invalid_files = [f for f in data_files if delimiter_handler.is_file_invalid(f.name, f.size)]
+        
+        if len(valid_files) == 0:
+            st.error("All uploaded files are invalid. Please upload valid CSV files with data rows.")
+            st.stop()
+        
+        # Show file count with status
+        if len(invalid_files) > 0:
+            st.sidebar.warning(f"N={len(valid_files)} valid files | {len(invalid_files)} invalid files")
+        else:
+            st.sidebar.success(f"N={len(valid_files)} files loaded")
+        
+        # ---- Apply delimiter decisions (explicit button) ----
+        # Check if processed files are ready, otherwise show the Apply button
+        processed_files = st.session_state.get("files_ready_for_validation")
+        
+        if not processed_files:
+            # Show the Apply button and wait for user action
+            with st.container(border=True):
+                st.markdown("### Step 2: Apply your delimiter decisions")
+                left_col, right_col = st.columns([1, 2])
+                with left_col:
+                    if st.button("✅ Apply delimiter decisions and continue", key="apply_delims"):
+                        _processed = delimiter_handler.apply_decisions(valid_files)
+                        st.session_state["files_ready_for_validation"] = _processed
+                        st.success(f"Prepared {len(_processed)} file(s) for validation.")
+                        st.rerun()
+                with right_col:
+                    try:
+                        status_str = delimiter_handler.get_file_status_display(data_files)
+                        st.caption(f"Status: {status_str}")
+                    except Exception:
+                        pass
+            # Stop here and wait for the button to be clicked
+            st.stop()
+
+        # If we reach here, processed_files exist - load them
+        loader = ProcessedDataLoader()
+        table_names, input_dataframes_dic, file_warnings, row_counts = loader.load(processed_files)
+
+        # Optional: surface per-file warnings in the UI
+        for filename, warnings_list in file_warnings.items():
+            for warning_text in warnings_list:
+                st.warning(f"**{filename}** — {warning_text}")
+
+        # When listing files:
+        for table_name in table_names:
+            current_row_count = row_counts.get(table_name, 0)
+            st.success(f"**{table_name}** ({current_row_count} rows) — Loaded and ready for validation of columns and values.")
+
+        tables_loaded = True
+        validation_report_dic = dict()
+
+        # Show individual file conversion messages below
+        if len(valid_files) > 0:
+            st.sidebar.markdown("**Valid files:**")
+
+        for data_file in valid_files:
+            file_key = delimiter_handler.get_file_key(data_file.name, data_file.size)
+            if file_key in st.session_state.get('delimiter_decisions', {}):
+                file_content = data_file.getvalue()
+                detected_delimiter, _, _ = delimiter_handler.detect_delimiter(file_content, data_file.name)
+                delimiter_name = delimiter_handler.get_delimiter_name(detected_delimiter)
+                
+                decision = st.session_state.delimiter_decisions[file_key]
+                # Decision is stored as a dict with 'action' key
+                action = decision.get('action') if isinstance(decision, dict) else decision
+                if action == 'convert':
+                    st.sidebar.success(f"✓ {data_file.name} converted from {delimiter_name} to comma")
+                else:
+                    st.sidebar.info(f"✗ {data_file.name} kept with {delimiter_name} delimiter")
+        
+        # Show invalid files (strikethrough)
+        if len(invalid_files) > 0:
+            st.sidebar.markdown("**Invalid files (skipped):**")
+            for data_file in invalid_files:
+                st.sidebar.markdown(f"~~{data_file.name}~~ ❌")
+
+    else:
+        st.error("Something went wrong with the file upload. Please click 'Reset App', reload the webpage and try again. If issue persists, contact the ASAP CRN team.")
+        st.stop()
+        tables_loaded = False
 
     ############
     #### Pause if no files loaded
@@ -382,7 +527,7 @@ def main():
 
         # Download button
         st.download_button(
-            "📥 Download your QC log",
+            label=f"📥 Download your QC log",
             data=report_content,
             file_name=f"{selected_table_name}.md",
             mime="text/markdown",
@@ -390,7 +535,7 @@ def main():
 
         # Download button
         st.download_button(
-            "📥 Download a sanitized .csv (NULL-> 'NA' )",
+            label=f"📥 Download a {selected_table_name}_sanitized.csv file (NULL-> 'NA' )",
             data=table_content,
             file_name=f"{selected_table_name}_sanitized.csv",
             mime="text/csv",
