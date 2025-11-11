@@ -13,7 +13,7 @@ Webapp v0.4 (CDE version v3.3), 07 November 2025
 
 Version notes:
 Webapp v0.4:
-* CDE version is hardcoded by variable cde_default and CDE dropdown removed
+* CDE version is hardcoded in resource/app_schema_{webapp_version}.json
 * Added supported species, modality and tissue/cell source dropdowns to select expected tables
 * Added reset button to sidebar, reset cache and file uploader
 
@@ -27,116 +27,53 @@ Contributors:
 """
 
 ################################
-#### Configuration
-################################
-
-webapp_version = "v0.4"  # web app version
-cde_default = "v3.3"  # CDE version to use
-use_local = False  # Set to True to read CDE from local resource folder
-GOOGLE_SHEET_ID = "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc" ## CDE Google Sheet ID
-
-report_bug_email = ("mailto:support@dnastack.com")
-get_help_url = "https://github.com/ASAP-CRN/crn-meta-validate"
-page_header = "ASAP CRN metadata quality control (QC) app"
-
-CDE_GOOGLE_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?usp=sharing"
-version_display = f"Metadata QC {webapp_version} (CDE {cde_default})"
-
-################################
 #### Imports
 ################################
-
+import json
 import pandas as pd
 import streamlit as st
 from pathlib import Path
+import os, sys
 from utils.validate import validate_table, ReportCollector, load_css, NULL
 
+webapp_version = "v0.4"
+
 ################################
-#### Expected Table Schemas and CDE Versions
+#### Load app schema
 ################################
+root = Path(__file__).parent
+app_schema_path = root / f"resource/app_schema_{webapp_version}.json"
+with open(app_schema_path, "r") as f:
+    app_schema = json.load(f)
 
-# Note: 'Other' option will call only mandatory tables for a given category species/tissue/modality
+# Extract configuration from app_schema
+cde_version = app_schema['cde_definition']['cde_version']
+cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
+cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}"
+use_local = False  # Set to False to use Google Sheets
 
-SUPPORTED_SPECIES = [
-    "Human",
-    "Mouse",
-    "Macaque Cyno",
-    "Macaque Rhesus",
-    "Other"
-]
+# Extract table categories
+SPECIES = app_schema['table_categories']['species']
+TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
+MODALITIES = app_schema['table_categories']['modalities']
 
-SUPPORTED_TISSUE_OR_CELL = [
-    "Post-mortem brain",
-    "Post-mortem skin",
-    "Embryonic fibroblast",
-    "Cell lines",
-    "iPSC",
-    "Fecal",
-    "Other"
-]
+# Extract table names
+MANDATORY_TABLES = app_schema['table_names']['mandatory']
 
-SUPPORTED_MODALITY = [
-    "Single cell/nucleus RNA-seq",
-    "Bulk RNAseq",
-    "Spatial transcriptomics",
-    "ATAC-seq",
-    "MULTI-Seq",
-    "Multimodal Seq",
-    "Multiome",
-    "Genetics",
-    "Metagenome",
-    "MS Proteomics",
-    "Other MS -omics",
-    "Other"
-]
-
-## All datasets must have these tables
-MANDATORY_TABLES = [
-    "STUDY",
-    "PROTOCOL",
-    "SAMPLE",
-    "DATA",
-    "CONDITION",
-]
-
-EXTRA_MOUSE_TABLES = [
-    "MOUSE",
-]
-
-EXTRA_HUMAN_TABLES = [
-    "HUMAN",
-    "SUBJECT",
-    "CLINPATH",
-]
-
-EXTRA_CELL_TABLES = [
-    "CELL",
-]
-
-SUPPORTED_METADATA_VERSIONS = [
-    "v3.3",
-    "v3.2",
-    "v3.2-beta",
-    "v3.1",
-    "v3",
-    "v3.0",
-    "v3.0-beta",
-    "v2.1",
-    "v2",
-    "v1",
-]
+# Version display for UI
+version_display = f"Web app version {webapp_version} - CDE version {cde_version}"
 
 ################################
 #### App Setup
 ################################
 
 st.set_page_config(
-    page_title=f"{page_header}",
+    page_title=f"{app_schema['kebab_menu']['page_header']}",
     page_icon="✅",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        "Get help": get_help_url,
+        "Get help": f"{app_schema['kebab_menu']['get_help_url']}",
         "About": f"ASAP CRN {version_display}",
     },
 )
@@ -212,7 +149,7 @@ def load_data(data_files):
 
 @st.cache_data
 def read_CDE(
-    cde_version: str = cde_default,
+    cde_version: str = app_schema['cde_definition']['cde_version'],
     local: bool = False,
 ):
     """
@@ -258,11 +195,6 @@ def read_CDE(
     if cde_version in ["v3.2", "v3.2-beta", "v3.3"]:
         column_list.insert(2, "DisplayName")
 
-    # ensure we are using a supported CDE version
-    if cde_version not in SUPPORTED_METADATA_VERSIONS:
-        st.error(f"ERROR!!! Unsupported cde_version: {cde_version}")
-        st.stop()
-
     # read from CDE from either local file or Google doc
     if local == True:
         root = Path(__file__).parent
@@ -274,12 +206,11 @@ def read_CDE(
             st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
             st.stop()
     else:
-        cde_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={cde_version}"
         st.info(f"Using CDE {cde_version} from Google doc")
         try:
-            cde_dataframe = pd.read_csv(cde_url)
+            cde_dataframe = pd.read_csv(cde_google_sheet)
         except:
-            st.error(f"ERROR!!! Could not read CDE from Google doc")
+            st.error(f"ERROR!!! Could not read CDE from Google doc:\n{cde_google_sheet}")
             st.stop()
 
     # drop ASAP_ids if not requested
@@ -321,7 +252,7 @@ def setup_report_data(
 ):
     # TODO: implement in a way to select all "ASSAY*" tables
     submit_table_df = input_dataframes_dict[selected_table]
-    table_specific_cde = cde_dataframe[cde_dataframe["Table"] == selected_table]
+    table_specific_cde = get_table_cde(cde_dataframe, selected_table)
     # TODO: make sure that the loaded table is in the CDE
     table_data = (submit_table_df, table_specific_cde)
     report_data_dict[selected_table] = table_data
@@ -345,7 +276,7 @@ def main():
         
         * Helps to fix common issues like filling out missing values.
         * Suggests corrections like identifying missing columns and value mismatches vs. 
-        the ASAP CRN controlled vocabularies [(Common Data Elements)]({CDE_GOOGLE_SHEET_URL}).
+        the ASAP CRN controlled vocabularies [(Common Data Elements)]({cde_google_sheet}).
         """,
         unsafe_allow_html=True,
     )
@@ -361,7 +292,7 @@ def main():
             unsafe_allow_html=True)
         species = st.selectbox(
             "",
-            SUPPORTED_SPECIES,
+            SPECIES,
             label_visibility="collapsed",
             index=None
         )
@@ -372,7 +303,7 @@ def main():
                     unsafe_allow_html=True)
         tissue_or_cell = st.selectbox(
             "",
-            SUPPORTED_TISSUE_OR_CELL,
+            TISSUES_OR_CELLS,
             label_visibility="collapsed",
             index=None
         )
@@ -383,7 +314,7 @@ def main():
                     unsafe_allow_html=True)
         modality = st.selectbox(
             "",
-            SUPPORTED_MODALITY,
+            MODALITIES,
             label_visibility="collapsed",
             index=None
         )
@@ -392,49 +323,40 @@ def main():
     #### Determine expected tables based on species, tissue/cell source and modality
     table_list = []
     species_success = False
-    source_success = False
+    tissue_or_cell_success = False
     modality_success = False
 
-    if species == "HUMAN":
-        table_list = HUMAN_TABLES
-        species_success = True
-    elif species == "MOUSE":
-        table_list = MOUSE_TABLES
-        species_success = True  
-    elif species == "CELL":
-        table_list = CELL_TABLES
-        species_success = True
-    elif species == "IPSC":
-        table_list = IPSC_TABLES
-        species_success = True
-    else:
-        species_success = False
+    table_list = MANDATORY_TABLES.copy()
 
-    modality_success = False
-    if modality in ["single cell/nucleus RNA-seq"]:
-        table_list.append("ASSAY_RNAseq")
-        modality_success = True
-    elif modality  in ["Bulk RNAseq"]:
-        table_list.append("ASSAY_RNAseq")
-        modality_success = True
-    elif modality in ["ATAC"]:
-        table_list.append("ASSAY_RNAseq")
-        modality_success = True
-    elif modality in ["SPATIAL"]:
-        table_list.append("SPATIAL")
-        modality_success = True
-    elif modality == "PROTEOMICS":
-        table_list.append("PROTEOMICS")
-        modality_success = True
-    else:
-        modality_success = False
+    if species in SPECIES:
+        species_success = True
+        species_specific_table_key = f"{species.lower()}_specific"
+        table_list.append(app_schema['table_names'][species_specific_table_key])
+
+        if tissue_or_cell in TISSUES_OR_CELLS:
+            tissue_or_cell_success = True
+            if tissue_or_cell in [app_schema['table_names']['cell_specific']]:
+                table_list.append(app_schema['table_names']['cell_specific'])
+
+            if modality in MODALITIES:
+                modality_success = True
+                if modality in ["single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
+                    table_list.append("ASSAY_RNAseq")
+                elif modality in ["Spatial transcriptomics"]:
+                    table_list.append("SPATIAL")
+                elif modality in ["MS Proteomics", "Other MS -omics"]:
+                    table_list.append("PROTEOMICS")
+                elif modality in ["MULTI-Seq", "Multimodal Seq", "Multiome", "Genetics", "Metagenome", "Other"]:
+                    pass
+
 
     ############
     #### Print expected tables and load data files
 
     # Request user to select dataset source and type if not done
-    if not species_success or not modality_success:
+    if not species_success or not tissue_or_cell_success or not modality_success:
         # Make pause until user selects species_success and modality_success
+        st.info("Please select Species, Tissue/Cell, and Modality of your dataset")
         st.stop()
 
     # Print the table list
@@ -446,7 +368,7 @@ def main():
 
     ############
     #### Load CDE
-    cde_dataframe = read_CDE(cde_default, local=use_local)
+    cde_dataframe = read_CDE(cde_version=cde_version, local=use_local)
 
     ############
     #### Provide left-side bar for file upload and app reset

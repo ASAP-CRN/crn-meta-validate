@@ -1,0 +1,70 @@
+{
+  "app_version": "v0.4",
+  "cde_definition": {
+    "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
+    "cde_version": "v3.3"
+  },
+  "kebab_menu": {
+    "email": "support@dnastack.com",
+    "get_help_url": "https://github.com/ASAP-CRN/crn-meta-validate",
+    "page_header": "ASAP CRN metadata quality control (QC) app"
+  },
+  "table_categories": {
+    "species": [
+      "Human",
+      "Mouse",
+      "Macaque Cyno",
+      "Macaque Rhesus",
+      "Other"
+    ],
+    "tissues_or_cells": [
+      "Post-mortem brain",
+      "Post-mortem skin",
+      "Embryonic fibroblast",
+      "Cell lines",
+      "iPSC",
+      "Fecal",
+      "Other"
+    ],
+    "modalities": [
+      "Single cell/nucleus RNA-seq",
+      "Bulk RNAseq",
+      "Spatial transcriptomics",
+      "ATAC-seq",
+      "MULTI-Seq",
+      "Multimodal Seq",
+      "Multiome",
+      "Genetics",
+      "Metagenome",
+      "MS Proteomics",
+      "Other MS -omics",
+      "Other"
+    ]
+  },
+  "table_names": {
+    "mandatory": [
+      "STUDY",
+      "PROTOCOL",
+      "SAMPLE",
+      "DATA",
+      "CONDITION"
+    ],
+    "human_specific": [
+      "HUMAN",
+      "SUBJECT",
+      "CLINPATH"
+    ],
+    "mouse_specific": [
+      "MOUSE"
+    ],
+    "rhesus_specific": [
+      "RHESUS"
+    ],
+    "cyno_specific": [
+      "CYNO_SPECIFIC"
+    ],
+    "cell_specific": [
+      "CELL"
+    ]
+  }
+}
