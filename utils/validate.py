@@ -1,4 +1,10 @@
-# imports
+"""
+Validate tables utilities for ASAP CRN metadata QC app
+
+This module checks for handles loading and processing of CDE definitions from either
+Google Sheets or local CSV files.
+"""
+
 import pandas as pd
 
 # wrape this in try/except to make using the ReportCollector portable
@@ -24,11 +30,6 @@ except ImportError:
     print("Streamlit NOT successfully imported")
 
 NULL = "NA"
-
-# streamlit specific helpers which don't depend on streamlit
-def load_css(file_name):
-   with open(file_name) as f:
-      st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 def get_log(log_file):
     """ grab logged information from the log file."""
@@ -240,8 +241,6 @@ def validate_table_old(df: pd.DataFrame, table_name: str, specific_cde_df: pd.Da
         if field not in specific_cde_df["Field"].values:
             out.add_error(f"Extra field in {table_name}: {field}")
     return df.copy(), out
-
-
 
 def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
     """

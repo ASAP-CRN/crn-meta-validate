@@ -36,7 +36,7 @@ import streamlit as st
 from pathlib import Path
 import os, sys
 import re
-from utils.validate import validate_table, ReportCollector, load_css, NULL
+from utils.validate import validate_table, ReportCollector, NULL
 from utils.cde import read_CDE, get_table_cde
 
 webapp_version = "v0.4"
@@ -81,9 +81,10 @@ st.set_page_config(
     },
 )
 
-## Load CSS (text size, colors, etc.)
-load_css("css/css.css")
-
+def load_css(file_name):
+   with open(file_name) as f:
+      st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+      
 # TODO: set up dataclasses to hold the data
 def read_csv(data_file):
     """
@@ -184,6 +185,10 @@ def main():
         """,
         unsafe_allow_html=True,
     )
+
+    ############
+    ### Load CSS (text size, colors, etc.)
+    load_css("css/css.css")
 
     ############
     #### Set dropdown menus for run settings
