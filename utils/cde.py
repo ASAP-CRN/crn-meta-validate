@@ -62,6 +62,7 @@ def read_CDE(
     
     # Add version-specific columns
     if cde_version in [
+        "v3.3-beta",
         "v3.3",
         "v3.2",
         "v3.2-beta",
@@ -73,7 +74,7 @@ def read_CDE(
         column_list.append("Shared_key")
     
     # Insert "DisplayName" after "Field" for newer versions
-    if cde_version in ["v3.2", "v3.2-beta", "v3.3"]:
+    if cde_version in ["v3.2", "v3.2-beta", "v3.3", "v3.3-beta"]:
         column_list.insert(2, "DisplayName")
     
     # Load CDE from either local file or Google Sheets
@@ -116,7 +117,7 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3"]:
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta"]:
         return f"ASAP_CDE_{cde_version}"
     elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
         return "ASAP_CDE_v3.0"
@@ -220,6 +221,7 @@ def clean_cde_dataframe(
     
     # Force Shared_key to be int for v3+ versions
     if cde_version in [
+        "v3.3-beta",
         "v3.3",
         "v3.2",
         "v3.2-beta",
