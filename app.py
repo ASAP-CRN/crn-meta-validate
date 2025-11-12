@@ -92,105 +92,6 @@ def load_css(file_name):
    with open(file_name) as f:
       st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-def read_csv(data_file, delimiter_handler=None):
-    """
-    Read CSV file. Delimiter handling is done before this is called.
-    This function should NOT contain any Streamlit widgets since it's called from cached function.
-    """
-
-    # Ensure we have a DelimiterHandler instance when called without one (cached path)
-    if delimiter_handler is None:
-        try:
-            from delimiter_handler import DelimiterHandler
-        except Exception:
-            from utils.delimiter_handler import DelimiterHandler  # type: ignore
-        delimiter_handler = DelimiterHandler()
-
-
-    def sanitize_validation_string(validation_str):
-        """Sanitize validation strings by replacing smart quotes with straight quotes."""
-        if not isinstance(validation_str, str):
-            return validation_str
-        return (
-            validation_str.replace('"', '"')
-            .replace('"', '"')
-            .replace(""", "'").replace(""", "'")
-            .replace("…", "...")
-        )
-
-    encoding = "latin1"
-
-    if data_file.type != "text/csv":
-        raise ValueError(f"Unsupported file type: {data_file.type}")
-    
-    # Read file content for delimiter detection
-    file_content = data_file.getvalue()
-    
-    # Detect delimiter
-    detected_delimiter, confidence, preview_df = delimiter_handler.detect_delimiter(file_content, data_file.name)
-    
-    # Get delimiter decision from session state
-    file_key = f"{data_file.name}_{data_file.size}"
-    
-    # Process file based on decision (if any)
-    if file_key in st.session_state.get('delimiter_decisions', {}):
-        decision = st.session_state.delimiter_decisions[file_key]
-        if decision == 'convert':
-            # Convert delimiter to comma
-            file_content = convert_delimiter(file_content, detected_delimiter, ',')
-            # Read converted content
-            table_df = pd.read_csv(StringIO(file_content), dtype="str", encoding=encoding)
-        else:
-            # Keep original delimiter
-            table_df = pd.read_csv(StringIO(file_content.decode(encoding)), 
-                                   sep=detected_delimiter, dtype="str", encoding=encoding)
-    else:
-        # Default: read with detected or comma delimiter
-        print(f"reading {data_file.name} csv, encoding={encoding}, delimiter='{detected_delimiter}'")
-        if detected_delimiter == ',':
-            table_df = pd.read_csv(data_file, dtype="str", encoding=encoding)
-        else:
-            # Low confidence or already comma - just read it
-            table_df = pd.read_csv(StringIO(file_content.decode(encoding)), 
-                                   sep=detected_delimiter, dtype="str", encoding=encoding)
-
-    # Encoding fixes
-    for col in table_df.select_dtypes(include="object").columns:
-        table_df[col] = (
-            table_df[col]
-            .str.encode("latin1", errors="replace")
-            .str.decode("utf-8", errors="replace")
-        )
-    for col in table_df.columns:
-        table_df[col] = table_df[col].apply(sanitize_validation_string)
-
-    # drop the first column if it is just the index incase it was saved with index = True
-    if table_df.columns[0] == "Unnamed: 0":
-        table_df = table_df.drop(columns=["Unnamed: 0"])
-        print("dropped Unnamed: 0")
-
-    # drop rows with all null values
-    table_df.dropna(how="all", inplace=True)
-    table_df.fillna(NULL, inplace=True)
-    table_df.replace(
-        {"": NULL, pd.NA: NULL, "none": NULL, "nan": NULL, "Nan": NULL}, inplace=True
-    )
-    return table_df.reset_index(drop=True)
-
-
-################################
-#### Load input tables
-################################
-
-@st.cache_data
-def load_data(data_files):
-    """
-    Load data from files and cache it, return a list of table names and a dictionary of dataframes
-    """
-    table_names = [data_file.name.split(".")[0] for data_file in data_files]
-    input_dataframes_dict = {data_file.name.split(".")[0]: read_csv(data_file) for data_file in data_files}
-    return table_names, input_dataframes_dict
-
 ################################
 #### Run a table and return results
 ################################
@@ -375,7 +276,8 @@ def main():
             # Note: We don't clear delimiter_decisions here as they will be repopulated
 
     ############
-    #### Process uploaded files
+    #### Evaluate which files can be validated with CDE rules
+    #### For example, files with headers but no data rows will be flagged as invalid and wont be send to CDE evaluation.
     if data_files is None or len(data_files) == 0:
         tables_loaded = False
     elif len(data_files) > 0:
@@ -399,10 +301,9 @@ def main():
         else:
             st.sidebar.success(f"N={len(valid_files)} files loaded")
         
-        # ---- Apply delimiter decisions (explicit button) ----
-        # Check if processed files are ready, otherwise show the Apply button
+        ############
+        #### Button to Apply delimiter decisions
         processed_files = st.session_state.get("files_ready_for_validation")
-        
         if not processed_files:
             # Show the Apply button and wait for user action
             with st.container(border=True):
@@ -423,16 +324,17 @@ def main():
             # Stop here and wait for the button to be clicked
             st.stop()
 
-        # If we reach here, processed_files exist - load them
+        ############
+        #### Process valid files
         loader = ProcessedDataLoader()
         table_names, input_dataframes_dic, file_warnings, row_counts = loader.load(processed_files)
 
-        # Optional: surface per-file warnings in the UI
+        # Surface per-file warnings in the UI
         for filename, warnings_list in file_warnings.items():
             for warning_text in warnings_list:
                 st.warning(f"**{filename}** — {warning_text}")
 
-        # When listing files:
+        # Files ready for CDE validation
         for table_name in table_names:
             current_row_count = row_counts.get(table_name, 0)
             st.success(f"**{table_name}** ({current_row_count} rows) — Loaded and ready for validation of columns and values.")
@@ -440,7 +342,11 @@ def main():
         tables_loaded = True
         validation_report_dic = dict()
 
-        # Show individual file conversion messages below
+        st.markdown("---")
+
+        ############
+        #### Left-side menu logic for uploaded files
+        # Log files for CDE validation
         if len(valid_files) > 0:
             st.sidebar.markdown("**Valid files:**")
 
@@ -448,7 +354,7 @@ def main():
             file_key = delimiter_handler.get_file_key(data_file.name, data_file.size)
             if file_key in st.session_state.get('delimiter_decisions', {}):
                 file_content = data_file.getvalue()
-                detected_delimiter, _, _ = delimiter_handler.detect_delimiter(file_content, data_file.name)
+                detected_delimiter, confidence, preview_df = delimiter_handler.detect_delimiter(file_content, data_file.name)
                 delimiter_name = delimiter_handler.get_delimiter_name(detected_delimiter)
                 
                 decision = st.session_state.delimiter_decisions[file_key]
@@ -459,7 +365,7 @@ def main():
                 else:
                     st.sidebar.info(f"✗ {data_file.name} kept with {delimiter_name} delimiter")
         
-        # Show invalid files (strikethrough)
+        # Log invalid files (strikethrough)
         if len(invalid_files) > 0:
             st.sidebar.markdown("**Invalid files (skipped):**")
             for data_file in invalid_files:
@@ -471,31 +377,32 @@ def main():
         tables_loaded = False
 
     ############
-    #### Pause if no files loaded
+    #### Pause if no files loaded for CDE validation
     if not tables_loaded:
         st.stop()
 
     ############
-    #### Create file selection dropdown and run validation
-    col1, col2, col3 = st.columns(3)
+    #### Create file selection dropdown and run CDE validation for each selected file
+    st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
+                unsafe_allow_html=True)
+    selected_table_name = st.selectbox(
+        "",
+        table_names,
+        label_visibility="collapsed",
+    )
 
-    with col1:
-        st.markdown('<h3 style="font-size: 20px;">4. Choose file to validate</h3>',
-                    unsafe_allow_html=True)
-        selected_table_name = st.selectbox(
-            "",
-            table_names,
-            label_visibility="collapsed",
-        )
-
-    # Collect results via ReportCollector
+    ############
+    #### Collect results via ReportCollector
     validation_report_dic = setup_report_data(validation_report_dic, selected_table_name, input_dataframes_dic, cde_dataframe)
     report = ReportCollector()
 
-    # Unpack data
+    ############
+    #### Unpack data
     selected_table, cde_rules = validation_report_dic[selected_table_name]
 
-    # Perform the validation
+    ############
+    #### Perform the validation
+    # NOTE: validate_table() is where empty strings are filled out with NULL string
     st.info(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
     status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
     validated_output_df, validation_output = validation_report_dic[selected_table_name]
@@ -507,7 +414,6 @@ def main():
 
     ############
     #### Display validation results and download buttons
-
     status_code = 1 # force success for download
     if status_code == 1:
         st.markdown('<p class="medium-font"> Download logs and a sanitized .csv </p>',
