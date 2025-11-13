@@ -3,11 +3,12 @@ import os
 import re
 import pandas as pd
 from typing import Dict, Tuple, List, Any
+import streamlit as st
 
 class ProcessedDataLoader:
     """
     Loads processed files (dict or list) into DataFrames,
-    handling encodings, bad lines, and table-name normalization.
+    handling encodings, bad lines, and fills out missing values with a string defined by NULL in _fillout_empty_cells()
     """
 
     def __init__(
@@ -47,7 +48,7 @@ class ProcessedDataLoader:
             table_name = self._sanitize_table_name(filename)
             warnings_for_file: List[str] = []
 
-            df, used_encoding, used_engine, used_errors_mode = self._read_with_fallbacks(
+            table_df, used_encoding, used_engine, used_errors_mode = self._read_with_fallbacks(
                 raw_bytes=raw_bytes,
                 separator=separator,
             )
@@ -61,12 +62,18 @@ class ProcessedDataLoader:
             if used_errors_mode == "replace":
                 warnings_for_file.append("Undecodable bytes were replaced during read.")
 
-            input_dataframes_dic[table_name] = df
+            ## Check out tables before and after filling out empty cells
+            st.info(f"**{filename}** -- before and after filling out empty cells:")
+            st.dataframe(table_df.head(5))
+            table_df = self._fillout_empty_cells(table_df)
+            st.dataframe(table_df.head(5))
+
+            input_dataframes_dic[table_name] = table_df
             table_names.append(table_name)
             file_warnings[filename] = warnings_for_file
 
             try:
-                row_counts[table_name] = int(len(df.index))
+                row_counts[table_name] = int(len(table_df.index))
             except Exception:
                 row_counts[table_name] = 0
 
@@ -74,6 +81,21 @@ class ProcessedDataLoader:
 
     # ---------- internals ----------
 
+    def _fillout_empty_cells(self, table_df, na_token: str = "NA"):
+        """Empty/NULL-like values to a single token so validation and exports are consistent.
+        - Replaces whitespace-only or empty strings with the NA token.
+        - Maps common textual nulls (none/None/nan/NaN/NAN) to the NA token.
+        """
+        table_df = table_df.replace(to_replace=r"^\s*$", value=na_token, regex=True)
+        table_df = table_df.replace({
+            "none": na_token,
+            "None": na_token,
+            "nan":  na_token,
+            "NaN":  na_token,
+            "NAN":  na_token,
+            })
+        return table_df
+    
     def _extract_bytes_and_separator(self, payload: Any) -> Tuple[bytes, str]:
         if isinstance(payload, dict):
             raw_bytes = payload.get("bytes", b"")
@@ -97,7 +119,7 @@ class ProcessedDataLoader:
 
         for encoding_name in self.candidate_encodings:
             try:
-                df = pd.read_csv(
+                table_df = pd.read_csv(
                     io.BytesIO(raw_bytes),
                     sep=separator,
                     dtype="string",
@@ -107,7 +129,7 @@ class ProcessedDataLoader:
                     encoding=encoding_name,
                     engine=preferred_engine,
                 )
-                return df, encoding_name, preferred_engine, "strict"
+                return table_df, encoding_name, preferred_engine, "strict"
             except UnicodeDecodeError as decode_error:
                 last_exception = decode_error
                 continue
@@ -117,7 +139,7 @@ class ProcessedDataLoader:
 
         # Last resort: permissive read that won’t crash the app
         try:
-            df = pd.read_csv(
+            table_df = pd.read_csv(
                 io.BytesIO(raw_bytes),
                 sep=separator,
                 dtype="string",
@@ -128,7 +150,7 @@ class ProcessedDataLoader:
                 encoding_errors="replace",   # pandas >=1.5
                 engine="python",
             )
-            return df, "latin-1", "python", "replace"
+            return table_df, "latin-1", "python", "replace"
         except Exception as final_error:
             error_message = (
                 f"Failed to read bytes with multiple encodings. "

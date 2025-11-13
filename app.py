@@ -122,9 +122,15 @@ def main():
         This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
         PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
         
-        * Helps to fix common issues like filling out missing values.
-        * Suggests corrections like identifying missing columns and value mismatches vs. 
+        We do this in two steps:
+        1. First, the app helps to fix common issues like filling out missing values.
+        2. Second, it identifies missing columns and value mismatches vs.
         the ASAP CRN controlled vocabularies [(Common Data Elements)]({cde_google_sheet}).
+
+        Two types of issues will be reported:
+        - **Errors**: Must be fixed by the data contributors before uploading data to ASAP CRN.
+        - **Warnings**: Recommended to fix before uploading, but not mandatory. Missing values will be filled out with 'NA' in sanitized files.
+
 
         """,
         unsafe_allow_html=True,
@@ -403,50 +409,51 @@ def main():
     ############
     #### Perform the validation
     # NOTE: validate_table() is where empty strings are filled out with NULL string
-    st.info(f"Validating n={selected_table.shape[0]} rows from {selected_table_name}")
-    status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
-    validated_output_df, validation_output = validation_report_dic[selected_table_name]
-    if status_code == 0:
-        report.add_error(
-            f"{selected_table_name} table has discrepancies!! 👎 Please try again."
-        )
-    report.add_divider()
+    st.info(f"Validating **{selected_table_name}** ({len(selected_table.index)} rows × {len(selected_table.columns)} columns) vs. CDE {cde_version}")
+    # status_code = validate_table(selected_table, selected_table_name, cde_rules, report)
+    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, cde_rules, report)
 
     ############
     #### Display validation results and download buttons
-    status_code = 1 # force success for download
-    if status_code == 1:
-        st.markdown('<p class="medium-font"> Download logs and a sanitized .csv </p>',
-        unsafe_allow_html=True )
-        # from streamlit.scriptrunner import RerunException
-        def cach_clean():
-            time.sleep(1)
-            st.runtime.legacy_caching.clear_cache()
 
-        report_content = report.get_log()
-        table_content = validated_output_df.to_csv(index=False)
+    report.add_divider()
 
-        # from streamlit.scriptrunner import RerunException
-        def cach_clean():
-            time.sleep(1)
-            st.runtime.legacy_caching.clear_cache()
+    st.markdown(f'<p class="medium-font"> Download files:</p>',
+    unsafe_allow_html=True )
+    def cach_clean():
+        time.sleep(1)
+        st.runtime.legacy_caching.clear_cache()
 
-        # Download button
+    report_content = report.get_log()
+    table_content = validated_output_df.to_csv(index=False)
+
+    # Download button
+    st.download_button(
+        label=f"📥 Download a **{selected_table_name}.md** QC log markdown file",
+        data=report_content,
+        file_name=f"{selected_table_name}.md",
+        mime="text/markdown",
+    )
+
+    # errors_counter = 1 # For testing purposes, set to 0 to always allow download
+
+    label_for_sanitized = f"📥 Download a **{selected_table_name}_sanitized.csv** file"
+    label_for_sanitized_html = label_for_sanitized.replace("**", "<strong>", 1).replace("**", "</strong>", 1)
+    if errors_counter == 0:
         st.download_button(
-            label=f"📥 Download your QC log",
-            data=report_content,
-            file_name=f"{selected_table_name}.md",
-            mime="text/markdown",
-        )
-
-        # Download button
-        st.download_button(
-            label=f"📥 Download a {selected_table_name}_sanitized.csv file (NULL-> 'NA' )",
+            label=label_for_sanitized,   # Markdown works here
             data=table_content,
             file_name=f"{selected_table_name}_sanitized.csv",
             mime="text/csv",
         )
-        return None
+    else:
+        st.markdown("""
+                    <style>.disabled-btn {pointer-events: none; opacity: 0.5;}</style>
+                    """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+                    <button class="disabled-btn">{label_for_sanitized_html}</button><span> (disabled due to errors in the table. Please fix errors before downloading sanitized file.)</span>
+                    """, unsafe_allow_html=True,)
 
 if __name__ == "__main__":
 

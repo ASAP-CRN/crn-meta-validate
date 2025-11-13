@@ -1,0 +1,16 @@
+sample_id,subject_id,source_sample_id,replicate,replicate_count,repeated_sample,batch,organism,tissue,assay_type,condition_id,organism_ontology_term_id,age_at_collection,time,alternate_id,development_stage_ontology_term_id,sex_ontology_term_id,self_reported_ethnicity_ontology_term_id,disease_ontology_term_id,tissue_ontology_term_id,assay_ontology_term_id,donor_id,pm_PH,cell_type_ontology_term_id,source_RIN,DV200,suspension_type
+individual1_ACG,individual1,,Rep1,1,0,B1,,Brain,NA,PD,NCBITaxon:9606,78,NA,NA,HsapDv,PATO:0000383 (female),NA,MONDO:0005180,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual1_IPL,individual1,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,78,,NA,HsapDv,PATO:0000383 (female),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual2_ACG,individual2,,Rep1,1,0,B1,,Brain,NA,PD,NCBITaxon:9606,63,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual2_IPL,individual2,NA,Rep1,2,1,B1,,Brain,,PD,NCBITaxon:9606,63,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual2_IPL,individual2,NA,Rep2,2,1,B2,,Brain,NA,PD,NCBITaxon:9606,63,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual3_ACG,individual3,NA,Rep1,1,0,B1,,Brain,NA,PD,NCBITaxon:9606,81,,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual3_IPL,individual3,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,81,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual4_ACG,individual4,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,80,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual4_IPL,individual4,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,80,NA,NA,HsapDv,PATO:0000384 (male),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual5_ACG,individual5,,Rep1,1,0,B1,,Brain,,Control,NCBITaxon:9606,87,NA,NA,HsapDv,PATO:0000383 (female),NA,PATO:0000461,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual5_IPL,individual5,,Rep1,1,0,B1,,Brain,,Control,NCBITaxon:9606,87,NA,NA,HsapDv,PATO:0000383 (female),NA,PATO:0000461,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual6_ACG,individual6,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,85,NA,NA,HsapDv,PATO:0000383 (female),NA,MONDO:0005180,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual6_IPL,individual6,,Rep1,1,0,B1,,Brain,,PD,NCBITaxon:9606,85,,NA,HsapDv,PATO:0000383 (female),NA,MONDO:0005180,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus
+individual7_ACG,individual7,,Rep1,1,0,B1,,Brain,,Control,NCBITaxon:9606,103,NA,NA,HsapDv,PATO:0000383 (female),NA,PATO:0000461,UBERON:0009835,EFO:0008913,,NA,,NA,NA,nucleus
+individual7_IPL,individual7,,Rep1,1,0,B1,,Brain,,Control,NCBITaxon:9606,103,NA,NA,HsapDv,PATO:0000383 (female),NA,PATO:0000461,UBERON:0006088,EFO:0008913,,NA,,NA,NA,nucleus

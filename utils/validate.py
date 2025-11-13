@@ -3,33 +3,14 @@ Validate tables utilities for ASAP CRN metadata QC app
 
 This module checks for handles loading and processing of CDE definitions from either
 Google Sheets or local CSV files.
+
 """
 
+NULL = "NA" ## Will be used to fill in missing values in *_sanitized.csv files
+
 import pandas as pd
-
-# wrape this in try/except to make using the ReportCollector portable
-# probably an abstract base class would be better
-try:
-    import streamlit as st
-    print("Streamlit imported successfully")
-
-except ImportError:
-    class DummyStreamlit:
-        @staticmethod
-        def markdown(self,msg):
-            pass
-        def error(self,msg):
-            pass
-        def header(self,msg):
-            pass        
-        def subheader(self,msg):
-            pass    
-        def divider(self):
-            pass
-    st = DummyStreamlit()
-    print("Streamlit NOT successfully imported")
-
-NULL = "NA"
+import re
+import streamlit as st
 
 def get_log(log_file):
     """ grab logged information from the log file."""
@@ -141,60 +122,93 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
+def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, validation_report: ReportCollector ):
     """
     Validate the table against the specific table entries from the CDE
+
+    Returns:
+    table_df: pd.DataFrame after filling out empty cells
+    validation_report: ReportCollector with validation messages
+    errors_counter: int counting the number of errors found
+    warnings_counter: int counting the number of warnings found
     """
+    errors_counter = 0
+    warnings_counter = 0
+
+    ############
+    #### Replace empty strings and various null representations with NULL (which is "NA")
+    table_df.replace({"":NULL,
+                pd.NA:NULL,
+                "none":NULL,
+                "nan":NULL,
+                "Nan":NULL},
+                inplace=True)
+    
     def my_str(x):
         return f"'{str(x)}'"
         
+    ############
+    #### Record:
+    #### a) missing required and optional columns
+    #### b) columns present but full of empty string
+    #### c) invalid entries in columns (not matching expected values according to CDE)
     missing_required = []
     missing_optional = []
+    invalid_required = []
+    invalid_optional = []
     null_columns = []
     invalid_entries = []
-    total_rows = df.shape[0]
+    total_required = 0
+    total_optional = 0
     for column in specific_cde_df["Field"]:
         entry_idx = specific_cde_df["Field"]==column
 
         opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
+        if opt_req == "REQUIRED":
+            total_required += 1
+        else:
+            total_optional += 1
 
-        if column not in df.columns:
+        if column not in table_df.columns:
             if opt_req == "REQUIRED":
                 missing_required.append(column)
             else:
                 missing_optional.append(column)
-
-            # print(f"missing {opt_req} column {column}")
-
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
+
+            # test that Integer columns are all int or NULL, flag NULL entries
             if datatype.item() == "Integer":
                 print(f"recoding {column} as int")
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
+                # table_df.replace(to_replace=r"unknown",value=NULL,regex=True,case=False,inplace=True)
                 try:
-                    df[column].apply(lambda x: int(x) if x!=NULL else x )
+                    table_df[column].apply(lambda x: int(x) if x!=NULL else x )
                 except Exception as e:
-                    invalid_values = df[column].unique()
+                    invalid_values = table_df[column].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "int or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
 
-                # test that all are integer or NULL, flag NULL entries
+            # test that Float columns are all float or NULL, flag NULL entries
             elif datatype.item() == "Float":
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
+                # table_df.replace(to_replace=r"unknown",value=NULL,regex=True,case=False,inplace=True)
                 try:
-                    df[column] = df[column].apply(lambda x: float(x) if x!=NULL else x )
+                    table_df[column] = table_df[column].apply(lambda x: float(x) if x!=NULL else x )
                 except Exception as e:
-                    invalid_values = df[column].unique()
+                    invalid_values = table_df[column].unique()
                     n_invalid = invalid_values.shape[0]
                     valstr = "float or NULL ('NA')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
+
+            # test that Enum types match controlled vocabulary values or NULL, flag NULL entries
             elif datatype.item() == "Enum":
                 valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
                 valid_values += [NULL]
-                entries = df[column]
+                entries = table_df[column]
                 valid_entries = entries.apply(lambda x: x in valid_values)
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
@@ -202,46 +216,67 @@ def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFr
                     valstr = ', '.join(map(my_str, valid_values))
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
-            else: #dtype == String
+                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
+
+            # Freeform dtype == String
+            else:
                 pass
             
-            n_null = (df[column]==NULL).sum()
+            n_null = (table_df[column]==NULL).sum()
             if n_null > 0:            
                 null_columns.append((opt_req, column, n_null))
 
+    ############
+    #### Compose report, get error and warning counters to either provide the user with a download link for the sanitized file or not
 
-    # now compose report...
+    ## Report missing columns, either required (throw errors) or optional (throw warnings)
     if len(missing_required) > 0:
-        out.add_error(f"Missing required columns in {table_name}: {', '.join(missing_required)}")
+        validation_report.add_error(f"ERROR -- Missing {len(missing_required)}/{total_required} **mandatory** columns in *{table_name}*: {', '.join(missing_required)}")
         for column in missing_required:
-            df[column] = NULL
-
+            table_df[column] = NULL
+            errors_counter += 1
     else:
-        out.add_success(f"OK -- All required columns are present in *{table_name}* table.")
+        validation_report.add_success(f"OK -- All {total_required} **mandatory** columns are present in *{table_name}*")
 
     if len(missing_optional) > 0:
-        out.add_error(f"ERROR -- Missing optional columns in {table_name}: {', '.join(missing_optional)}")
+        validation_report.add_warning(f"WARNING -- Missing {len(missing_optional)}/{total_optional} **optional** columns in *{table_name}*: {', '.join(missing_optional)}")
         for column in missing_optional:
-            df[column] = NULL
+            table_df[column] = NULL
+            warnings_counter += 1
+    else:
+        validation_report.add_success(f"OK -- All {total_optional} **optional** columns are present in *{table_name}*")
 
+    ## Report columns with null/empty values, either required (throw errors) or optional (throw warnings)
     if len(null_columns) > 0:
-        out.add_error(f"ERROR -- {len(null_columns)} columns with empty (NULL) values:")
         for opt_req, column, count in null_columns:
-            out.add_markdown(f"\n\t- {column}: {count}/{total_rows} empty rows ({opt_req})")
+            if opt_req == "REQUIRED":
+                validation_report.add_error(f"ERROR -- **mandatory** column _**{column}**_ has {count} empty values. It's required that you fill them out with valid values before uploading to Google buckets")
+                errors_counter += 1
+            else:
+                validation_report.add_warning(f"WARNING -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid values or not before uploading to Google buckets")
+                warnings_counter += 1
     else:
-        out.add_success(f"OK -- No empty values (NULL) found\n")
+        validation_report.add_success(f"OK -- No columns with empty values were found\n")
 
-    if len(invalid_entries) > 0:
-        out.add_error(f"ERROR -- {len(invalid_entries)} columns with invalid values:")
-        for opt_req, column, count, valstr, invalstr in invalid_entries:
-            str_out = f"- Column _*{column}*_ has invalid values: {invalstr}\n"
-            str_out += f"    - expect: {valstr}\n"
-            out.add_markdown(str_out)
+    ## Report invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
+
+    # ## Check out tables before and after filling out empty cells
+    # st.info(table_name)
+    # st.dataframe(table_df.head(5))
+
+    if len(invalid_required) > 0:
+        validation_report.add_error(f"ERROR -- {len(invalid_required)} required columns with invalid values: {', '.join(invalid_required)}")
+        # Note: We do NOT replace values here - invalid values should be fixed by the user
+        errors_counter += len(invalid_required)
     else:
-        out.add_success(f"No invalid values found in Enum columns\n")
+        validation_report.add_success(f"OK -- No invalid values found in required Enum columns\n")
 
-    for column in df.columns:
-        if column not in specific_cde_df["Field"].values:
-            out.add_warning(f"Extra column in {table_name}: {column}")
+    if len(invalid_optional) > 0:
+        validation_report.add_warning(f"WARNING -- {len(invalid_optional)} optional columns with invalid values: {', '.join(invalid_optional)}")
+        # Note: We do NOT replace values here - invalid values should be fixed by the user
+        warnings_counter += len(invalid_optional)
+    else:
+        validation_report.add_success(f"OK -- No invalid values found in optional columns\n")
 
-    return df, out
+    return table_df, validation_report, errors_counter, warnings_counter
+
