@@ -1,15 +1,13 @@
-"""
-Custom menu component to replace Streamlit's default hamburger menu.
-Provides a clean, top-right positioned Help link.
-"""
-
 import streamlit as st
-
 
 class CustomMenu:
     """
-    A custom menu component that replaces Streamlit's default hamburger menu.
+    A custom menu component that replaces Streamlit's default kebab menu.
     Displays only a Help link in a modern, minimalist style.
+
+    Also hides the sidebar collapse button (<<) to prevent users from hiding the sidebar.
+    Because Streamlit does not provide direct API to customize the menu and hiding the sidebar was causing issues
+    with not being able to bring the sidebar back easily.
     """
     
     def __init__(self, help_url: str):
@@ -22,10 +20,11 @@ class CustomMenu:
         self.help_url = help_url
     
     def hide_default_menu(self):
-        """Hide the default Streamlit hamburger menu."""
-        st.markdown("""
+        """Hide the default Streamlit kebab menu and customize sidebar."""
+        st.markdown(
+            """
             <style>
-            /* Hide ONLY the hamburger menu button, keep everything else */
+            /* Hide ONLY the kebab menu button, keep everything else */
             [data-testid="stMainMenu"] {
                 display: none !important;
             }
@@ -50,15 +49,18 @@ class CustomMenu:
                 display: none !important;
             }
             </style>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
     
     def render(self):
         """Render the custom menu in the top-right corner."""
         # Hide the default menu
         self.hide_default_menu()
         
-        # Inject custom Help link in top-right corner
-        st.markdown(f"""
+        # Inject custom Help link using Streamlit's markdown method
+        st.markdown(
+            f"""
             <style>
             /* Position container in top-right, below header */
             .custom-menu-container {{
@@ -92,4 +94,6 @@ class CustomMenu:
             <div class="custom-menu-container">
                 <a href="{self.help_url}" target="_blank" class="help-link">Help</a>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
