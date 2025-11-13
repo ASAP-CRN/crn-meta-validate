@@ -250,33 +250,26 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     if len(null_columns) > 0:
         for opt_req, column, count in null_columns:
             if opt_req == "REQUIRED":
-                validation_report.add_error(f"ERROR -- **mandatory** column _**{column}**_ has {count} empty values. It's required that you fill them out with valid values before uploading to Google buckets")
+                validation_report.add_error(f"ERROR -- **mandatory** column _**{column}**_ has {count} empty values. Please fill them out with valid CDE values or 'Unknown' if that's the case, before uploading to Google buckets")
                 errors_counter += 1
             else:
-                validation_report.add_warning(f"WARNING -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid values or not before uploading to Google buckets")
+                validation_report.add_warning(f"WARNING -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid CDE values or not before uploading to Google buckets")
                 warnings_counter += 1
     else:
         validation_report.add_success(f"OK -- No columns with empty values were found\n")
 
     ## Report invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
-
-    # ## Check out tables before and after filling out empty cells
-    # st.info(table_name)
-    # st.dataframe(table_df.head(5))
-
     if len(invalid_required) > 0:
         validation_report.add_error(f"ERROR -- {len(invalid_required)} required columns with invalid values: {', '.join(invalid_required)}")
-        # Note: We do NOT replace values here - invalid values should be fixed by the user
         errors_counter += len(invalid_required)
     else:
-        validation_report.add_success(f"OK -- No invalid values found in required Enum columns\n")
+        validation_report.add_success(f"OK -- No invalid values were found in required columns\n")
 
     if len(invalid_optional) > 0:
         validation_report.add_warning(f"WARNING -- {len(invalid_optional)} optional columns with invalid values: {', '.join(invalid_optional)}")
-        # Note: We do NOT replace values here - invalid values should be fixed by the user
         warnings_counter += len(invalid_optional)
     else:
-        validation_report.add_success(f"OK -- No invalid values found in optional columns\n")
+        validation_report.add_success(f"OK -- No invalid values were found in optional columns\n")
 
     return table_df, validation_report, errors_counter, warnings_counter
 

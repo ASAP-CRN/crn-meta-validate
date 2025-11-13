@@ -62,12 +62,19 @@ class ProcessedDataLoader:
             if used_errors_mode == "replace":
                 warnings_for_file.append("Undecodable bytes were replaced during read.")
 
-            ## Check out tables before and after filling out empty cells
-            st.info(f"**{filename}** -- before and after filling out empty cells:")
-            st.dataframe(table_df.head(5))
+            ## Filled out empty cells and show before/after if changes were made
+            table_df_before = table_df.copy()
             table_df = self._fillout_empty_cells(table_df)
-            st.dataframe(table_df.head(5))
 
+            if not table_df_before.equals(table_df):
+                st.info(f"**{filename}** -- before and after filling out empty cells:")
+                # At least one cell was filled — show before/after
+                st.dataframe(table_df_before.head(5))
+                st.dataframe(table_df.head(5))
+            else:
+                st.info(f"**{filename}** -- no changes after filling out empty cells")
+
+            ## Store results
             input_dataframes_dic[table_name] = table_df
             table_names.append(table_name)
             file_warnings[filename] = warnings_for_file

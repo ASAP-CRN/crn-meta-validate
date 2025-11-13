@@ -1,2 +1,2 @@
 sample_collection_summary;cell_extraction_summary;lib_prep_summary;data_processing_summary;github_url;protocols_io_DOI;other_reference
-Description of how samples were collected;Description of how DNA/RNA/protein/other was extracted;Description of how library was made;"Description of computational QC (e.g. for sc/snRNA-seq filters applied; de-multiplexing, etc)";https://github.com/path/to/repo;dx.doi.org/123.456/protocols.io.abc;
+Description of how samples were collected;Description of how DNA/RNA/protein/other was extracted;Description of how library was made;"Description of computational QC (e.g. for sc/snRNA-seq filters applied; de-multiplexing, etc)";https://github.com/path/to/repo;dx.doi.org/123.456/protocols.io.abc;My other reference
