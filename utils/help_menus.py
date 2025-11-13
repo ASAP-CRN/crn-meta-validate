@@ -25,13 +25,28 @@ class CustomMenu:
         """Hide the default Streamlit hamburger menu."""
         st.markdown("""
             <style>
-            /* Hide the hamburger menu button */
+            /* Hide ONLY the hamburger menu button, keep everything else */
             [data-testid="stMainMenu"] {
                 display: none !important;
             }
             
-            /* Optional: Hide the header toolbar for cleaner look */
-            header[data-testid="stHeader"] {
+            /* Hide the Deploy button */
+            [data-testid="stToolbar"] {
+                display: none !important;
+            }
+            
+            /* Hide the sidebar collapse button (<<) to prevent users from hiding sidebar */
+            button[kind="header"][data-testid="baseButton-header"] {
+                display: none !important;
+            }
+            
+            /* Alternative selector for collapse button */
+            [data-testid="stSidebarCollapseButton"] {
+                display: none !important;
+            }
+            
+            /* Also hide by aria-label */
+            button[aria-label="Close sidebar"] {
                 display: none !important;
             }
             </style>
@@ -45,10 +60,10 @@ class CustomMenu:
         # Inject custom Help link in top-right corner
         st.markdown(f"""
             <style>
-            /* Position container in top-right */
+            /* Position container in top-right, below header */
             .custom-menu-container {{
                 position: fixed;
-                top: 1rem;
+                top: 3.5rem;
                 right: 1rem;
                 z-index: 999999;
             }}
@@ -62,9 +77,10 @@ class CustomMenu:
                 padding: 0.5rem 1rem;
                 border-radius: 0.375rem;
                 transition: background-color 0.2s ease;
-                background-color: transparent;
+                background-color: white;
                 border: 1px solid #e6e6e6;
                 display: inline-block;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             }}
             
             .help-link:hover {{
