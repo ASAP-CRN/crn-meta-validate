@@ -134,7 +134,7 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- CONTACT -->
 ## Contact
-Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, include the *log.txt file(s) that you get from the app (see below) and a screenshot of the run setup.
+Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, include the log {TABLE}.md file(s) that you get from the app (if any) and a screenshot of the run setup.
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 

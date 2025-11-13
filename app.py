@@ -9,7 +9,7 @@ Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit
 
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
-Webapp v0.4 (CDE version v3.3), 11 November 2025
+Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 
 Version notes:
 Webapp v0.4:
@@ -130,8 +130,10 @@ def main():
         the ASAP CRN controlled vocabularies [(Common Data Elements {cde_version})]({cde_google_sheet_current}).
 
         Two types of issues will be reported:
-        - **Errors**: Must be fixed by the data contributors before uploading data to ASAP CRN Google buckets.
-        - **Warnings**: Recommended to fix before uploading, but not mandatory.
+        - **Errors**: Must be **fixed by the data contributors** before uploading metadata to ASAP CRN Google buckets.
+        - **Warnings**: Recommended to be fixed before uploading, but not mandatory.
+
+        We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions/concerns!
         
 
         """,
