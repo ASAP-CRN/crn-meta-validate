@@ -44,6 +44,7 @@ from utils.validate import validate_table, ReportCollector, NULL
 from utils.cde import read_CDE, get_table_cde
 from utils.delimiter_handler import DelimiterHandler
 from utils.processed_data_loader import ProcessedDataLoader
+from utils.help_menus import CustomMenu
 
 webapp_version = "v0.4"
 
@@ -59,7 +60,8 @@ with open(app_schema_path, "r") as json_file:
 # Extract configuration from app_schema
 cde_version = app_schema['cde_definition']['cde_version']
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
-cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}"
+cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
+cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
 use_local = False  # Set to False to use Google Sheets
 
 # Extract table categories
@@ -125,20 +127,26 @@ def main():
         We do this in two steps:
         1. First, the app helps to fix common issues like filling out missing values.
         2. Second, it identifies missing columns and value mismatches vs.
-        the ASAP CRN controlled vocabularies [(Common Data Elements)]({cde_google_sheet}).
+        the ASAP CRN controlled vocabularies [(Common Data Elements {cde_version})]({cde_google_sheet_current}).
 
         Two types of issues will be reported:
-        - **Errors**: Must be fixed by the data contributors before uploading data to ASAP CRN.
-        - **Warnings**: Recommended to fix before uploading, but not mandatory. Missing values will be filled out with 'NA' in sanitized files.
-
+        - **Errors**: Must be fixed by the data contributors before uploading data to ASAP CRN Google buckets.
+        - **Warnings**: Recommended to fix before uploading, but not mandatory.
+        
 
         """,
         unsafe_allow_html=True,
     )
+    st.markdown("---")
 
     ############
     ### Load CSS (text size, colors, etc.)
     load_css(os.path.join(repo_root, "css", "css.css"))
+    
+    ############
+    ### Render custom menu (replaces hamburger menu)
+    custom_menu = CustomMenu(help_url=app_schema['kebab_menu']['get_help_url'])
+    custom_menu.render()
 
     ############
     #### Set dropdown menus for run settings
@@ -246,6 +254,7 @@ def main():
     ############
     #### Add Reset button and version info to sidebar (ALWAYS VISIBLE)
     st.sidebar.markdown("---")
+    
     st.markdown("""
                 <style>
                 div.stButton > button[kind="primary"] {
@@ -254,7 +263,7 @@ def main():
                 </style>
                 """, unsafe_allow_html=True)
     
-    if st.sidebar.button("Reset App", use_container_width=True, type="primary"):
+    if st.sidebar.button("🔄 Reset App", use_container_width=True, type="primary"):
         st.cache_data.clear() # Clear all cached data
         st.session_state.file_uploader_key += 1 # Increment the file uploader key to reset it
         # Clear delimiter decisions and invalid files
