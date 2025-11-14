@@ -141,7 +141,9 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
                 pd.NA:NULL,
                 "none":NULL,
                 "nan":NULL,
-                "Nan":NULL},
+                "Nan":NULL,
+                "N/A":NULL,
+                "n/a":NULL},
                 inplace=True)
     
     def my_str(x):
@@ -206,14 +208,42 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
             # test that Enum types match controlled vocabulary values or NULL, flag NULL entries
             elif datatype.item() == "Enum":
-                valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
-                valid_values += [NULL]
+                # Valid values from Validation
+                validation_raw = specific_cde_df.loc[entry_idx,"Validation"].item()
+                try:
+                    valid_values = eval(validation_raw)
+                except Exception:
+                    valid_values = []
+
+                if not isinstance(valid_values, list):
+                    valid_values = [valid_values]
+
+                # Also allow any FillNull codes for this Enum column (if present)
+                fillnull_values = []
+                if "FillNull" in specific_cde_df.columns:
+                    fillnull_raw = specific_cde_df.loc[entry_idx, "FillNull"]
+                    try:
+                        if isinstance(fillnull_raw, str):
+                            parsed_fn = eval(fillnull_raw)
+                            if isinstance(parsed_fn, (list, tuple)):
+                                fillnull_values = [str(v) for v in parsed_fn]
+                            elif fillnull_raw.strip():
+                                fillnull_values = [fillnull_raw.strip()]
+                        elif fillnull_raw is not None:
+                            fillnull_values = [str(fillnull_raw)]
+                    except Exception:
+                        if isinstance(fillnull_raw, str) and fillnull_raw.strip():
+                            fillnull_values = [fillnull_raw.strip()]
+
+                # Merge Validation + FillNull + NULL token
+                full_valid_values = list(dict.fromkeys([my_str(v) for v in (valid_values + fillnull_values + [NULL])]))
+
                 entries = table_df[column]
-                valid_entries = entries.apply(lambda x: x in valid_values)
+                valid_entries = entries.apply(lambda x: x in full_valid_values)
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_values))
+                    valstr = ', '.join(map(my_str, full_valid_values))
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
@@ -258,7 +288,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     else:
         validation_report.add_success(f"OK -- No columns with empty values were found\n")
 
-    ## Report invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
+    ## Report summary of invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
     if len(invalid_required) > 0:
         validation_report.add_error(f"ERROR -- {len(invalid_required)} required columns with invalid values: {', '.join(invalid_required)}")
         errors_counter += len(invalid_required)
@@ -270,6 +300,16 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
         warnings_counter += len(invalid_optional)
     else:
         validation_report.add_success(f"OK -- No invalid values were found in optional columns\n")
+
+    # Provide a detailed non-redundant list of invalid values per column
+    if len(invalid_entries) > 0:
+        lines = []
+        lines.append("**Details of invalid values by column (i.e. not matching CDE controlled vocabularies):**")
+        for opt_req_flag, column_name, n_invalid_vals, valid_descr, invalid_descr in invalid_entries:
+            lines.append(f"- {opt_req_flag.lower()} column **{column_name}** has {n_invalid_vals} invalid values\n"
+                         f"  - Invalid values: {invalid_descr}\n"
+                         f"  - Expected: {valid_descr}\n")
+        validation_report.add_markdown("\n".join(lines))
 
     return table_df, validation_report, errors_counter, warnings_counter
 

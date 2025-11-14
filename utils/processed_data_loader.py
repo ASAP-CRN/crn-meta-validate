@@ -35,13 +35,20 @@ class ProcessedDataLoader:
         file_warnings: Dict[str, List[str]] = {}
         row_counts: Dict[str, int] = {}
 
+        # Keep a copy of each table before filling empty cells so downstream
+        # UI (Step B) can preview and customize how missing values are handled.
+        raw_tables_before_fill = st.session_state.get("raw_tables_before_fill", {})
+
         # Accept either a dict mapping filenames->payloads or a list of {name, bytes, delimiter}
         if isinstance(processed_files, dict):
             items_iter = processed_files.items()
         elif isinstance(processed_files, list):
-            items_iter = [(item.get('name', f'table_{i}'), item) for i, item in enumerate(processed_files)]
+            items_iter = [
+                (item.get("name", f"table_{index}"), item)
+                for index, item in enumerate(processed_files)
+            ]
         else:
-            raise TypeError('processed_files must be a dict or a list of {name, bytes, delimiter}')
+            raise TypeError("processed_files must be a dict or a list of {name, bytes, delimiter}")
 
         for filename, payload in items_iter:
             raw_bytes, separator = self._extract_bytes_and_separator(payload)
@@ -62,19 +69,13 @@ class ProcessedDataLoader:
             if used_errors_mode == "replace":
                 warnings_for_file.append("Undecodable bytes were replaced during read.")
 
-            ## Filled out empty cells and show before/after if changes were made
-            table_df_before = table_df.copy()
+            # Store the raw table before filling out empty cells
+            raw_tables_before_fill[table_name] = table_df.copy()
+
+            # Normalize empty/textual-null cells to a single NA token
             table_df = self._fillout_empty_cells(table_df)
 
-            if not table_df_before.equals(table_df):
-                st.info(f"**{filename}** -- before and after filling out empty cells:")
-                # At least one cell was filled — show before/after
-                st.dataframe(table_df_before.head(5))
-                st.dataframe(table_df.head(5))
-            else:
-                st.info(f"**{filename}** -- no changes after filling out empty cells")
-
-            ## Store results
+            # Store results for validation
             input_dataframes_dic[table_name] = table_df
             table_names.append(table_name)
             file_warnings[filename] = warnings_for_file
@@ -83,6 +84,8 @@ class ProcessedDataLoader:
                 row_counts[table_name] = int(len(table_df.index))
             except Exception:
                 row_counts[table_name] = 0
+
+        st.session_state["raw_tables_before_fill"] = raw_tables_before_fill
 
         return table_names, input_dataframes_dic, file_warnings, row_counts
 

@@ -50,6 +50,7 @@ def read_CDE(
         "DataType",
         "Required",
         "Validation",
+        "FillNull",
     ]
     
     # Configuration flags
@@ -213,6 +214,11 @@ def clean_cde_dataframe(
         cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
         cde_dataframe = cde_dataframe.reset_index(drop=True)
     
+    # Ensure all requested columns in column_list exist, even if missing in raw CDE
+    for required_column_name in column_list:
+        if required_column_name not in cde_dataframe.columns:
+            cde_dataframe[required_column_name] = pd.NA
+
     # Select only required columns and drop rows with no table name
     cde_dataframe = cde_dataframe.loc[:, column_list]
     cde_dataframe = cde_dataframe.dropna(subset=["Table"])
