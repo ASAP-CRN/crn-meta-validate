@@ -10,7 +10,6 @@ class ProcessedDataLoader:
     Loads processed files (dict or list) into DataFrames,
     handling encodings, bad lines, and fills out missing values with a string defined by NULL in _fillout_empty_cells()
     """
-
     def __init__(
         self,
         candidate_encodings: List[str] | None = None,
