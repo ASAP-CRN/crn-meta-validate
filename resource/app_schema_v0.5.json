@@ -42,7 +42,7 @@
     ]
   },
   "table_names": {
-    "mandatory": [
+    "required": [
       "STUDY",
       "PROTOCOL",
       "SAMPLE",

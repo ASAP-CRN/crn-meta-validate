@@ -77,8 +77,8 @@ SPECIES = app_schema['table_categories']['species']
 TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
 MODALITIES = app_schema['table_categories']['modalities']
 
-# Extract mandatory table names
-MANDATORY_TABLES = app_schema['table_names']['mandatory']
+# Extract required table names
+REQUIRED_TABLES = app_schema['table_names']['required']
 
 # Version display for UI
 version_display = f"Web app {webapp_version} - CDE {cde_version}"
@@ -140,7 +140,7 @@ def main():
 
         Two types of issues will be reported:
         - **Errors**: Must be **fixed by the data contributors** before uploading metadata to ASAP CRN Google buckets.
-        - **Warnings**: Recommended to be fixed before uploading, but not mandatory.
+        - **Warnings**: Recommended to be fixed before uploading, but not required.
 
         We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions!
         
@@ -209,7 +209,7 @@ def main():
     tissue_or_cell_success = False
     modality_success = False
 
-    table_list = MANDATORY_TABLES.copy()
+    table_list = REQUIRED_TABLES.copy()
 
     if species in SPECIES:
         species_success = True

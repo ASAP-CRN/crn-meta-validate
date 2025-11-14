@@ -277,12 +277,12 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
     ## Report missing columns, either required (throw errors) or optional (throw warnings)
     if len(missing_required) > 0:
-        validation_report.add_error(f"❌ -- Missing {len(missing_required)}/{total_required} **mandatory** columns in *{table_name}*: {', '.join(missing_required)}")
+        validation_report.add_error(f"❌ -- Missing {len(missing_required)}/{total_required} **required** columns in *{table_name}*: {', '.join(missing_required)}")
         for column in missing_required:
             table_df[column] = NULL
             errors_counter += 1
     else:
-        validation_report.add_success(f"✅ -- All {total_required} **mandatory** columns are present in *{table_name}*")
+        validation_report.add_success(f"✅ -- All {total_required} **required** columns are present in *{table_name}*")
 
     if len(missing_optional) > 0:
         validation_report.add_warning(f"⚠️ -- Missing {len(missing_optional)}/{total_optional} **optional** columns in *{table_name}*: {', '.join(missing_optional)}")
@@ -296,7 +296,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     if len(null_columns) > 0:
         for opt_req, column, count in null_columns:
             if opt_req == "REQUIRED":
-                validation_report.add_error(f"❌ -- **mandatory** column _**{column}**_ has {count} empty values. Please fill them out with valid CDE values or 'Unknown' if that's the case, before uploading to Google buckets")
+                validation_report.add_error(f"❌ -- **required** column _**{column}**_ has {count} empty values. Please fill them out with valid CDE values or 'Unknown' if that's the case, before uploading to Google buckets")
                 errors_counter += 1
             else:
                 validation_report.add_warning(f"⚠️ -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid CDE values or not before uploading to Google buckets")
