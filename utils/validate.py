@@ -6,7 +6,10 @@ Google Sheets or local CSV files.
 
 """
 
-NULL = "NA" ## Will be used to fill in missing values in *_sanitized.csv files
+from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
+
+NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitized.csv files
+
 
 import pandas as pd
 import re
@@ -56,8 +59,6 @@ def read_meta_table(table_path):
     if table_df.columns[0] == "Unnamed: 0":
         table_df = table_df.drop(columns=["Unnamed: 0"])
         
-    # table_df.replace({"":NULL, pd.NA:NULL, "none":NULL, "nan":NULL, "Nan":NULL}, inplace=True)
-
     return table_df
 
 def parse_literal_list(raw):
@@ -168,15 +169,11 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     warnings_counter = 0
 
     ############
-    #### Replace empty strings and various null representations with NULL (which is "NA")
-    table_df.replace({"":NULL,
-                pd.NA:NULL,
-                "none":NULL,
-                "nan":NULL,
-                "Nan":NULL,
-                "N/A":NULL,
-                "n/a":NULL},
-                inplace=True)
+    original_df = table_df.copy()
+
+    ############
+    #### Replace empty strings and various null representations with NULL_SENTINEL
+    table_df = normalize_null_like_dataframe(table_df, sentinel=NULL)
     
     def my_str(x):
         return f"'{str(x)}'"
@@ -214,13 +211,12 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
             # Test that Integer columns are all int or NULL, flag NULL entries
             if datatype.item() == "Integer":
                 print(f"recoding {column} as int")
-                # table_df.replace(to_replace=r"unknown",value=NULL,regex=True,case=False,inplace=True)
                 try:
                     table_df[column].apply(lambda x: int(x) if x!=NULL else x )
                 except Exception as e:
                     invalid_values = table_df[column].unique()
                     n_invalid = invalid_values.shape[0]
-                    valstr = "int or NULL ('NA')"
+                    valstr = f"int or NULL ('{NULL_SENTINEL}')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
@@ -233,7 +229,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
                 except Exception as e:
                     invalid_values = table_df[column].unique()
                     n_invalid = invalid_values.shape[0]
-                    valstr = "float or NULL ('NA')"
+                    valstr = f"float or NULL ('{NULL_SENTINEL}')"
                     invalstr = ', '.join(map(my_str,invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
@@ -268,9 +264,12 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
             else:
                 pass
             
-            n_null = (table_df[column]==NULL).sum()
-            if n_null > 0:            
-                null_columns.append((opt_req, column, n_null))
+            if column in original_df.columns:
+                missing_mask_for_column = compute_missing_mask(original_df[column])
+                n_null = int(missing_mask_for_column.sum())
+                if n_null > 0:
+                    null_columns.append((opt_req, column, n_null))
+
 
     ############
     #### Compose report, get error and warning counters to either provide the user with a download link for the sanitized file or not

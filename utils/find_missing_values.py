@@ -1,40 +1,79 @@
 import pandas as pd
 
-# Helper: compute the mask of cells considered "missing" according to this app rules (not Pandas default)
+# Canonical sentinel used in sanitized CSVs for null-like entries
+NULL_SENTINEL = "NA"
+
+# Textual representations that should be normalized to the sentinel when cleaning
+_NULL_LIKE_STRINGS = {
+    "none",
+    "None",
+    "nan",
+    "NaN",
+    "NAN",
+    "N/A",
+    "n/a",
+}
+
+
 def compute_missing_mask(column_series: pd.Series) -> pd.Series:
     """
     Compute a boolean mask indicating missing values in a pandas Series.
 
-    Parameters
-    ----------
-    column_series : pd.Series
-        The column to inspect.
-    Returns
-    -------
-    pd.Series
-        Boolean Series where True indicates a missing value.
+    For the purposes of the app's "missing value" workflows, a value is
+    considered missing if and only if it is either:
+
+    * a true pandas missing value (pd.NA / NaN), or
+    * an empty / whitespace-only string.
+
+    Textual null-like tokens such as 'NA', 'none', or 'nan' are treated as
+    regular, non-missing values here so that they are allowed as explicit
+    FillNull choices without being re-flagged as missing later on.
     """
     column_as_string = column_series.astype("string")
     is_blank = column_as_string.str.fullmatch(r"\s*")
-    is_null_like = column_as_string.isin(
-        ["none", "None", "nan", "NaN", "NAN"],
-    )
-    return column_as_string.isna() | is_blank | is_null_like
+    return column_as_string.isna() | is_blank
+
+
+def normalize_null_like_series(column_series: pd.Series, sentinel: str = NULL_SENTINEL) -> pd.Series:
+    """
+    Normalize empty and textual null-like values in a Series to a single sentinel string.
+
+    This is used when producing sanitized CSVs and for downstream validation
+    that expects a uniform placeholder for null-like entries.
+    """
+    column_as_string = column_series.astype("string")
+
+    # Normalize true NA values and whitespace-only strings
+    is_blank = column_as_string.str.fullmatch(r"\s*")
+    column_as_string = column_as_string.mask(is_blank, sentinel)
+    column_as_string = column_as_string.fillna(sentinel)
+
+    # Normalize configured textual null-like tokens
+    if _NULL_LIKE_STRINGS:
+        mapping = {token: sentinel for token in _NULL_LIKE_STRINGS}
+        column_as_string = column_as_string.replace(mapping)
+
+    return column_as_string
+
+
+def normalize_null_like_dataframe(dataframe: pd.DataFrame, sentinel: str = NULL_SENTINEL) -> pd.DataFrame:
+    """
+    Return a copy of *dataframe* where all empty / null-like entries have
+    been normalized to *sentinel*.
+    """
+    normalized = dataframe.copy()
+    for column_name in normalized.columns:
+        normalized[column_name] = normalize_null_like_series(
+            normalized[column_name],
+            sentinel=sentinel,
+        )
+    return normalized
+
 
 def table_has_missing_values(dataframe: pd.DataFrame) -> bool:
     """
     Determine whether a DataFrame contains missing values using the
-    same logic as Streamlit UI (compute_missing_mask).
-
-    Parameters
-    ----------
-    dataframe : pandas.DataFrame
-        The table to inspect.
-
-    Returns
-    -------
-    bool
-        True if the table contains at least one missing value, False otherwise.
+    same logic as compute_missing_mask().
     """
     for column_name in dataframe.columns:
         column_series = dataframe[column_name]
@@ -44,20 +83,11 @@ def table_has_missing_values(dataframe: pd.DataFrame) -> bool:
 
     return False
 
+
 def tables_with_missing_values(input_dataframes_dic: dict) -> list:
     """
     Return a list of table names that contain missing values,
     based on compute_missing_mask().
-
-    Parameters
-    ----------
-    input_dataframes_dic : dict
-        Mapping of table_name → pandas.DataFrame.
-
-    Returns
-    -------
-    list
-        Table names with missing values.
     """
     tables_with_missing_values_ls = []
 

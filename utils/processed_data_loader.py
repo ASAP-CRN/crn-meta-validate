@@ -4,6 +4,8 @@ import re
 import pandas as pd
 from typing import Dict, Tuple, List, Any
 import streamlit as st
+from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe
+
 
 class ProcessedDataLoader:
     """
@@ -90,20 +92,14 @@ class ProcessedDataLoader:
 
     # ---------- internals ----------
 
-    def _fillout_empty_cells(self, table_df, na_token: str = "NA"):
+    def _fillout_empty_cells(self, table_df, na_token: str = NULL_SENTINEL):
         """Empty/NULL-like values to a single token so validation and exports are consistent.
-        - Replaces whitespace-only or empty strings with the NA token.
-        - Maps common textual nulls (none/None/nan/NaN/NAN) to the NA token.
+
+        This delegates to utils.find_missing_values.normalize_null_like_dataframe()
+        so that the same rules are used across the app.
         """
-        table_df = table_df.replace(to_replace=r"^\s*$", value=na_token, regex=True)
-        table_df = table_df.replace({
-            "none": na_token,
-            "None": na_token,
-            "nan":  na_token,
-            "NaN":  na_token,
-            "NAN":  na_token,
-            })
-        return table_df
+        return normalize_null_like_dataframe(table_df, sentinel=na_token)
+
     
     def _extract_bytes_and_separator(self, payload: Any) -> Tuple[bytes, str]:
         if isinstance(payload, dict):
