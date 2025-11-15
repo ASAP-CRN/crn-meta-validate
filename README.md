@@ -45,39 +45,47 @@ Metadata validator for ASAP CRN metadata (v0.4)
 <!-- ABOUT THE APP -->
 ## About the app
 
-Welcome to the ASAP CRN metadata QC app. This app assists ASAP Team _data contributors_ to QC their metadata **`{TABLE}.csv` files** (incl. STUDY.csv, PROTOCOL.csv, SUBJECT.csv, etc.). The app will look for and fix common issues (e.g. fill out missing values with NA) and suggest changes that _data contributors_ need to address to align files to ASAP CRN standards.
+This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.    
+
+We do this in three steps:    
+**Step 1.** Set up your run, indicate type of dataset to determine expected tables and columns and upload your files.    
+**Step 2.** The app will help to fix common issues, like non-comma delimiters and missing values.    
+**Step 3.** The app reports missing columns and value mismatches vs. the [ASAP CRN Common Data Elements (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?).    
+
+Two types of issues will be reported:    
+* Errors: Must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.    
+* Warnings: Recommended to be fixed before uploading, but not required.    
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-1. Go to the [web app](https://asap-meta-qc.streamlit.app/)
-2. In the drop-down menus, specify the following for your dataset:
-    * Species
-    * Tissue/Cell origin
-    * Modality
-3. A left-side menu will appear, showing the expected `{TABLE}.csv` files for your dataset. Drag & drop or click `Browse files` to upload your files.
-4. Files will be uploaded automatically and log messages will appear in the left-side menu.
-5. In the `Choose file to validate` drop-down menu, select the {TABLE} that you want to validate.
-    * It will be processed automatically, and log messages will appear underneath.
-6. An initial file check will look for common issues (e.g. non-comma delimiters and empty values). The app will ask if you want it to fix those issues.
-7. A second check will compare the file contents vs. the latest version of the [ASAP CRN controlled vocabilaries (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
-8. Review the validation results:
-    * **If issues are found**, two Download buttons will appear:
-      * `Download your {TABLE}_log.txt`
-        * **ERRORS**: are issues that _data contributors_ **must** fix before uploading files to ASAP Google Cloud buckets.
-        * **WARNINGS**: are issues that _data contributors_ **may optionally** address depending on the context.
-      * `Download a sanitized {TABLE}.csv`
-        * An updated file with common issues fixed (e.g., missing values filled with NA).
-    * **If no issues are found**, a `No issues found` message will appear
-9. Repeat steps 7-8 for each `{TABLE}.csv` file you uploaded.
+1. Go to the [web app](https://asap-meta-qc.streamlit.app/)    
+2. Set up your run:   
+    * In the drop-down menus, specify the following properties for your dataset: `Species`, `Tissue/Cell origin` and `Modality`    
+    * A left-side menu will appear, showing the list if os expected `{TABLE}.csv` files for your dataset.   
+    * You can Drag & drop, or  Browse your files to upload.
+3. Files will be uploaded automatically and log messages will appear in the left-side menu.   
+4. For each file, the app will look for non-comma delimiters and provide buttons to accept or reject the changes.
+5. For each file, the app will look for with missing values and provide options to fill them out.
+    * If changes were made to fill out missing values, a preview of the sanitized `{TABLE}` will be shown.
+6. The sanitized `{TABLE}` will be compared vs the [ASAP CRN controlled vocabilaries (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
+7. A report will be provided, including:
+    * ✅ **Successful** steps    
+    * ❌ **Errors** to be fixed by _data contributors_ before uploading sanitized files to ASAP Google Cloud buckets   
+    * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration   
+8. At the end, two files can be downloaded:
+    * A `{TABLE}.md` markup file with the run report   
+    * The `{TABLE}_sanitized.csv` file. Note: button will be enabled only if no errors were found.
+9. Repeat steps 6 to 8 for each `{TABLE}.csv` file you uploaded.
 10. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
 11. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.
 
 **Notes:**    
-a) If you have multiple datasets to validate, complete steps 1-8 for each dataset separately.     
-b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled vocabularies) will be used automatically. [Contact us](#contact) if you need a different version or have questions.
+a) If you have multiple datasets to validate, complete steps 2 to 11 for each dataset separately.     
+b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled vocabularies) will be used automatically.    
+c) We are here to help. [Contact us](#contact) if you need a different version or have questions.
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
@@ -134,7 +142,9 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- CONTACT -->
 ## Contact
-Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, include the log {TABLE}.md file(s) that you get from the app (if any) and a screenshot of the run setup.
+Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, please include:   
+* The {TABLE}.md file(s) that you get from the app (if you reached that point).
+* Screenshots of the run setup and step where you got the issues(s).
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
