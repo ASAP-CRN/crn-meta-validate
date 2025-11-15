@@ -596,14 +596,12 @@ def main():
                 if fillnull_values:
                     for fill_value in fillnull_values:
                         option_labels.append(f'Fill out with "{fill_value}"')
-                    option_labels.append("Leave empty")
                 else:
                     # Fallback to DataType-based options if FillNull is not defined
                     if datatype_lower in ("integer", "float"):
                         option_labels = [
                             "Fill out with N/A",
                             "Fill out with 0",
-                            "Leave empty",
                         ]
                     elif "enum" in datatype_lower:
                         suggested_label = "Fill out with first allowed value from Validation"
@@ -611,13 +609,11 @@ def main():
                             suggested_label,
                             'Fill out with "Unknown"',
                             'Fill out with "Other"',
-                            "Leave empty",
                         ]
                     else:
                         option_labels = [
                             "Fill out with Unknown",
                             "Fill out with NA",
-                            "Leave empty",
                         ]
 
                 existing_choice = required_column_choices.get(field_name, option_labels[0])
@@ -735,13 +731,11 @@ def main():
                 if fillnull_values:
                     for fill_value in fillnull_values:
                         option_labels.append(f'Fill out with "{fill_value}"')
-                    option_labels.append("Leave empty")
                 else:
                     # Fallback to simple defaults if FillNull is not defined
                     option_labels = [
                         "Fill out with Unknown",
                         "Fill out with NA",
-                        "Leave empty",
                     ]
 
                 existing_choice_opt = optional_column_choices.get(field_name, option_labels[0])
@@ -885,8 +879,6 @@ def main():
                                 fill_value = "N/A"
                             elif user_choice == "Fill out with 0":
                                 fill_value = "0"
-                            elif user_choice == "Leave empty":
-                                fill_value = ""
                         elif "enum" in datatype_lower:
                             # Try to parse Validation as a Python list and use the first allowed value
                             first_allowed = None
@@ -904,16 +896,12 @@ def main():
                                 fill_value = "Unknown"
                             elif user_choice == 'Fill out with "Other"':
                                 fill_value = "Other"
-                            elif user_choice == "Leave empty":
-                                fill_value = ""
                         else:
                             # Treat everything else as string
                             if user_choice == "Fill out with Unknown":
                                 fill_value = "Unknown"
                             elif user_choice == "Fill out with NA":
                                 fill_value = "NA"
-                            elif user_choice == "Leave empty":
-                                fill_value = ""
 
                 if fill_value is None:
                     return series
