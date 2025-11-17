@@ -208,30 +208,61 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
 
-            # Test that Integer columns are all int or NULL, flag NULL entries
+            # Test that Integer columns are all int or NULL or allowed FillNull strings
             if datatype.item() == "Integer":
-                try:
-                    table_df[column].apply(lambda x: int(x) if x!=NULL else x )
-                except Exception as e:
-                    invalid_values = table_df[column].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = f"int or NULL ('{NULL_SENTINEL}')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
-                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
+                # Allowed special non-numeric tokens for this column (e.g. "Not Reported", "Unknown", "NA")
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+                allowed_specials = set(fillnull_values)
+                allowed_specials.add(NULL_SENTINEL)
 
-            # Test that Float columns are all float or NULL, flag NULL entries
-            elif datatype.item() == "Float":
-                # table_df.replace(to_replace=r"unknown",value=NULL,regex=True,case=False,inplace=True)
-                try:
-                    table_df[column] = table_df[column].apply(lambda x: float(x) if x!=NULL else x )
-                except Exception as e:
-                    invalid_values = table_df[column].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = f"float or NULL ('{NULL_SENTINEL}')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
+                entries = table_df[column]
+
+                # Values that match allowed FillNull tokens (including canonical NULL) are always valid
+                is_special = entries.isin(allowed_specials)
+
+                # For the remaining values, require that they are integer-like numbers
+                numeric = pd.to_numeric(entries, errors="coerce")
+                is_integer_numeric = numeric.notna() & ((numeric % 1) == 0)
+
+                valid_mask = is_special | is_integer_numeric
+                invalid_mask = ~valid_mask
+
+                invalid_values = entries[invalid_mask].unique()
+                n_invalid = invalid_values.shape[0]
+                if n_invalid > 0:
+                    valstr = f"int or NULL ('{NULL_SENTINEL}') or FillNull values ({', '.join(map(my_str, fillnull_values))})"
+                    invalstr = ', '.join(map(my_str, invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
-                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
+                    invalid_required.append(column) if opt_req == "REQUIRED" else invalid_optional.append(column)
+
+            # Test that Float columns are all float or NULL or allowed FillNull strings
+            elif datatype.item() == "Float":
+                # Allowed special non-numeric tokens for this column (e.g. "Not Reported", "Unknown", "NA")
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+                allowed_specials = set(fillnull_values)
+                allowed_specials.add(NULL_SENTINEL)
+
+                entries = table_df[column]
+
+                # Values that match allowed FillNull tokens (including canonical NULL) are always valid
+                is_special = entries.isin(allowed_specials)
+
+                # For the remaining values, require that they are float-like numbers
+                numeric = pd.to_numeric(entries, errors="coerce")
+                is_float_numeric = numeric.notna()
+
+                valid_mask = is_special | is_float_numeric
+                invalid_mask = ~valid_mask
+
+                invalid_values = entries[invalid_mask].unique()
+                n_invalid = invalid_values.shape[0]
+                if n_invalid > 0:
+                    valstr = f"float or NULL ('{NULL_SENTINEL}') or FillNull values ({', '.join(map(my_str, fillnull_values))})"
+                    invalstr = ', '.join(map(my_str, invalid_values))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req == "REQUIRED" else invalid_optional.append(column)
 
             # Test that Enum types match CDE Validation (controlled vocabularies) or FillNull (allowed null representations)
             elif datatype.item() == "Enum":
