@@ -408,19 +408,32 @@ def main():
 
         for data_file in valid_files:
             file_key = delimiter_handler.get_file_key(data_file.name, data_file.size)
-            if file_key in st.session_state.get('delimiter_decisions', {}):
-                file_content = data_file.getvalue()
-                detected_delimiter, confidence, preview_df = delimiter_handler.detect_delimiter(file_content, data_file.name)
-                delimiter_name = delimiter_handler.get_delimiter_name(detected_delimiter)
-                
-                decision = st.session_state.delimiter_decisions[file_key]
-                # Decision is stored as a dict with 'action' key
-                action = decision.get('action') if isinstance(decision, dict) else decision
-                if action == 'convert':
-                    st.sidebar.success(f"✓ {data_file.name} converted from {delimiter_name} to comma")
-                else:
-                    st.sidebar.info(f"✗ {data_file.name} kept with {delimiter_name} delimiter")
-        
+            file_content = data_file.getvalue()
+            detected_delimiter, confidence, preview_df = delimiter_handler.detect_delimiter(
+                file_content,
+                data_file.name,
+            )
+            delimiter_name = delimiter_handler.get_delimiter_name(detected_delimiter)
+
+            # Look up the user's delimiter decision if it exists; otherwise default to 'keep'
+            decisions = st.session_state.get('delimiter_decisions', {})
+            decision = decisions.get(file_key)
+            if isinstance(decision, dict):
+                action = decision.get('action')
+            elif isinstance(decision, str):
+                action = decision
+            else:
+                action = 'keep'
+
+            if action == 'convert':
+                st.sidebar.success(
+                    f"✓ {data_file.name} converted from {delimiter_name} to comma"
+                )
+            else:
+                st.sidebar.success(
+                    f"✓ {data_file.name} originally {delimiter_name} delimited"
+                )
+
         # Log invalid files (strikethrough)
         if len(invalid_files) > 0:
             st.sidebar.markdown("**Invalid files (skipped):**")
