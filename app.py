@@ -271,7 +271,7 @@ def main():
     ############
     #### Add Reset button and version info to sidebar (ALWAYS VISIBLE)
     st.sidebar.markdown("---")
-    
+
     st.markdown("""
                 <style>
                 div.stButton > button[kind="primary"] {
@@ -281,25 +281,18 @@ def main():
                 """, unsafe_allow_html=True)
 
     if st.sidebar.button("🔄 Reset App", use_container_width=True, type="primary"):
-        st.cache_data.clear()  # Clear all cached data
-        st.session_state.file_uploader_key += 1  # Increment the file uploader key to reset it
+        # Clear all caches
+        st.cache_data.clear()
+        st.cache_resource.clear()
 
-        # Clear delimiter decisions and invalid files
-        if "delimiter_decisions" in st.session_state:
-            st.session_state.delimiter_decisions = {}
-        if "invalid_files" in st.session_state:
-            st.session_state.invalid_files = set()
+        # Fully reset Streamlit session state
+        st.session_state.clear()
 
-        # Also clear missing-values UI state so Apply starts fresh
-        for key in [
-            "missing_value_choices",
-            "prepared_tables",
-            "raw_tables_before_fill",
-            "missing_value_logic_version",
-            "last_selected_table_for_mv",
-        ]:
-            if key in st.session_state:
-                del st.session_state[key]
+        # IMPORTANT: reinitialize file_uploader_key with a new unique value
+        # so the file uploader widget is rebuilt and does not retain old files
+        import time as _reset_time_module
+        st.session_state.file_uploader_key = int(_reset_time_module.time() * 1000)
+
         st.rerun()
 
     ############
