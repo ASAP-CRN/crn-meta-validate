@@ -6,6 +6,7 @@ https://github.com/ASAP-CRN/crn-meta-validate
 
 Web app production version: https://asap-meta-qc.streamlit.app/
 Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app/
+Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files
 
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
