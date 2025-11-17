@@ -174,7 +174,7 @@ def main():
         st.markdown('<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
             unsafe_allow_html=True)
         species = st.selectbox(
-            "",
+            "Dataset species",
             SPECIES,
             label_visibility="collapsed",
             index=None
@@ -185,7 +185,7 @@ def main():
         st.markdown('<h3 style="font-size: 25px;">Choose tissue/cell <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
         tissue_or_cell = st.selectbox(
-            "",
+            "Tissue or cell source",
             TISSUES_OR_CELLS,
             label_visibility="collapsed",
             index=None
@@ -196,7 +196,7 @@ def main():
         st.markdown('<h3 style="font-size: 25px;">Choose modality <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
         modality = st.selectbox(
-            "",
+            "Modality",
             MODALITIES,
             label_visibility="collapsed",
             index=None
@@ -384,8 +384,6 @@ def main():
         #### Process valid files
         loader = ProcessedDataLoader()
         table_names, input_dataframes_dic, file_warnings, row_counts = loader.load(processed_files)
-        print(f"Loaded tables: {input_dataframes_dic}")
-
         missing_tables_ls = tables_with_missing_values(input_dataframes_dic)
 
         # Surface per-file warnings in the UI
@@ -448,7 +446,7 @@ def main():
     st.markdown('<h3 style="font-size: 25px;">Choose a file to continue <span style="color: red;">*</span></h3>',
                 unsafe_allow_html=True)
     selected_table_name = st.selectbox(
-        "",
+        "Table to fill",
         table_names,
         label_visibility="collapsed",
     )
@@ -981,6 +979,15 @@ def main():
                 unsafe_allow_html=True
             )
             st.dataframe(prepared_df.head(10))
+
+            #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
+            prepared_csv = prepared_df.to_csv(index=False)
+            st.download_button(
+                label=f"Click here to download this prepared version of **_{selected_table_name}_**. ⚠️ Note it hasn't been CDE validated)",
+                data=prepared_csv,
+                file_name=f"{selected_table_name}_prepared.csv",
+                mime="text/csv",
+            )
 
         #### Pause if no files loaded for CDE validation
         st.markdown("---")

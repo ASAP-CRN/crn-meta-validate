@@ -210,7 +210,6 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
             # Test that Integer columns are all int or NULL, flag NULL entries
             if datatype.item() == "Integer":
-                print(f"recoding {column} as int")
                 try:
                     table_df[column].apply(lambda x: int(x) if x!=NULL else x )
                 except Exception as e:
@@ -239,16 +238,13 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
                 # Get list of allowed Valid values from CDE
                 validation_raw = specific_cde_df.loc[entry_idx,"Validation"].item()
                 valid_values = parse_literal_list(validation_raw)
-                print(f"After_eval_forced {column} type:{type(valid_values)} with Validation: {valid_values}")
 
                 # Get list of allowed FillNull values from CDE
                 fillnull_values_raw = specific_cde_df.loc[entry_idx,"FillNull"].item()
                 fillnull_values = parse_literal_list(fillnull_values_raw)
-                print(f"After_eval_forced {column} type:{type(fillnull_values)} with FillNull: {fillnull_values}")
 
                 # Merge Valid + FillNull
                 valid_and_fillnull_values = list(set(list(valid_values + fillnull_values)))
-                print(f"All valid values for column {column}: {valid_and_fillnull_values}")
 
                 entries = table_df[column]
                 valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
