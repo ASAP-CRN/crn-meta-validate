@@ -86,7 +86,7 @@ Two types of issues will be reported:
 a) If you have multiple datasets to validate, complete steps 2 to 11 for each dataset separately.     
 b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled vocabularies) will be used automatically.    
 c) We are here to help. [Contact us](#contact) if you need a different version or have questions.    
-d) Example infiles can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files
+d) Example *csv infiles can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files
 )
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>

@@ -69,5 +69,6 @@
     "cell_specific": [
       "CELL"
     ]
-  }
+  },
+  "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files"
 }

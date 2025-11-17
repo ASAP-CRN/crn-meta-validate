@@ -145,7 +145,8 @@ def main():
         - **Errors**: Must be **fixed by the data contributors** before uploading metadata to ASAP CRN Google buckets.
         - **Warnings**: Recommended to be fixed before uploading, but not required.
 
-        We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions!
+        We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions!     
+        Example *csv infiles can be downloaded from [here]({app_schema['example_input_files_url']}).
         
 
         """,
