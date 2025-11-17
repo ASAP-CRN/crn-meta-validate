@@ -646,7 +646,7 @@ def main():
                 hover_text_escaped = html.escape(hover_text, quote=True)
 
                 st.markdown(
-                    f'* Required column <span title="{hover_text_escaped}"><strong>{field_name}</strong></span> '
+                    f'* <strong>Required</strong> column <span title="{hover_text_escaped}"><strong>{field_name}</strong></span> '
                     f'has {missing_count} empty values. (DataType: {datatype_text})',
                     unsafe_allow_html=True,
                 )
@@ -767,7 +767,7 @@ def main():
                 hover_text_opt_escaped = html.escape(hover_text_opt, quote=True)
 
                 st.markdown(
-                    f'* Optional column <span title="{hover_text_opt_escaped}"><strong>{field_name}</strong></span> '
+                    f'* <strong>Optional</strong> column <span title="{hover_text_opt_escaped}"><strong>{field_name}</strong></span> '
                     f'has {missing_count} empty values. (DataType: {datatype_text})',
                     unsafe_allow_html=True,
                 )
@@ -998,9 +998,9 @@ def main():
             #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
             prepared_csv = prepared_df.to_csv(index=False)
             st.download_button(
-                label=f"Click here to download this prepared version of **_{selected_table_name}_**. ⚠️ Note it hasn't been CDE validated)",
+                label=f"Click here to download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules)",
                 data=prepared_csv,
-                file_name=f"{selected_table_name}_prepared.csv",
+                file_name=f"{selected_table_name}_before_cde_comparison.csv",
                 mime="text/csv",
             )
 
@@ -1065,10 +1065,6 @@ def main():
         st.cache_data.clear()
         st.cache_resource.clear()
 
-    # def cach_clean():
-    #     time.sleep(1)
-    #     st.runtime.legacy_caching.clear_cache()
-
     report_content = report.get_log()
     table_content = validated_output_df.to_csv(index=False)
 
@@ -1082,14 +1078,15 @@ def main():
     )
 
     # Download button (or disabled mock) for sanitized CSV depending on errors
-    label_for_sanitized = f"Download a **{selected_table_name}_sanitized.csv** file"
+    label_for_sanitized = f"Download a **{selected_table_name}_after_cde_comparison.csv** file"
     label_for_sanitized_html = label_for_sanitized.replace("**", "<strong>", 1).replace("**", "</strong>", 1)
-    errors_counter = 0
+
+    # errors_counter = 0  # For testing, uncomment this line to simulate no errors
     if errors_counter == 0:
         st.download_button(
-            label=label_for_sanitized,   # Markdown works here
+            label=label_for_sanitized,
             data=table_content,
-            file_name=f"{selected_table_name}_sanitized.csv",
+            file_name=f"{selected_table_name}_after_cde_comparison.csv",
             mime="text/csv",
         )
     else:
@@ -1098,16 +1095,8 @@ def main():
                     """, unsafe_allow_html=True)
 
         st.markdown(f"""
-                    <button class="disabled-btn">{label_for_sanitized_html}<br><span style="font-size: 0.8em;">(File unavailable. Please fix errors before downloading sanitized file.)</span>
+                    <button class="disabled-btn">{label_for_sanitized_html}<br><span style="font-size: 0.8em;">(File unavailable. Errors must be fixed to download this file)</span>
                     """, unsafe_allow_html=True,)
-
-    #### TODO: Back button to re-select file
-    # left_col, right_col = st.columns([1, 4])
-    # with left_col:
-    #     if st.button("⬅️ Go back to select a file"):
-    #         # st.session_state.app_step = "choose-a-file-to-continue"
-    #         st.session_state.app_step = "step-2-fix-common-issues-non-comma-delimiters-and-missing-values"
-    #         st.experimental_rerun()
         
 if __name__ == "__main__":
 

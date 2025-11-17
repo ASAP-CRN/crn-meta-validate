@@ -317,7 +317,8 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
         lines = []
         lines.append("**Details of invalid values by column (i.e. not matching CDE controlled vocabularies):**")
         for opt_req_flag, column_name, n_invalid_vals, valid_descr, invalid_descr in invalid_entries:
-            lines.append(f"- {opt_req_flag.lower()} column **{column_name}** has {n_invalid_vals} invalid values\n"
+            Column_type = opt_req_flag[0] + opt_req_flag[1:].lower()
+            lines.append(f"- **{Column_type}** column **{column_name}** has {n_invalid_vals} invalid values\n"
                          f"  - Invalid values: {invalid_descr}\n"
                          f"  - Expected: {valid_descr}\n")
         validation_report.add_markdown("\n".join(lines))
