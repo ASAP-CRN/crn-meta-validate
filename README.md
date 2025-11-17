@@ -35,9 +35,8 @@ Metadata validator for ASAP CRN metadata (v0.5)
       <li><a href="#installation">Installation</a></li>
       <li><a href="#contributing">Contributing</a></li>
     </ul>
+    <li><a href="#contact-report-bugs-and-request-features">Contact, report bugs and request features</a></li>
     <li><a href="#authors">Authors</a></li>
-    <li><a href="#authors">Authors</a></li>
-    <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
     <li><a href="#license">License</a></li>
   </ol>
