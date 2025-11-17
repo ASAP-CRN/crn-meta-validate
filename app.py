@@ -1001,7 +1001,7 @@ def main():
             #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
             prepared_csv = prepared_df.to_csv(index=False)
             st.download_button(
-                label=f"Click here to download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules)",
+                label=f"Click here to download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules",
                 data=prepared_csv,
                 file_name=f"{selected_table_name}_before_cde_comparison.csv",
                 mime="text/csv",

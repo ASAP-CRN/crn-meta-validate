@@ -36,6 +36,7 @@ Metadata validator for ASAP CRN metadata (v0.5)
       <li><a href="#contributing">Contributing</a></li>
     </ul>
     <li><a href="#authors">Authors</a></li>
+    <li><a href="#authors">Authors</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
     <li><a href="#license">License</a></li>
@@ -61,7 +62,9 @@ Two types of issues will be reported:
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-1. Go to the [web app](https://asap-meta-qc.streamlit.app/)    
+1. Go to the [web app]
+    * Production version [web app URL](https://asap-meta-qc.streamlit.app/) from `main` branch]
+    * Staging [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch
 2. Set up your run:   
     * In the drop-down menus, specify the following properties for your dataset: `Species`, `Tissue/Cell origin` and `Modality`    
     * A left-side menu will appear, showing the list if os expected `{TABLE}.csv` files for your dataset.   
@@ -122,9 +125,6 @@ docker run -d -p 8080:8080 <docker-container-name>
 streamlit run app.py
 ```
 
-### Staging web app
-Staging [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch
-
 ### Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have a suggestion that would make this better, please do this and thanks again!
 1. Fork the Project
@@ -135,18 +135,18 @@ Contributions are what make the open source community such an amazing place to l
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
+<!-- CONTACT, REPORT BUGS AND REQUEST FEATURES -->
+## Contact, report bugs and request features
+- Please use these templates to report bugs or request features:    
+  https://github.com/ASAP-CRN/crn-meta-validate/tree/main/.github/ISSUE_TEMPLATE
+- Email your report/request to [support@dnastack.com](support@dnastack.com)
+
+<p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
+
 <!-- AUTHORS -->
 ## Authors
 - [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
-
-<p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
-
-<!-- CONTACT -->
-## Contact
-Please send us an email to [support@dnastack.com](support@dnastack.com) describing the issue, please include:   
-* The {TABLE}.md file(s) that you get from the app (if you reached that point).
-* Screenshots of the run setup and step where you got the issues(s).
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
