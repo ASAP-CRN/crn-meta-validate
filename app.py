@@ -25,6 +25,7 @@ Webapp v0.5:
 * Assit users to fillout missing values on each column via radio buttons, free text or dropdown menus
 * Improved missing-values detection logic in utils/find_missing_values.py
 * Comparison of each column vs. CDE using both Validation and FillNull (newly added in v0.5)
+* Adds download button for pre-CDE-validated sanitized CSV
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
