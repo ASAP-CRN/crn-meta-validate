@@ -46,6 +46,7 @@ import ast
 from pathlib import Path
 import os, sys
 import re
+import time
 from io import StringIO
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde
 from utils.cde import read_CDE, get_table_cde
@@ -443,8 +444,16 @@ def main():
 
     ############
     #### Create file selection dropdown and run CDE validation for each selected file
-    st.markdown('<h3 style="font-size: 25px;">Choose a file to continue <span style="color: red;">*</span></h3>',
-                unsafe_allow_html=True)
+    #### Add anchor for "Go back to select a file" button
+    st.markdown(
+        '''
+        <h3 id="choose-a-file-to-continue"
+            style="font-size: 25px; scroll-margin-top: 80px;">
+            Choose a file to continue <span style="color: red;">*</span>
+        </h3>
+        ''',
+        unsafe_allow_html=True,
+    )
     selected_table_name = st.selectbox(
         "Table to fill",
         table_names,
@@ -1019,12 +1028,32 @@ def main():
     #### Display validation results and download buttons
     report.add_divider()
 
-    st.markdown(f'<p class="medium-font"> Download files:</p>',
-    unsafe_allow_html=True )
+    left_col, right_col = st.columns([3, 1])
+    with left_col:
+        st.markdown(
+            '<p class="medium-font"> Download files:</p>',
+            unsafe_allow_html=True,
+        )
+    with right_col:
+        st.markdown(
+            """
+            <div style="text-align: right;">
+                <a href="#choose-a-file-to-continue">
+                    <button>⬆️ Go back to select a file</button>
+                </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     def cach_clean():
         time.sleep(1)
-        st.runtime.legacy_caching.clear_cache()
+        st.cache_data.clear()
+        st.cache_resource.clear()
+
+    # def cach_clean():
+    #     time.sleep(1)
+    #     st.runtime.legacy_caching.clear_cache()
 
     report_content = report.get_log()
     table_content = validated_output_df.to_csv(index=False)
