@@ -1001,9 +1001,17 @@ def main():
         #### Pause if no files loaded for CDE validation
         st.markdown("---")
         st.markdown("## Step 3: Compare file without empty values vs. the CDE rules")
+
+        compare_state_key = f"compare_done_{selected_table_name}"
+        if compare_state_key not in st.session_state:
+            st.session_state[compare_state_key] = False
+
         compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
 
-        if not compare_clicked:
+        if compare_clicked:
+            st.session_state[compare_state_key] = True
+
+        if not st.session_state.get(compare_state_key, False):
             st.info("Review the preview above. When satisfied, click the button to compare this file vs. the CDE.")
             return
 
