@@ -33,3 +33,74 @@ div.stButton > button:first-child {
     text-align: center;
     padding: 10px;
 }
+
+/* Highlight cards for missing value sections */
+.missing-block {
+    border: 1px solid #d3d3d3;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0 1rem 0;
+    background-color: #fffdf7;
+}
+
+/* Missing values in Required columns */
+.missing-block-required {
+    border-left: 6px solid #c4403c;
+    background-color: #ffe9e9;
+}
+
+/* Missing values in Optional columns */
+.missing-block-optional {
+    border-left: 6px solid #dea15b;
+    background-color: #ffefde;
+}
+
+/* Avoids fonts appearing bold */
+.missing-block-title {
+    font-weight: 400;
+    margin-bottom: 0.25rem;
+}
+
+/* Custom Tooltip container hover-over, used instead of
+native solution because the native one has a delay to show up */
+
+/* Dotted underline and '?' tooltip */
+.missing-hover {
+    border-bottom: 2px dotted #aaa;
+    cursor: help;
+}
+
+/* Tooltip container */
+.tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+/* Tooltip bubble */
+.tooltip-wrapper .tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    width: max-content;
+    max-width: 350px;
+    background-color: #777777;
+    color: #fff;
+    text-align: left;
+    padding: 6px 10px;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 9999;
+
+    /* Positioning */
+    bottom: 125%;
+    left: 0;
+
+    /* Instant show */
+    transition: opacity 0.1s ease-in;
+    font-size: 1rem;
+}
+
+/* Show instantly on hover */
+.tooltip-wrapper:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}

@@ -55,7 +55,7 @@ from utils.cde import read_CDE, get_table_cde
 from utils.delimiter_handler import DelimiterHandler
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
-from utils.help_menus import CustomMenu
+from utils.help_menus import CustomMenu, render_missing_values_section
 
 webapp_version = "v0.5"
 
@@ -573,230 +573,31 @@ def main():
                 "FillNull": cde_row.get("FillNull", ""),
             }
 
-        # Required columns: one choice per column with missing values
-        required_columns_with_missing = []
+        required_columns_with_missing = render_missing_values_section(
+            section_kind="required",
+            selected_table_name=selected_table_name,
+            fields=required_fields,
+            selected_raw_df=selected_raw_df,
+            compute_missing_mask=compute_missing_mask,
+            cde_meta_by_field=cde_meta_by_field,
+            column_choices=required_column_choices,
+            free_text=required_free_text,
+            enum_choice=required_enum_choice,
+        )
 
-        for field_name in required_fields:
-            column_series = selected_raw_df[field_name]
-            missing_mask = compute_missing_mask(column_series)
-            missing_count = int(missing_mask.sum())
-            if missing_count > 0:
-                required_columns_with_missing.append((field_name, missing_count))
+        optional_columns_with_missing = render_missing_values_section(
+            section_kind="optional",
+            selected_table_name=selected_table_name,
+            fields=optional_fields,
+            selected_raw_df=selected_raw_df,
+            compute_missing_mask=compute_missing_mask,
+            cde_meta_by_field=cde_meta_by_field,
+            column_choices=optional_column_choices,
+            free_text=optional_free_text,
+            enum_choice=None,
+            has_required_columns_with_missing=len(required_columns_with_missing) > 0,
+        )
 
-        if len(required_columns_with_missing) > 0:
-            st.markdown(f"#### Missing values in _{selected_table_name}_ required columns")
-
-            for field_name, missing_count in required_columns_with_missing:
-                field_meta = cde_meta_by_field.get(field_name, {})
-                description_text = str(field_meta.get("Description", "") or "").strip()
-                datatype_text = str(field_meta.get("DataType", "") or "").strip()
-                validation_text = str(field_meta.get("Validation", "") or "").strip()
-                fillnull_text = str(field_meta.get("FillNull", "") or "").strip()
-
-                # Determine FillNull-based options, falling back to DataType defaults
-                datatype_lower = datatype_text.lower()
-                option_labels: list[str] = []
-
-                # Parse FillNull from the CDE (list or single value)
-                fillnull_values = []
-                if fillnull_text:
-                    try:
-                        parsed_fillnull = ast.literal_eval(fillnull_text)
-                        if isinstance(parsed_fillnull, (list, tuple)):
-                            fillnull_values = [str(value) for value in parsed_fillnull]
-                        else:
-                            fillnull_values = [str(parsed_fillnull)]
-                    except Exception:
-                        fillnull_values = [fillnull_text]
-
-                if fillnull_values:
-                    for fill_value in fillnull_values:
-                        option_labels.append(f'Fill out with "{fill_value}"')
-                else:
-                    # Fallback to DataType-based options if FillNull is not defined
-                    if datatype_lower in ("integer", "float"):
-                        option_labels = [
-                            "Fill out with N/A",
-                            "Fill out with 0",
-                        ]
-                    elif "enum" in datatype_lower:
-                        suggested_label = "Fill out with first allowed value from Validation"
-                        option_labels = [
-                            suggested_label,
-                            'Fill out with "Unknown"',
-                            'Fill out with "Other"',
-                        ]
-                    else:
-                        option_labels = [
-                            "Fill out with Unknown",
-                            "Fill out with NA",
-                        ]
-
-                existing_choice = required_column_choices.get(field_name, option_labels[0])
-
-                try:
-                    default_index = option_labels.index(existing_choice)
-                except ValueError:
-                    default_index = 0
-
-                # Hover tooltip for column name: show Description and DataType
-                hover_parts = []
-                if description_text:
-                    hover_parts.append(description_text)
-                if datatype_text:
-                    hover_parts.append(f"DataType: {datatype_text}")
-                hover_text = " | ".join(hover_parts)
-                hover_text_escaped = html.escape(hover_text, quote=True)
-
-                st.markdown(
-                    f'* <strong>Required</strong> column <span title="{hover_text_escaped}"><strong>{field_name}</strong></span> '
-                    f'has {missing_count} empty values. (DataType: {datatype_text})',
-                    unsafe_allow_html=True,
-                )
-
-                # Radio: FillNull-driven options (or fallback)
-                user_choice = st.radio(
-                    "Choose how to fill this column:",
-                    option_labels,
-                    index=default_index,
-                    key=f"missing_required_{selected_table_name}_{field_name}",
-                )
-                required_column_choices[field_name] = user_choice
-
-                # Place free text and Enum dropdown side by side
-                free_text_col, enum_dropdown_col = st.columns(2)
-
-                # Free text input (highest priority if provided)
-                with free_text_col:
-                    existing_free_text = required_free_text.get(field_name, "")
-                    free_text_value = st.text_input(
-                        "Free text (optional):",
-                        value=existing_free_text,
-                        key=f"free_text_{selected_table_name}_{field_name}",
-                    )
-                    required_free_text[field_name] = free_text_value
-
-                # Enum dropdown (Validation values) for Enum DataType
-                with enum_dropdown_col:
-                    existing_enum_choice = required_enum_choice.get(field_name, "")
-
-                    if "enum" in datatype_lower and validation_text:
-                        validation_values = []
-                        try:
-                            parsed_validation = ast.literal_eval(validation_text)
-                            if isinstance(parsed_validation, (list, tuple)):
-                                validation_values = [str(value) for value in parsed_validation]
-                        except Exception:
-                            validation_values = []
-
-                        if validation_values:
-                            dropdown_options = ["(no selection)"] + validation_values
-                            try:
-                                default_enum_index = dropdown_options.index(existing_enum_choice)
-                            except ValueError:
-                                default_enum_index = 0
-
-                            selected_enum_value = st.selectbox(
-                                "Choose a CDE Validation value to fill (optional):",
-                                dropdown_options,
-                                index=default_enum_index,
-                                key=f"enum_dropdown_{selected_table_name}_{field_name}",
-                            )
-                            if selected_enum_value == "(no selection)":
-                                required_enum_choice[field_name] = ""
-                            else:
-                                required_enum_choice[field_name] = selected_enum_value
-                    else:
-                        # Non-Enum columns: ensure we at least preserve any previous enum choice key
-                        required_enum_choice[field_name] = required_enum_choice.get(field_name, "")
-
-            table_missing_choices["required"] = required_column_choices
-        optional_columns_with_missing = []
-
-        for field_name in optional_fields:
-            column_series = selected_raw_df[field_name]
-            missing_mask = compute_missing_mask(column_series)
-            missing_count = int(missing_mask.sum())
-            if missing_count > 0:
-                optional_columns_with_missing.append((field_name, missing_count))
-
-        if len(optional_columns_with_missing) > 0:
-            st.markdown(f"#### Missing values in _{selected_table_name}_ optional columns")
-
-            for field_name, missing_count in optional_columns_with_missing:
-                field_meta = cde_meta_by_field.get(field_name, {})
-                description_text = str(field_meta.get("Description", "") or "").strip()
-                datatype_text = str(field_meta.get("DataType", "") or "").strip()
-                fillnull_text = str(field_meta.get("FillNull", "") or "").strip()
-
-                datatype_lower = datatype_text.lower()
-
-                # Parse FillNull from the CDE (list or single value)
-                fillnull_values = []
-                if fillnull_text:
-                    try:
-                        parsed_fillnull = ast.literal_eval(fillnull_text)
-                        if isinstance(parsed_fillnull, (list, tuple)):
-                            fillnull_values = [str(value) for value in parsed_fillnull]
-                        else:
-                            fillnull_values = [str(parsed_fillnull)]
-                    except Exception:
-                        fillnull_values = [fillnull_text]
-
-                option_labels: list[str] = []
-                if fillnull_values:
-                    for fill_value in fillnull_values:
-                        option_labels.append(f'Fill out with "{fill_value}"')
-                else:
-                    # Fallback to simple defaults if FillNull is not defined
-                    option_labels = [
-                        "Fill out with Unknown",
-                        "Fill out with NA",
-                    ]
-
-                existing_choice_opt = optional_column_choices.get(field_name, option_labels[0])
-                try:
-                    default_opt_index = option_labels.index(existing_choice_opt)
-                except ValueError:
-                    default_opt_index = 0
-
-                # Hover tooltip for column name: show Description and DataType
-                hover_parts_opt = []
-                if description_text:
-                    hover_parts_opt.append(description_text)
-                if datatype_text:
-                    hover_parts_opt.append(f"DataType: {datatype_text}")
-                hover_text_opt = " | ".join(hover_parts_opt)
-                hover_text_opt_escaped = html.escape(hover_text_opt, quote=True)
-
-                st.markdown(
-                    f'* <strong>Optional</strong> column <span title="{hover_text_opt_escaped}"><strong>{field_name}</strong></span> '
-                    f'has {missing_count} empty values. (DataType: {datatype_text})',
-                    unsafe_allow_html=True,
-                )
-
-                user_choice_opt = st.radio(
-                    "Choose how to fill this optional column:",
-                    option_labels,
-                    index=default_opt_index,
-                    key=f"missing_optional_{selected_table_name}_{field_name}",
-                )
-                optional_column_choices[field_name] = user_choice_opt
-
-                # Place optional free text in the left half of the row
-                free_text_col_opt, spacer_col_opt = st.columns(2)
-
-                # Free text for optional column (highest priority if provided)
-                with free_text_col_opt:
-                    existing_free_text_opt = optional_free_text.get(field_name, "")
-                    free_text_value_opt = st.text_input(
-                        "Free text (optional):",
-                        value=existing_free_text_opt,
-                        key=f"free_text_optional_{selected_table_name}_{field_name}",
-                    )
-                    optional_free_text[field_name] = free_text_value_opt
-
-        # Persist choices back to session state
         table_missing_choices["required"] = required_column_choices
         table_missing_choices["required_free_text"] = required_free_text
         table_missing_choices["required_enum_choice"] = required_enum_choice
