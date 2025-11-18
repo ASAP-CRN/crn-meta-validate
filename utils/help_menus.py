@@ -104,7 +104,7 @@ class CustomMenu:
 
 
 
-_MV_CALL_COUNTER = 0
+
 
 
 def _parse_fillnull_values(fillnull_text: str) -> List[str]:
@@ -141,9 +141,9 @@ def render_missing_values_section(
 
     Returns a list of (field_name, missing_count) for columns that had missing values.
     """
-    global _MV_CALL_COUNTER
-    _MV_CALL_COUNTER += 1
-    call_id = _MV_CALL_COUNTER
+
+
+
 
     columns_with_missing: List[Tuple[str, int]] = []
 
@@ -261,7 +261,7 @@ def render_missing_values_section(
             radio_key_prefix = "mv_radio_optional"
 
         # Unique key for this radio, using a global call id and field name
-        radio_key = f"{radio_key_prefix}_{call_id}_{selected_table_name}_{field_name}_{field_index}"
+        radio_key = f"{radio_key_prefix}_{selected_table_name}_{field_name}_{field_index}"
 
         user_choice = st.radio(
             radio_label,
@@ -276,7 +276,7 @@ def render_missing_values_section(
             free_text_col, enum_dropdown_col = st.columns(2)
 
             with free_text_col:
-                free_text_key = f"mv_free_required_{call_id}_{selected_table_name}_{field_name}_{field_index}"
+                free_text_key = f"mv_free_required_{selected_table_name}_{field_name}_{field_index}"
                 existing_free_text = free_text.get(field_name, "")
                 free_text_value = st.text_input(
                     "Free text (optional; overrides choice):",
@@ -289,7 +289,7 @@ def render_missing_values_section(
                 if enum_choice is None:
                     enum_choice = {}
 
-                enum_key = f"mv_enum_required_{call_id}_{selected_table_name}_{field_name}_{field_index}"
+                enum_key = f"mv_enum_required_{selected_table_name}_{field_name}_{field_index}"
                 existing_enum_choice = enum_choice.get(field_name, "")
 
                 if "enum" in datatype_lower and validation_text:
@@ -322,7 +322,7 @@ def render_missing_values_section(
                     enum_choice[field_name] = existing_enum_choice
         else:
             # Optional section: full-width free text only
-            free_text_key = f"mv_free_optional_{call_id}_{selected_table_name}_{field_name}_{field_index}"
+            free_text_key = f"mv_free_optional_{selected_table_name}_{field_name}_{field_index}"
             existing_free_text_opt = free_text.get(field_name, "")
             free_text_value_opt = st.text_input(
                 "Free text (optional):",
