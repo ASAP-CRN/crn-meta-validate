@@ -59,6 +59,7 @@ div.stButton > button:first-child {
 .missing-block-title {
     font-weight: 400;
     margin-bottom: 0.25rem;
+    color: #333;   /* IMPORTANT: always dark grey to be compatible with dark-themed browsers */
 }
 
 /* Custom Tooltip container hover-over, used instead of
