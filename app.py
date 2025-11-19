@@ -556,7 +556,7 @@ def main():
         )
         if extra_fields:
             message = (
-                f"Warning!!! the following {len(extra_fields)} columns from {selected_table_name} "
+                f"Warning: the following {len(extra_fields)} columns from {selected_table_name} "
                 "couldn't be found in the CDE and will not be evaluated:\n\n"
                 + ", ".join(extra_fields)
             )
@@ -804,7 +804,7 @@ def main():
             st.download_button(
                 label=f"Click here to download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules",
                 data=prepared_csv,
-                file_name=f"{selected_table_name}_before_cde_comparison.csv",
+                file_name=f"{selected_table_name}.before.cde_compared.csv",
                 mime="text/csv",
             )
 
@@ -882,7 +882,8 @@ def main():
     )
 
     # Download button (or disabled mock) for sanitized CSV depending on errors
-    label_for_sanitized = f"Download a **{selected_table_name}_after_cde_comparison.csv** file"
+    sanitized_file_name = f"{selected_table_name}.cde_compared.csv"
+    label_for_sanitized = f"Download a **{sanitized_file_name}** file"
     label_for_sanitized_html = label_for_sanitized.replace("**", "<strong>", 1).replace("**", "</strong>", 1)
 
     # errors_counter = 0  # For testing, uncomment this line to simulate no errors
@@ -890,7 +891,7 @@ def main():
         st.download_button(
             label=label_for_sanitized,
             data=table_content,
-            file_name=f"{selected_table_name}_after_cde_comparison.csv",
+            file_name=sanitized_file_name,
             mime="text/csv",
         )
     else:

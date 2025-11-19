@@ -61,24 +61,27 @@ Two types of issues will be reported:
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-1. Go to the [web app]
-    * Production version [web app URL](https://asap-meta-qc.streamlit.app/) from `main` branch]
-    * Staging [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch
-2. Set up your run:   
-    * In the drop-down menus, specify the following properties for your dataset: `Species`, `Tissue/Cell origin` and `Modality`    
+1. Go to the web app:
+    * Production version [web app](https://asap-meta-qc.streamlit.app/) from `main` branch.
+    * Beta version [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch.
+2. Step 1 -- Set up your run:   
+    * In the drop-down menus, specify the following properties for your dataset:    
+      * `Species`    
+      * `Tissue/Cell origin`   
+      * `Modality`    
     * A left-side menu will appear, showing the list if os expected `{TABLE}.csv` files for your dataset.   
-    * You can Drag & drop, or  Browse your files to upload.
-3. Files will be uploaded automatically and log messages will appear in the left-side menu.   
-4. For each file, the app will look for non-comma delimiters and provide buttons to accept or reject the changes.
-5. For each file, the app will look for with missing values and provide options to fill them out.
-    * If changes were made, a preview of the filled out `{TABLE}` will be shown.
-6. The `{TABLE}` without missing values will be compared vs the [ASAP CRN controlled vocabilaries (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
-7. A report will be provided, including:
-    * ✅ **Successful** steps    
-    * ❌ **Errors** to be fixed by _data contributors_ before uploading sanitized files to ASAP Google Cloud buckets   
-    * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration   
+    * You can select your files to upload using Drag & drop or the Browse button.
+3. Selected files will be uploaded automatically and log messages will appear in the left-side menu.   
+4. Step 2 -- For each file, the app will look for non-comma delimiters and provide buttons to accept or reject changes.
+5. For each file, the app will look for missing values and provide options to fill them out.
+    * If changes are made, a preview of the filled out `{TABLE}` will be shown.
+6. Step 3 -- The `{TABLE}` without missing values will be compared vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
+7. A report for each column will be provided, including:
+    * ✅ **Successful** steps.    
+    * ❌ **Errors** to be fixed by _data contributors_ before uploading sanitized files to ASAP Google Cloud buckets.   
+    * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration.   
 8. At the end, two files can be downloaded:
-    * A `{TABLE}.md` markup file with the run report   
+    * A `{TABLE}.md` markup file with the run report.   
     * The `{TABLE}_after_cde_comparison.csv` file. Note: button will be enabled only if no errors were found.
 9. Repeat steps 6 to 8 for each `{TABLE}.csv` file you uploaded.
 10. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
