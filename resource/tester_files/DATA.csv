@@ -1,14 +1,14 @@
-sample_id;replicate;replicate_count;repeated_sample;batch;file_type;file_name;file_description;file_MD5;adjustment;content;header;annotation;configuration_file
-ASAPh_001;ASAPh_001_1;1;;1;fastq;ASAPh_001_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;c867cb7e37a2c6a5da2cf0b1090d9588;quality trimmed and human DNA removed;Reads;Header1;;
-ASAPh_001;ASAPh_001_2;2;0;2;fastq;ASAPh_001_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9379c449254b21e028f7b66c50a1a2c5;quality trimmed and human DNA removed;;Header2;;
-ASAPh_001;ASAPh_001_3;3;0;1;fastq;ASAPh_001_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;3369198de149feb3bb5f99a2c4a739e2;Raw;Counts;Header3;;
-ASAPh_001;ASAPh_001_4;4;;2;fastq;ASAPh_001_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;7734c0d26d79a7becf073999b7049ea5;Raw;;;;
-ASAPh_001;ASAPh_001_5;5;1;1;fastq;ASAPh_001_5.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;e650194222b2072f7c4f17c363910d43;Processed;Counts;Header5;;
-ASAPh_001;ASAPh_001_6;6;1;2;fastq;ASAPh_001_6.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;5fc4469657d02818e5143c2d1a5c3a53;Processed;Reads;;;
-ASAPh_001;ASAPh_001_7;7;;;fastq;ASAPh_001_7.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;0d573558e937a05e7a808ddbf7275c95;Raw;Counts;;;
-ASAPh_001;ASAPh_001_8;8;;;fastq;ASAPh_001_8.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;411fc7cbd272be4462b24802838fe341;Raw;Reads;;;
-ASAPh_001;ASAPh_001_9;9;;;fastq;ASAPh_001_9.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;444b1500667d1dbea95b26f714b65c58;Raw;Reads;;;
-ASAPh_002;ASAPh_002_1;1;;;fastq;ASAPh_002_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;325fcb458eb7c0cc583296b09c850374;Processed;Unknown;;;
-ASAPh_002;ASAPh_002_2;2;;;fastq;ASAPh_002_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;419eeb2400f633d171e1b4252b101b12;Processed;Genotypes;;;
-ASAPh_002;ASAPh_002_3;3;;;fastq;ASAPh_002_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;4efd3601d3bf6e2591674dead9b0b2d9;Processed;Reads;;;
-ASAPh_002;ASAPh_002_4;4;;;fastq;ASAPh_002_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9a831103b64c6c8fd71fa187dab598b7;Processed;Reads;;;
+sample_id;content;adjustment;header;file_type;batch;annotation;configuration_file;file_name;file_description;file_MD5
+ASAPh_001;Reads;quality trimmed and human DNA removed;Header1;fastq;1;;;ASAPh_001_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;c867cb7e37a2c6a5da2cf0b1090d9588
+ASAPh_001;;quality trimmed and human DNA removed;Header2;fastq;2;;;ASAPh_001_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9379c449254b21e028f7b66c50a1a2c5
+ASAPh_001;Counts;Raw;Header3;fastq;1;;;ASAPh_001_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;3369198de149feb3bb5f99a2c4a739e2
+ASAPh_001;;Raw;;fastq;2;;;ASAPh_001_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;7734c0d26d79a7becf073999b7049ea5
+ASAPh_001;Counts;Processed;Header5;fastq;1;;;ASAPh_001_5.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;e650194222b2072f7c4f17c363910d43
+ASAPh_001;Reads;Processed;;fastq;2;;;ASAPh_001_6.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;5fc4469657d02818e5143c2d1a5c3a53
+ASAPh_001;Counts;Raw;;fastq;;;;ASAPh_001_7.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;0d573558e937a05e7a808ddbf7275c95
+ASAPh_001;Reads;Raw;;fastq;;;;ASAPh_001_8.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;411fc7cbd272be4462b24802838fe341
+ASAPh_001;Reads;Raw;;fastq;;;;ASAPh_001_9.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;444b1500667d1dbea95b26f714b65c58
+ASAPh_002;;Processed;;fastq;;;;ASAPh_002_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;325fcb458eb7c0cc583296b09c850374
+ASAPh_002;;Processed;;fastq;;;;ASAPh_002_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;419eeb2400f633d171e1b4252b101b12
+ASAPh_002;Reads;Processed;;fastq;;;;ASAPh_002_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;4efd3601d3bf6e2591674dead9b0b2d9
+ASAPh_002;Reads;Processed;;fastq;;;;ASAPh_002_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9a831103b64c6c8fd71fa187dab598b7

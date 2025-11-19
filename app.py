@@ -557,8 +557,7 @@ def main():
         if extra_fields:
             message = (
                 f"Warning: the following {len(extra_fields)} columns from {selected_table_name} "
-                "couldn't be found in the CDE and will not be evaluated:\n\n"
-                + ", ".join(extra_fields)
+                "couldn't be found in the CDE and will not be evaluated:  " + ", ".join(extra_fields)
             )
             st.warning(message, icon="⚠️")
 
