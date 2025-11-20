@@ -61,19 +61,6 @@ def read_CDE(
     if local_filename is None:
         local_filename = get_cde_filename(cde_version)
     
-    # Add version-specific columns
-    if cde_version in [
-        "v3.3-beta",
-        "v3.3",
-        "v3.2",
-        "v3.2-beta",
-        "v3.1",
-        "v3",
-        "v3.0",
-        "v3.0-beta",
-    ]:
-        column_list.append("Shared_key")
-    
     # Insert "DisplayName" after "Field" for newer versions
     if cde_version in ["v3.2", "v3.2-beta", "v3.3", "v3.3-beta"]:
         column_list.insert(2, "DisplayName")
@@ -224,19 +211,6 @@ def clean_cde_dataframe(
     cde_dataframe = cde_dataframe.dropna(subset=["Table"])
     cde_dataframe = cde_dataframe.reset_index(drop=True)
     cde_dataframe = cde_dataframe.drop_duplicates()
-    
-    # Force Shared_key to be int for v3+ versions
-    if cde_version in [
-        "v3.3-beta",
-        "v3.3",
-        "v3.2",
-        "v3.2-beta",
-        "v3.1",
-        "v3",
-        "v3.0",
-        "v3.0-beta",
-    ]:
-        cde_dataframe["Shared_key"] = cde_dataframe["Shared_key"].fillna(0).astype(int)
     
     return cde_dataframe
 
