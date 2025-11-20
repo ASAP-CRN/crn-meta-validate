@@ -101,12 +101,6 @@ class CustomMenu:
             unsafe_allow_html=True
         )
 
-
-
-
-
-
-
 def _parse_fillnull_values(fillnull_text: str) -> List[str]:
     """Parse the FillNull field from the CDE into a list of string values."""
     fillnull_values: List[str] = []
@@ -141,10 +135,6 @@ def render_missing_values_section(
 
     Returns a list of (field_name, missing_count) for columns that had missing values.
     """
-
-
-
-
     columns_with_missing: List[Tuple[str, int]] = []
 
     # Deduplicate field names while preserving order, and skip columns not in the DataFrame
@@ -252,15 +242,8 @@ def render_missing_values_section(
             unsafe_allow_html=True,
         )
 
-        # Radio label differs slightly between required and optional
-        if section_kind == "required":
-            radio_label = "Choose how to fill this column:"
-            radio_key_prefix = "mv_radio_required"
-        else:
-            radio_label = "Choose how to fill this optional column:"
-            radio_key_prefix = "mv_radio_optional"
-
-        # Unique key for this radio, using a global call id and field name
+        radio_label = f"Choose how to fill this {section_kind} column:"
+        radio_key_prefix = f"mv_radio_{section_kind}"
         radio_key = f"{radio_key_prefix}_{selected_table_name}_{field_name}_{field_index}"
 
         user_choice = st.radio(
@@ -304,18 +287,30 @@ def render_missing_values_section(
                         validation_values = [validation_text]
 
                     if validation_values:
-                        if existing_enum_choice and existing_enum_choice not in validation_values:
-                            validation_values = [existing_enum_choice] + validation_values
+                        placeholder_label = "Select an option"
+                        full_options = [placeholder_label] + validation_values
+
+                        if existing_enum_choice and existing_enum_choice not in full_options:
+                            full_options.append(existing_enum_choice)
+
+                        if existing_enum_choice and existing_enum_choice in full_options:
+                            default_index = full_options.index(existing_enum_choice)
+                        else:
+                            default_index = 0
 
                         selected_enum_value = st.selectbox(
                             "Controlled vocabularies (optional; overrides choice):",
-                            validation_values,
-                            index=validation_values.index(existing_enum_choice)
-                            if existing_enum_choice in validation_values
-                            else 0,
+                            full_options,
+                            index=default_index,
                             key=enum_key,
                         )
-                        enum_choice[field_name] = selected_enum_value
+
+                        if selected_enum_value != placeholder_label:
+                            # User explicitly chose a controlled vocabulary value; override choices.
+                            enum_choice[field_name] = selected_enum_value
+                        else:
+                            # Helper text selected; keep existing choice (if any) and do not override.
+                            enum_choice[field_name] = existing_enum_choice
                     else:
                         enum_choice[field_name] = existing_enum_choice
                 else:
