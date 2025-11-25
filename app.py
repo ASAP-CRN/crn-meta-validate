@@ -226,24 +226,31 @@ def main():
     if species in SPECIES:
         species_success = True
         species_specific_table_key = re.sub(r'\s+', '_', f"{species.lower()}_specific")
-        table_list.extend(app_schema['table_names'][species_specific_table_key])
+        species_specific_tables_ls = app_schema['table_names'].get(species_specific_table_key)
+        species_specific_tables_ls = [item for item in species_specific_tables_ls if item]
+        table_list.extend(species_specific_tables_ls)
 
         if tissue_or_cell in TISSUES_OR_CELLS:
             tissue_or_cell_success = True
             if tissue_or_cell in ["iPSC", "Cell lines"]:
-                table_list.extend(["CELL"])
+                # table_list.extend(["CELL"]) ## No longer used starting CDE v3.4
+                pass
             elif tissue_or_cell in ["Post-mortem brain"]:
-                table_list.extend(["PMDBS"])
+                # table_list.extend(["PMDBS"]) ## No longer used starting CDE v3.4
+                pass
 
             if assay_type in ASSAY_KEYS:
                 assay_success = True
                 # Map assay keys to expected table suffixes
                 if assay_type in ["bulk_rna_seq", "single_cell_rna_seq", "single_nucleus_rna_seq", "atac_seq"]:
-                    table_list.extend(["ASSAY_RNAseq"])
+                    # table_list.extend(["ASSAY_RNAseq"])
+                    pass  # No longer used starting CDE v3.4
                 elif assay_type in ["spatial_transcriptomics_geomx", "spatial_transcriptomics_visium"]:
-                    table_list.extend(["SPATIAL"])
+                    # table_list.extend(["SPATIAL"]) ## No longer used starting CDE v3.4
+                    pass
                 elif assay_type in ["shotgun_proteomics_lc_ms", "metaproteomics", "targeted_proteomics_srm_prm"]:
-                    table_list.extend(["PROTEOMICS"])
+                    # table_list.extend(["PROTEOMICS"])
+                    pass  # No longer used starting CDE v3.4
                 else:
                     # Multi-omics, genetics, metabolomics, etc. currently do not add extra tables
                     pass
