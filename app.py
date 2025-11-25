@@ -82,8 +82,10 @@ use_local = False  # Set to False to use Google Sheets
 # Extract table categories
 SPECIES = app_schema['table_categories']['species']
 TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
-ASSAY_TYPES = app_schema['table_categories']['assays'].keys()
-
+ASSAY_DICT = app_schema['table_categories']['assays']
+ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
+ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
+ASSAY_KEYS = set(ASSAY_DICT.keys())
 # Extract required table names
 REQUIRED_TABLES = app_schema['table_names']['required']
 
@@ -180,14 +182,14 @@ def main():
     # Currently, it includes both species and tissue/cell source. Will separate later.
     with col1:
         st.markdown('<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
-            unsafe_allow_html=True)
+                    unsafe_allow_html=True)
         species = st.selectbox(
             "Dataset species",
             SPECIES,
             label_visibility="collapsed",
-            index=None
+            index=None,
+            placeholder="Type to search species…",
         )
-
     # Drop down menu to select tissue/cell source
     with col2:
         st.markdown('<h3 style="font-size: 25px;">Choose tissue/cell <span style="color: red;">*</span></h3>',
@@ -196,19 +198,21 @@ def main():
             "Tissue or cell source",
             TISSUES_OR_CELLS,
             label_visibility="collapsed",
-            index=None
+            index=None,
+            placeholder="Type to search tissue/cell…",
         )
-
     # Drop down menu to select assay type
     with col3:
         st.markdown('<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
-        assay_type = st.selectbox(
+        assay_label = st.selectbox(
             "Assay type",
             ASSAY_TYPES,
             label_visibility="collapsed",
-            index=None
+            index=None,
+            placeholder="Type to search assay types…",
         )
+        assay_type = ASSAY_LABEL_TO_KEY.get(assay_label)
 
     ############
     #### Determine expected tables based on species, tissue/cell source and assay type
@@ -231,15 +235,17 @@ def main():
             elif tissue_or_cell in ["Post-mortem brain"]:
                 table_list.extend(["PMDBS"])
 
-            if assay_type in ASSAY_TYPES:
+            if assay_type in ASSAY_KEYS:
                 assay_success = True
-                if assay_type in ["Single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
+                # Map assay keys to expected table suffixes
+                if assay_type in ["bulk_rna_seq", "single_cell_rna_seq", "single_nucleus_rna_seq", "atac_seq"]:
                     table_list.extend(["ASSAY_RNAseq"])
-                elif assay_type in ["Spatial transcriptomics"]:
+                elif assay_type in ["spatial_transcriptomics_geomx", "spatial_transcriptomics_visium"]:
                     table_list.extend(["SPATIAL"])
-                elif assay_type in ["MS Proteomics", "Other MS -omics"]:
+                elif assay_type in ["shotgun_proteomics_lc_ms", "metaproteomics", "targeted_proteomics_srm_prm"]:
                     table_list.extend(["PROTEOMICS"])
-                elif assay_type in ["MULTI-Seq", "Multimodal Seq", "Multiome", "Genetics", "Metagenome", "Other"]:
+                else:
+                    # Multi-omics, genetics, metabolomics, etc. currently do not add extra tables
                     pass
 
     ############
