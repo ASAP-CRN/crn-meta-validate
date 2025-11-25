@@ -15,7 +15,7 @@ Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Version notes:
 Webapp v0.4:
 * CDE version is provided in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
-* Added supported species, modality and tissue/cell source dropdowns to select expected tables
+* Added supported species, assay and tissue/cell source dropdowns to select expected tables
 * Added reset button to sidebar, reset cache and file uploader
 * Added app_schema to manage app configuration
 * Added Classes for DelimiterHandler and ProcessedDataLoader to utils/
@@ -27,6 +27,10 @@ Webapp v0.5:
 * Improved missing-values detection logic in utils/find_missing_values.py
 * Comparison of each column vs. CDE using both Validation and FillNull (newly added in v0.5)
 * Adds download button for pre-CDE-validated sanitized CSV
+
+Webapp v1.0:
+* Update to use CDE version v3.4
+* Using Assay Type for the dropdown menu instead of Modality
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -57,7 +61,7 @@ from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
 from utils.help_menus import CustomMenu, render_missing_values_section
 
-webapp_version = "v0.5"
+webapp_version = "v1.0"
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -78,7 +82,7 @@ use_local = False  # Set to False to use Google Sheets
 # Extract table categories
 SPECIES = app_schema['table_categories']['species']
 TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
-MODALITIES = app_schema['table_categories']['modalities']
+ASSAY_TYPES = app_schema['table_categories']['assays'].keys()
 
 # Extract required table names
 REQUIRED_TABLES = app_schema['table_names']['required']
@@ -195,23 +199,23 @@ def main():
             index=None
         )
 
-    # Drop down menu to select modality
+    # Drop down menu to select assay type
     with col3:
-        st.markdown('<h3 style="font-size: 25px;">Choose modality <span style="color: red;">*</span></h3>',
+        st.markdown('<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
                     unsafe_allow_html=True)
-        modality = st.selectbox(
-            "Modality",
-            MODALITIES,
+        assay_type = st.selectbox(
+            "Assay type",
+            ASSAY_TYPES,
             label_visibility="collapsed",
             index=None
         )
 
     ############
-    #### Determine expected tables based on species, tissue/cell source and modality
+    #### Determine expected tables based on species, tissue/cell source and assay type
     table_list = []
     species_success = False
     tissue_or_cell_success = False
-    modality_success = False
+    assay_success = False
 
     table_list = REQUIRED_TABLES.copy()
 
@@ -227,21 +231,21 @@ def main():
             elif tissue_or_cell in ["Post-mortem brain"]:
                 table_list.extend(["PMDBS"])
 
-            if modality in MODALITIES:
-                modality_success = True
-                if modality in ["Single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
+            if assay_type in ASSAY_TYPES:
+                assay_success = True
+                if assay_type in ["Single cell/nucleus RNA-seq", "Bulk RNAseq", "ATAC-seq"]:
                     table_list.extend(["ASSAY_RNAseq"])
-                elif modality in ["Spatial transcriptomics"]:
+                elif assay_type in ["Spatial transcriptomics"]:
                     table_list.extend(["SPATIAL"])
-                elif modality in ["MS Proteomics", "Other MS -omics"]:
+                elif assay_type in ["MS Proteomics", "Other MS -omics"]:
                     table_list.extend(["PROTEOMICS"])
-                elif modality in ["MULTI-Seq", "Multimodal Seq", "Multiome", "Genetics", "Metagenome", "Other"]:
+                elif assay_type in ["MULTI-Seq", "Multimodal Seq", "Multiome", "Genetics", "Metagenome", "Other"]:
                     pass
 
     ############
-    #### Pause until user selects species_success and modality_success
-    if not species_success or not tissue_or_cell_success or not modality_success:
-        st.info("Please select Species, Tissue/Cell, and Modality of your dataset")
+    #### Pause until user selects species_success and assay_success
+    if not species_success or not tissue_or_cell_success or not assay_success:
+        st.info("Please select Species, Tissue/Cell, and Assay Type of your dataset")
         st.stop()
 
     ############
