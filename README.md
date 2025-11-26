@@ -45,12 +45,14 @@ Metadata validator for ASAP CRN metadata (v0.5)
 <!-- ABOUT THE APP -->
 ## About the app
 
-This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.    
+This app assists ASAP CRN data contributors to QC their metadata tables in comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.    
 
-We do this in three steps:    
-**Step 1.** Set up your run, indicate type of dataset to determine expected tables and columns and upload your files.    
-**Step 2.** The app will help to fix common issues, like non-comma delimiters and missing values.    
-**Step 3.** The app reports missing columns and value mismatches vs. the [ASAP CRN Common Data Elements (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?).    
+We do this in five steps:     
+**Step 1.** Set up your run, indicate the type of Dataset that you are contributing. The app will determine expected tables and columns.     
+**Step 2.** The app will generate template comma-delimited (CSV) files for you to fill out. A left-side bar will allow you to download these files (TABLES.zip).     
+**Step 3.** Offline, fill out the CSV files with your metadata. Then, upload your completed CSV files via the left-side bar (Drag & drop box or Browse button).     
+**Step 4.** The app will help to fix common issues, like non-comma delimiters and missing values.     
+**Step 5.** The app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
 
 Two types of issues will be reported:    
 * Errors: Must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.    
@@ -61,38 +63,54 @@ Two types of issues will be reported:
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-1. Go to the web app:
-    * Production version [web app](https://asap-meta-qc.streamlit.app/) from `main` branch.
-    * Beta version [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app) from `Update_Streamlit_NewModalties_and_UX` branch.
-2. Step 1 -- Set up your run:   
-    * In the drop-down menus, specify the following properties for your dataset:    
-      * `Species`    
-      * `Tissue/Cell origin`   
-      * `Modality`    
-    * A left-side menu will appear, showing the list if os expected `{TABLE}.csv` files for your dataset.   
-    * You can select your files to upload using Drag & drop or the Browse button.
-3. Selected files will be uploaded automatically and log messages will appear in the left-side menu.   
-4. Step 2 -- For each file, the app will look for non-comma delimiters and provide buttons to accept or reject changes.
-5. For each file, the app will look for missing values and provide options to fill them out.
-    * If changes are made, a preview of the filled out `{TABLE}` will be shown.
-6. Step 3 -- The `{TABLE}` without missing values will be compared vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
-7. A report for each column will be provided, including:
+#### Go to the [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app)     
+#### Step 1 -- Set up your run:   
+  * In the dropdown menus, specify the following properties for your Dataset:    
+    * `Species`    
+    * `Tissue/Cell origin`   
+    * `Assay type`    
+#### Step 2 -- A left-side menu will appear, including:
+  * A button to download a *zip file with `template CSV files` for your Dataset
+  * Each CSV file will have six rows:      
+    1. Column headers      
+    2. Column descriptions      
+    3. Column data types. One of four types:      
+          - Integer (numeric, e.g. 0, 1, 2, 3, etc.)      
+          - Float (numeric, e.g. 0.1, 1.2, 10.1, etc.)      
+          - String (free form text)      
+          - Enum (controlled vocabularies, see Validation below)      
+    4. Column required status      
+          - Required (mandatory columns)      
+          - Optional (optional columns)      
+    5. Column validation rules      
+          - For Enum data type, provides a list of valid values      
+          - For non-Enum data types, validation requires to match data type
+    6. Values to fill out Column
+          - Valid values to fill out missing values
+#### Step 3 -- Upload your Dataset CSV files
+  * We encourage users to fill out the CSV templates programatically to avoid typos and Excel issues handling date-like strings, etc.
+  * If you used the template files from Step 2, remove the helper rows 2 to 6 (i.e. keep only the Column headers and your data).
+  * Once filled out, upload your CSV files via the `Drag & drop box` or the `Browse button`.
+  * Each of your CSV files will become a `TABLE` in the app memory
+#### Step 4 -- Fix common issues
+  * The app will help to `fix common issues`, like non-comma delimiters and missing values (if any).     
+#### Step 5 -- Validate vs. the CDE
+  * Compare each `TABLE` vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing)
+  * The app will reports missing columns and value mismatches vs. the CDE
+  * A report for each `TABLE column` will be provided, including:
     * ✅ **Successful** steps.    
-    * ❌ **Errors** to be fixed by _data contributors_ before uploading sanitized files to ASAP Google Cloud buckets.   
+    * ❌ **Errors** to be fixed by _data contributors_ before uploading the CSV file to ASAP Google Cloud buckets.   
     * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration.   
-8. At the end, two files can be downloaded:
-    * A `{TABLE}.md` markup file with the run report.   
-    * The `{TABLE}_after_cde_comparison.csv` file. Note: button will be enabled only if no errors were found.
-9. Repeat steps 6 to 8 for each `{TABLE}.csv` file you uploaded.
-10. Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)
-11. Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.
+  * At the end, two files can be downloaded:
+    * A `TABLE.md` markup file with each `TABLE` run report.   
+    * The `TABLE.cde_compared.csv` file. Note: button will be enabled only if no errors were found.
 
-**Notes:**    
-a) If you have multiple datasets to validate, complete steps 2 to 11 for each dataset separately.     
-b) The latest version of Common Data Elements (CDE i.e., ASAP CRN controlled vocabularies) will be used automatically.    
-c) We are here to help. [Contact us](#contact) if you need a different version or have questions.    
-d) Example *csv infiles can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files
-)
+### Notes:
+* If you have multiple datasets to validate, complete steps 1 to 5 for each Dataset separately.     
+* Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing)     
+* Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.     
+* We are here to help. [Contact us](#contact-report-bugs-and-request-features) if you have questions.    
+* Example CSV files to test the app can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files)
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 

@@ -26,7 +26,7 @@ div.stButton > button:first-child {
 
 /* Add your custom text */
 [data-testid="stFileUploader"] section::before {
-    content: "Drag and drop files HERE or click 'Browse files'";
+    content: "Drag and drop files here OR click 'Browse files'";
     display: block;
     font-size: 17px;
     color: #666668;
@@ -104,4 +104,10 @@ native solution because the native one has a delay to show up */
 .tooltip-wrapper:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+}
+
+/* Widen Streamlit sidebar */
+[data-testid="stSidebar"] {
+    min-width: 350px !important;
+    max-width: 350px !important;
 }

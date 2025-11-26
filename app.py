@@ -11,6 +11,7 @@ Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
+Webapp v1.0 (CDE version v3.4), 25 November 2025
 
 Version notes:
 Webapp v0.4:
@@ -31,6 +32,7 @@ Webapp v0.5:
 Webapp v1.0:
 * Update to use CDE version v3.4
 * Using Assay Type for the dropdown menu instead of Modality
+* Provide template files as a zipped URL in Expected files section
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -60,6 +62,7 @@ from utils.delimiter_handler import DelimiterHandler
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
 from utils.help_menus import CustomMenu, render_missing_values_section
+from utils.template_files import build_templates_zip
 
 webapp_version = "v1.0"
 
@@ -141,11 +144,12 @@ def main():
         This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
         PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
         
-        We do this in three steps:     
-        **Step 1.** Set up your run, indicate type of dataset to determine expected tables and columns and upload your files.     
-        **Step 2.** The app will help to fix common issues, like non-comma delimiters and missing values.     
-        **Step 3.** The app reports missing columns and value mismatches vs.
-        the [ASAP CRN Common Data Elements (CDE) {cde_version}]({cde_google_sheet_current}).
+        We do this in five steps:     
+        **Step 1.** Set up your run, indicate the type of Dataset that you are contributing. The app will determine expected tables and columns.     
+        **Step 2.** The app will generate template comma-delimited (CSV) files for you to fill out. A left-side bar will allow you to download these files (TABLES.zip).     
+        **Step 3.** Offline, fill out the CSV files with your metadata. Then, upload your completed CSV files via the left-side bar (Drag & drop box or Browse button).     
+        **Step 4.** The app will help to fix common issues, like non-comma delimiters and missing values.     
+        **Step 5.** The app reports missing columns and value mismatches vs. the [ASAP CRN Common Data Elements (CDE) {cde_version}]({cde_google_sheet_current}).     
 
         Two types of issues will be reported:
         - **Errors**: Must be **fixed by the data contributors** before uploading metadata to ASAP CRN Google buckets.
@@ -153,8 +157,6 @@ def main():
 
         We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions!     
         Example *csv infiles can be downloaded from [here]({app_schema['example_input_files_url']}).
-        
-
         """,
         unsafe_allow_html=True,
     )
@@ -163,7 +165,7 @@ def main():
     ### Step 1: Set up your run and upload files
     ############
     st.markdown("---")
-    st.markdown("## Step 1: Set up your run and upload csv files")
+    st.markdown("## Step 1: Set up your run")
 
     ############
     ### Load CSS (text size, colors, etc.)
@@ -277,12 +279,31 @@ def main():
         local=use_local,
     )
 
+    # Build TABLES.zip with template TSV files for each expected table
+    templates_zip_bytes, number_of_helper_rows = build_templates_zip(cde_dataframe)
+
     ############
-    #### Provide left-side bar for file upload and app reset
-    st.sidebar.title("Upload files to validate")
-    
+    ### Step 2: Provide template files
+    ############
+    st.sidebar.markdown("## Step 2 (optional): Download template files")
+    st.sidebar.download_button(
+        label=f"Click here to download template files: \n{table_list_formatted}",
+        data=templates_zip_bytes,
+        file_name="TABLES.zip",
+        mime="application/zip",
+    )
+    st.sidebar.caption(
+        f"These templates include {number_of_helper_rows} helper rows. Offline, fill out each CSV file with your metadata and "
+        f"delete helper rows 2-{number_of_helper_rows}. Keep the first helper row as column headers."
+    )
+
+    ############
+    ### Step 3: Upload your dataset CSV files
+    ############
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## Step 3: Upload complete CSV files")
     data_files = st.sidebar.file_uploader(
-        f"Expected files: \n{table_list_formatted}",
+        "", # Place holder, title is in markdown above
         type=["csv"],
         accept_multiple_files=True,
         key=f"file_uploader_{st.session_state.file_uploader_key}"
