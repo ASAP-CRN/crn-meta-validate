@@ -58,7 +58,7 @@ import time
 from io import StringIO
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde
-from utils.cde import read_CDE, get_table_cde
+from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field
 from utils.delimiter_handler import DelimiterHandler
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
@@ -619,15 +619,7 @@ def main():
             st.warning(message, icon="⚠️")
 
         # Build lookup for CDE metadata per field (Description, DataType, Validation)
-        cde_meta_by_field = {}
-        for _, cde_row in table_cde_rules.iterrows():
-            field_name = cde_row["Field"]
-            cde_meta_by_field[field_name] = {
-                "Description": cde_row.get("Description", ""),
-                "DataType": cde_row.get("DataType", ""),
-                "Validation": cde_row.get("Validation", ""),
-                "FillNull": cde_row.get("FillNull", ""),
-            }
+        cde_meta_by_field = build_cde_meta_by_field(table_cde_rules)
 
         required_columns_with_missing = render_missing_values_section(
             section_kind="required",
@@ -771,15 +763,7 @@ def main():
 
 
             # Build CDE metadata lookup again
-            cde_meta_by_field = {}
-            for _, cde_row in table_cde_rules.iterrows():
-                field_name = cde_row["Field"]
-                cde_meta_by_field[field_name] = {
-                    "Description": cde_row.get("Description", ""),
-                    "DataType": cde_row.get("DataType", ""),
-                    "Validation": cde_row.get("Validation", ""),
-                    "FillNull": cde_row.get("FillNull", ""),
-                }
+            cde_meta_by_field = build_cde_meta_by_field(table_cde_rules)
 
             # Apply choices for required fields (per column)
             for field_name in required_fields:

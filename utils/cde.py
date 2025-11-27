@@ -300,3 +300,31 @@ def get_table_cde(cde_dataframe: pd.DataFrame, table_name: str) -> pd.DataFrame:
         CDE rules for the specified table
     """
     return cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)
+
+def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str, str]]:
+    """Builds a lookup dictionary of CDE metadata by field name.
+
+    This centralizes construction of the CDE metadata mapping so both the UI
+    and the fill-choice application logic use the same source of truth.
+
+    Parameters
+    ----------
+    table_cde_rules : pd.DataFrame
+        CDE rules for a specific table (one row per field).
+
+    Returns
+    -------
+    Dict[str, Dict[str, str]]
+        Mapping from field name to a metadata dictionary containing keys such as
+        "Description", "DataType", "Validation", and "FillNull".
+    """
+    cde_meta_by_field: Dict[str, Dict[str, str]] = {}
+    for row_index, cde_row in table_cde_rules.iterrows():
+        field_name = cde_row["Field"]
+        cde_meta_by_field[field_name] = {
+            "Description": cde_row.get("Description", ""),
+            "DataType": cde_row.get("DataType", ""),
+            "Validation": cde_row.get("Validation", ""),
+            "FillNull": cde_row.get("FillNull", ""),
+        }
+    return cde_meta_by_field
