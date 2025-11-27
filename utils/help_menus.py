@@ -3,6 +3,40 @@ import ast
 import html
 from typing import Any, Callable, Dict, List, Tuple
 
+def get_app_intro_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
+    """Return the main app introduction text shared between the UI and docs."""
+    return f"""This app assists data contributors to QC their metadata tables in comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
+
+We do this in five steps:     
+
+**Step 1. Indicate your Dataset type:** the app will determine expected CSV files and columns.     
+**Step 2. Download template files:** a left-side bar will appear indicating expected files and provide file templates.     
+**Step 3. Fill out and upload completed files:** offline, fill out the expected files with your metadata. Then, upload completed files via the Drag & drop box or Browse button.     
+**Step 4. Fix common issues:** follow app instructions to fix common issues (e.g. non-comma delimiters and missing values).     
+**Step 5. CDE validation:** the app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE) {cde_version}]({cde_google_sheet_url}).
+
+Two types of issues will be reported:     
+
+**Errors:** must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
+**Warnings:** recommended to be fixed before uploading, but not required.     
+"""
+
+
+def render_app_intro(webapp_version: str, cde_version: str, cde_google_sheet_url: str) -> None:
+    """Render the main app introduction at the top of the UI."""
+    import streamlit as st  # local import to avoid cycles during tooling
+    st.markdown(
+        f'<p class="big-font">ASAP CRN metadata quality control (QC) app {webapp_version}</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        get_app_intro_markdown(
+            cde_version=cde_version,
+            cde_google_sheet_url=cde_google_sheet_url,
+        )
+    )
+
+
 class CustomMenu:
     """
     A custom menu component that replaces Streamlit's default kebab menu.

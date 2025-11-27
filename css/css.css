@@ -1,3 +1,7 @@
+/* ============================================
+   General font styles
+   ============================================ */
+
 .big-font {
     font-family:Helvetica; color:#0f557a; font-size:48px !important;
 }
@@ -10,6 +14,10 @@ textarea {
 input {
     font-family:Arial; font-size: 25px;
 }
+
+/* ============================================
+   General button styles
+   ============================================ */
 div.stButton > button:first-child {
     background-color: #D3D3D3;
     height: auto;
@@ -17,21 +25,6 @@ div.stButton > button:first-child {
     padding-top: 10px !important;
     padding-bottom: 10px !important;
     font-size: 20px;
-}
-
-/* Hide the default "Drag and drop files here" text */
-.st-emotion-cache-ysg2um.e1d2qte93 {
-    display: none !important;
-}
-
-/* Add your custom text */
-[data-testid="stFileUploader"] section::before {
-    content: "Drag and drop files here OR click 'Browse files'";
-    display: block;
-    font-size: 17px;
-    color: #666668;
-    text-align: center;
-    padding: 10px;
 }
 
 /* Highlight cards for missing value sections */
@@ -62,8 +55,10 @@ div.stButton > button:first-child {
     color: #333;   /* IMPORTANT: always dark grey to be compatible with dark-themed browsers */
 }
 
-/* Custom Tooltip container hover-over, used instead of
-native solution because the native one has a delay to show up */
+/* ============================================
+   Custom Tooltip container hover-over, used instead of
+   native solution because the native one has a delay to show up
+   ============================================ */
 
 /* Dotted underline and '?' tooltip */
 .missing-hover {
@@ -106,8 +101,73 @@ native solution because the native one has a delay to show up */
     opacity: 1;
 }
 
+/* ============================================
+   Custom styling for sidebar
+   ============================================ */
+
 /* Widen Streamlit sidebar */
 [data-testid="stSidebar"] {
     min-width: 350px !important;
     max-width: 350px !important;
+}
+
+/* Increase padding inside the dropzone area */
+section[data-testid="stFileUploaderDropzone"] {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* Align text inside dropzone */
+section[data-testid="stFileUploaderDropzone"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;   /* horizontal centering */
+    justify-content: center !important; /* vertical centering if needed */
+    text-align: center !important;
+}
+section[data-testid="stFileUploaderDropzone"] * {
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+span.st-emotion-cache-ycmcfb.e1d2qte93::after {
+    content: "Drag & drop files here\AOR\A\A";
+    white-space: pre-wrap !important;
+    visibility: visible !important;
+
+    position: absolute;
+    top: -25px;
+    left: 0;
+    right: 0;
+
+    text-align: center;
+    color: #0f557a;
+    font-weight: 500;
+}
+
+/* Style the 'Browse files' button */
+div[data-testid="stFileUploader"] button {
+    background-color: transparent !important;
+    color: #0f557a !important;
+    border-radius: 999px !important;
+    padding: 0.4rem 1.4rem !important;
+    border: dashed #0f557a !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+/* Hide the 'Limit 200MB per file • CSV' legend*/
+section[data-testid="stFileUploaderDropzone"] span + span {
+    display: none !important;
+}
+
+/* Additional safeguard using current class name (may change on Streamlit upgrade) */
+span.st-emotion-cache-1sct1q3.e1d2qte94 {
+    display: none !important;
+}
+
+/* Replace default "Drag and drop files here" text with multi-line version */
+span.st-emotion-cache-ycmcfb.e1d2qte93 {
+    visibility: hidden !important;
+    position: relative;
 }

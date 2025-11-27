@@ -94,7 +94,6 @@ def build_templates_zip(cde_dataframe: pd.DataFrame) -> bytes:
                     fill_null_values,
                 ]
                 number_of_rows = len(rows_to_write)
-                print(f"Building template for table '{table_name}' with {number_of_rows} rows.")
                 for row in rows_to_write:
                     writer.writerow(row)
 

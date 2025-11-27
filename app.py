@@ -61,7 +61,7 @@ from utils.cde import read_CDE, get_table_cde
 from utils.delimiter_handler import DelimiterHandler
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
-from utils.help_menus import CustomMenu, render_missing_values_section
+from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
 webapp_version = "v1.0"
@@ -137,35 +137,18 @@ def main():
     if 'file_uploader_key' not in st.session_state:
         st.session_state.file_uploader_key = 0
 
-    # Provide template
-    st.markdown(f'<p class="big-font">ASAP CRN metadata quality control (QC) app {webapp_version}</p>', unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        This app assists ASAP CRN data contributors to QC their metadata tables (e.g. STUDY.csv, SAMPLE.csv, 
-        PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
-        
-        We do this in five steps:     
-        **Step 1.** Set up your run, indicate the type of Dataset that you are contributing. The app will determine expected tables and columns.     
-        **Step 2.** The app will generate template comma-delimited (CSV) files for you to fill out. A left-side bar will allow you to download these files (TABLES.zip).     
-        **Step 3.** Offline, fill out the CSV files with your metadata. Then, upload your completed CSV files via the left-side bar (Drag & drop box or Browse button).     
-        **Step 4.** The app will help to fix common issues, like non-comma delimiters and missing values.     
-        **Step 5.** The app reports missing columns and value mismatches vs. the [ASAP CRN Common Data Elements (CDE) {cde_version}]({cde_google_sheet_current}).     
-
-        Two types of issues will be reported:
-        - **Errors**: Must be **fixed by the data contributors** before uploading metadata to ASAP CRN Google buckets.
-        - **Warnings**: Recommended to be fixed before uploading, but not required.
-
-        We are [here]({app_schema['kebab_menu']['get_help_url']}) to help if you have questions!     
-        Example *csv infiles can be downloaded from [here]({app_schema['example_input_files_url']}).
-        """,
-        unsafe_allow_html=True,
+    # Main introduction text
+    render_app_intro(
+        webapp_version=webapp_version,
+        cde_version=cde_version,
+        cde_google_sheet_url=cde_google_sheet_current,
     )
 
     ############
-    ### Step 1: Set up your run and upload files
+    ### Step 1: Indicate your Dataset type
     ############
     st.markdown("---")
-    st.markdown("## Step 1: Set up your run")
+    st.markdown("## Step 1: Indicate your Dataset type")
 
     ############
     ### Load CSS (text size, colors, etc.)
@@ -237,7 +220,7 @@ def main():
             if tissue_or_cell in ["iPSC", "Cell lines"]:
                 # table_list.extend(["CELL"]) ## No longer used starting CDE v3.4
                 pass
-            elif tissue_or_cell in ["Post-mortem brain"]:
+            elif tissue_or_cell in ["Brain","Skin","Blood","Other"]:
                 # table_list.extend(["PMDBS"]) ## No longer used starting CDE v3.4
                 pass
 
@@ -285,28 +268,38 @@ def main():
     ############
     ### Step 2: Provide template files
     ############
-    st.sidebar.markdown("## Step 2 (optional): Download template files")
+    st.sidebar.markdown('<h3 style="font-size: 23px;">Step 2: Download template files</h3>',
+                unsafe_allow_html=True)
     st.sidebar.download_button(
         label=f"Click here to download template files: \n{table_list_formatted}",
         data=templates_zip_bytes,
         file_name="TABLES.zip",
         mime="application/zip",
     )
-    st.sidebar.caption(
-        f"These templates include {number_of_helper_rows} helper rows. Offline, fill out each CSV file with your metadata and "
-        f"delete helper rows 2-{number_of_helper_rows}. Keep the first helper row as column headers."
+    st.sidebar.markdown(
+        f"""
+        <div style="font-size: 16px; line-height: 1.3;">
+            These templates include <strong>{number_of_helper_rows} helper rows</strong>.
+            Offline, fill out each CSV file with your metadata and delete helper rows 2–{number_of_helper_rows}.
+            Keep the first helper row as column headers.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     ############
-    ### Step 3: Upload your dataset CSV files
+    ### Step 3: Upload completed files
     ############
     st.sidebar.markdown("---")
-    st.sidebar.markdown("## Step 3: Upload complete CSV files")
+    st.sidebar.markdown('<h3 style="font-size: 23px;">Step 3: Upload completed files <span style="color: red;">*</span></h3>',
+                unsafe_allow_html=True)
+    
     data_files = st.sidebar.file_uploader(
-        "", # Place holder, title is in markdown above
+        "Upload CSV files",  # Non-empty label for accessibility
         type=["csv"],
         accept_multiple_files=True,
-        key=f"file_uploader_{st.session_state.file_uploader_key}"
+        key=f"file_uploader_{st.session_state.file_uploader_key}",
+        label_visibility="collapsed",
     )
 
     ############
@@ -337,14 +330,14 @@ def main():
         st.rerun()
 
     ############
-    ### Step 2: Fix common issues (non-comma delimiters and missing values)
+    ### Step 4: Fix common issues (non-comma delimiters and missing values)
     ############
     #### Pause if no files loaded for CDE validation
     if not data_files:
         st.stop()
     else:
         st.markdown("---")
-        st.markdown("## Step 2: Fix common issues (non-comma delimiters and missing values)")
+        st.markdown("## Step 4: Fix common issues (non-comma delimiters and missing values)")
 
     ############
     #### Initialize Delimiter Handler
@@ -390,15 +383,14 @@ def main():
             st.sidebar.success(f"N={len(valid_files)} files loaded")
         
         ############
-        #### Button to Apply delimiter decisions
+        #### Button to Apply formatting decisions
         processed_files = st.session_state.get("files_ready_for_validation")
         if not processed_files:
             # Show the Apply button and wait for user action
             with st.container(border=True):
-                # st.markdown("#### Apply your delimiter decisions")
                 left_col, right_col = st.columns([1, 2])
                 with left_col:
-                    if st.button("✅ Apply delimiter decisions and continue", key="apply_delims"):
+                    if st.button("✅ Apply formatting decisions and continue", key="apply_delims"):
                         _processed = delimiter_handler.apply_decisions(valid_files)
                         st.session_state["files_ready_for_validation"] = _processed
                         st.success(f"Prepared {len(_processed)} file(s) for validation.")
@@ -655,7 +647,7 @@ def main():
         apply_label = "✅ Apply missing-value choices"
         apply_clicked = st.button(apply_label, key=f"apply_missing_{selected_table_name}")
     else:
-        st.info(f"No missing values detected in _{selected_table_name}_. You can proceed to Step 3.")
+        st.info(f"No missing values detected in _{selected_table_name}_. You can proceed to Step 5.")
         apply_clicked = True  # No columns with missing values, so treat as clicked
 
     if apply_clicked:
@@ -825,7 +817,7 @@ def main():
     prepared_df = prepared_tables.get(selected_table_name)
 
     ############
-    ### Step 3: CDE validation
+    ### Step 5: CDE validation
     ############
     compare_label = f"🔍 Compare _{selected_table_name}_ vs. CDE {cde_version}"
     if prepared_df is not None:
@@ -847,7 +839,7 @@ def main():
 
         #### Pause if no files loaded for CDE validation
         st.markdown("---")
-        st.markdown("## Step 3: Compare file without empty values vs. the CDE rules")
+        st.markdown("## Step 5: Compare file without empty values vs. the CDE rules")
 
         compare_state_key = f"compare_done_{selected_table_name}"
         if compare_state_key not in st.session_state:

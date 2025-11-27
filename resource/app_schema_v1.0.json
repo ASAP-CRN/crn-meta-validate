@@ -18,8 +18,9 @@
       "Other"
     ],
     "tissues_or_cells": [
-      "Post-mortem brain",
-      "Post-mortem skin",
+      "Brain",
+      "Skin",
+      "Blood",
       "Embryonic fibroblast",
       "Cell lines",
       "iPSC",
@@ -69,10 +70,10 @@
     "mouse_specific": [
       ""
     ],
-    "macaque_rhesus_specific": [
+    "rhesus_macaque_specific": [
       ""
     ],
-    "macaque_cyno_specific": [
+    "cyno_macaque_specific": [
       ""
     ],
     "other_specific": [
