@@ -39,6 +39,9 @@ class ProcessedDataLoader:
         # Keep a copy of each table before filling empty cells so downstream
         # UI (Step B) can preview and customize how missing values are handled.
         raw_tables_before_fill = st.session_state.get("raw_tables_before_fill", {})
+        # Track the original separator used for each table so later downloads
+        # (e.g., in Step 5) can preserve the user's delimiter choice.
+        table_separators_by_table = st.session_state.get("table_separators_by_table", {})
 
         # Accept either a dict mapping filenames->payloads or a list of {name, bytes, delimiter}
         if isinstance(processed_files, dict):
@@ -53,7 +56,9 @@ class ProcessedDataLoader:
 
         for filename, payload in items_iter:
             raw_bytes, separator = self._extract_bytes_and_separator(payload)
-            table_name = self._sanitize_table_name(filename)
+            table_name = self.sanitize_table_name(filename)
+            # Remember which separator was actually used for this table
+            table_separators_by_table[table_name] = separator
             warnings_for_file: List[str] = []
 
             table_df, used_encoding, used_engine, used_errors_mode = self._read_with_fallbacks(
@@ -87,6 +92,7 @@ class ProcessedDataLoader:
                 row_counts[table_name] = 0
 
         st.session_state["raw_tables_before_fill"] = raw_tables_before_fill
+        st.session_state["table_separators_by_table"] = table_separators_by_table
 
         return table_names, input_dataframes_dic, file_warnings, row_counts
 
@@ -163,7 +169,7 @@ class ProcessedDataLoader:
             )
             raise RuntimeError(error_message) from final_error
 
-    def _sanitize_table_name(self, filename: str) -> str:
+    def sanitize_table_name(self, filename: str) -> str:
         base = os.path.splitext(os.path.basename(filename))[0]
         # Normalize to a simple ASCII-ish identifier: spaces, punctuation -> underscores
         normalized = re.sub(r"[^A-Za-z0-9]+", "_", base).strip("_")

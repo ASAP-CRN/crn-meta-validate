@@ -56,6 +56,7 @@ import os, sys
 import re
 import time
 from io import StringIO
+from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde
 from utils.cde import read_CDE, get_table_cde
 from utils.delimiter_handler import DelimiterHandler
@@ -64,7 +65,7 @@ from utils.find_missing_values import compute_missing_mask, table_has_missing_va
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
-webapp_version = "v1.0"
+webapp_version = "v1.0" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -81,6 +82,7 @@ cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
 cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
 cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
 use_local = False  # Set to False to use Google Sheets
+default_delimiter = app_schema['default_input_delimiter']
 
 # Extract table categories
 SPECIES = app_schema['table_categories']['species']
@@ -262,7 +264,8 @@ def main():
         local=use_local,
     )
 
-    # Build TABLES.zip with template TSV files for each expected table
+    ############
+    #### Build TABLES.zip with template TSV files for each expected table
     templates_zip_bytes, number_of_helper_rows = build_templates_zip(cde_dataframe)
 
     ############
@@ -362,6 +365,10 @@ def main():
     if data_files is None or len(data_files) == 0:
         tables_loaded = False
     elif len(data_files) > 0:
+        
+        # Dictionary to hold dataframes using default delimiter
+        dfs_default_delimiter_dic = defaultdict(lambda : defaultdict(dict))
+
         # Check delimiter decisions BEFORE calling cached load_data()
         # This prevents Streamlit widgets from being inside cached functions
         if not delimiter_handler.check_delimiter_decisions(data_files):
@@ -451,6 +458,7 @@ def main():
             else:
                 action = 'keep'
 
+            # Log valid files
             if action == 'convert':
                 st.sidebar.success(
                     f"✓ {data_file.name} converted from {delimiter_name} to comma"
@@ -458,6 +466,16 @@ def main():
             else:
                 st.sidebar.success(
                     f"✓ {data_file.name} originally {delimiter_name} delimited"
+                )
+
+            ############
+            #### Store dataframes with default delimiter (regardless of detected delimiter)
+            table_name = loader.sanitize_table_name(data_file.name)
+            dfs_default_delimiter_dic[table_name]['action'] = action
+            dfs_default_delimiter_dic[table_name]['delimiter'] = detected_delimiter
+            dfs_default_delimiter_dic[table_name]["dataframe"] = pd.read_csv(
+                StringIO(file_content.decode('utf-8')),
+                delimiter=default_delimiter
                 )
 
         # Log invalid files (strikethrough)
@@ -523,6 +541,15 @@ def main():
         selected_table_name,
         input_dataframes_dic.get(selected_table_name),
     )
+
+    # If the user decided to keep non-comma delimiter, we need to use the default delimiter
+    action_ = dfs_default_delimiter_dic[selected_table_name]['action']
+    detected_delimiter_ = dfs_default_delimiter_dic[selected_table_name]['delimiter']
+    df_default_delimiter_ = dfs_default_delimiter_dic[selected_table_name]["dataframe"]
+    if action_ == 'keep' and detected_delimiter_ != default_delimiter:
+        selected_raw_df = df_default_delimiter_
+        input_dataframes_dic[selected_table_name] = selected_raw_df
+        raw_tables_before_fill[selected_table_name] = selected_raw_df
 
     if selected_raw_df is not None:
         st.markdown(

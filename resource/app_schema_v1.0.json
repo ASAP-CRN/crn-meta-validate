@@ -4,6 +4,7 @@
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
     "cde_version": "v3.4"
   },
+  "default_input_delimiter": ",",
   "kebab_menu": {
     "email": "support@dnastack.com",
     "get_help_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX?tab=readme-ov-file#how-to-use-the-web-app",
