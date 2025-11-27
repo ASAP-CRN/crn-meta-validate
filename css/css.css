@@ -107,8 +107,8 @@ div.stButton > button:first-child {
 
 /* Widen Streamlit sidebar */
 [data-testid="stSidebar"] {
-    min-width: 350px !important;
-    max-width: 350px !important;
+    min-width: 355px !important;
+    max-width: 355px !important;
 }
 
 /* Increase padding inside the dropzone area */
@@ -134,26 +134,13 @@ span.st-emotion-cache-ycmcfb.e1d2qte93::after {
     content: "Drag & drop files here\AOR\A\A";
     white-space: pre-wrap !important;
     visibility: visible !important;
-
     position: absolute;
     top: -25px;
     left: 0;
     right: 0;
-
     text-align: center;
     color: #0f557a;
     font-weight: 500;
-}
-
-/* Style the 'Browse files' button */
-div[data-testid="stFileUploader"] button {
-    background-color: transparent !important;
-    color: #0f557a !important;
-    border-radius: 999px !important;
-    padding: 0.4rem 1.4rem !important;
-    border: dashed #0f557a !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
 }
 
 /* Hide the 'Limit 200MB per file • CSV' legend*/
@@ -170,4 +157,24 @@ span.st-emotion-cache-1sct1q3.e1d2qte94 {
 span.st-emotion-cache-ycmcfb.e1d2qte93 {
     visibility: hidden !important;
     position: relative;
+}
+
+/* Optional: subtle border to match app buttons */
+section[data-testid="stFileUploaderDropzone"] {
+    border-radius: 8px !important;
+    border: 1px solid rgba(49, 51, 63, 0.2) !important;
+}
+
+/* Style only the 'Browse files' button inside the dropzone so it matches app buttons */
+section[data-testid="stFileUploaderDropzone"] button {
+    background-color: #D3D3D3 !important;
+    height: auto !important;
+    color: black !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    font-size: 16px !important;
+    border-radius: 4px !important;
+    border: 1px solid #0F6EA1 !important;
 }
