@@ -251,7 +251,7 @@ def main():
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
-        st.error("No expected tables found for the selected dataset source and type")
+        st.error("ERROR!!! No expected tables found for the selected Dataset type. This is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)")
         st.stop()
 
     ############
@@ -467,7 +467,7 @@ def main():
                 st.sidebar.markdown(f"~~{data_file.name}~~ ❌")
 
     else:
-        st.error("Something went wrong with the file upload. Please click 'Reset App', reload the webpage and try again. If issue persists, contact the ASAP CRN team.")
+        st.error("ERROR!!! couldn't complete file upload. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
         st.stop()
         tables_loaded = False
 
@@ -658,7 +658,7 @@ def main():
         )
 
         if effective_raw_df is None:
-            st.error("Could not load data for this table. Please go back to the upload step and try again.")
+            st.error(f"ERROR!!! Could not load data for {selected_table_name}. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
         else:
             table_missing_choices = st.session_state.get("missing_value_choices", {}).get(
                 selected_table_name,

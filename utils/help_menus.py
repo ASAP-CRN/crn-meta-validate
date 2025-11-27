@@ -21,7 +21,6 @@ Two types of issues will be reported:
 **Warnings:** recommended to be fixed before uploading, but not required.     
 """
 
-
 def render_app_intro(webapp_version: str, cde_version: str, cde_google_sheet_url: str) -> None:
     """Render the main app introduction at the top of the UI."""
     import streamlit as st  # local import to avoid cycles during tooling
@@ -217,30 +216,14 @@ def render_missing_values_section(
             for fill_value in fillnull_values:
                 option_labels.append(f'Fill out with "{fill_value}"')
         else:
-            if section_kind == "required":
-                if datatype_lower in ("integer", "float"):
-                    option_labels = [
-                        "Fill out with N/A",
-                        "Fill out with 0",
-                    ]
-                elif "enum" in datatype_lower:
-                    suggested_label = "Fill out with first allowed value from Validation"
-                    option_labels = [
-                        suggested_label,
-                        'Fill out with "Unknown"',
-                        'Fill out with "Other"',
-                    ]
-                else:
-                    option_labels = [
-                        "Fill out with Unknown",
-                        "Fill out with NA",
-                    ]
-            else:
-                # Optional: simple defaults when FillNull is missing
-                option_labels = [
-                    "Fill out with Unknown",
-                    "Fill out with NA",
-                ]
+            st.error(
+                "ERROR!!! No FillNull values were found for "
+                f"field '{field_name}' in table '{selected_table_name}' "
+                f"(section: {section_kind}). Please ensure the CDE FillNull "
+                "column is complete and reload the app.",
+            )
+            st.stop()
+
 
         existing_choice = column_choices.get(field_name, option_labels[0])
         try:

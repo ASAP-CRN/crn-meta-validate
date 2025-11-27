@@ -46,6 +46,7 @@ def read_CDE(
     column_list = [
         "Table",
         "Field",
+        "DisplayName",
         "Description",
         "DataType",
         "Required",
@@ -60,10 +61,6 @@ def read_CDE(
     # Determine local filename if not provided
     if local_filename is None:
         local_filename = get_cde_filename(cde_version)
-    
-    # Insert "DisplayName" after "Field" for newer versions
-    if cde_version in ["v3.2", "v3.2-beta", "v3.3", "v3.3-beta"]:
-        column_list.insert(2, "DisplayName")
     
     # Load CDE from either local file or Google Sheets
     cde_dataframe = load_cde_data(
@@ -81,6 +78,10 @@ def read_CDE(
         include_aliases,
         cde_version,
     )
+
+    # Validate completeness of critical CDE columns
+    cde_dataframe = validate_cde_completeness(cde_dataframe)
+
     
     # Create dtype dictionary
     dtype_dict = create_dtype_dict(cde_dataframe)
@@ -213,6 +214,57 @@ def clean_cde_dataframe(
     cde_dataframe = cde_dataframe.drop_duplicates()
     
     return cde_dataframe
+
+def validate_cde_completeness(cde_dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Validate that required CDE columns are present and contain no NULL cells.
+    Raises a Streamlit error and stops execution if validation fails.
+    """
+    required_columns = [
+        "Table",
+        "Field",
+        "DisplayName",
+        "Description",
+        "DataType",
+        "Required",
+        "FillNull",
+    ]
+
+    # Ensure all required columns exist
+    for required_column_name in required_columns:
+        if required_column_name not in cde_dataframe.columns:
+            st.error(
+                "ERROR!!! CDE is missing required column '"
+                + required_column_name
+                + "'. Please fix the CDE spreadsheet and reload the app.",
+            )
+            st.stop()
+
+    # Ensure there are no NULL/empty values in the required columns
+    null_mask = cde_dataframe[required_columns].isna()
+    if null_mask.any().any():
+        problematic_rows = cde_dataframe[null_mask.any(axis=1)][["Table", "Field"]].copy()
+        problematic_rows = problematic_rows.fillna("UNKNOWN")
+
+        field_labels: List[str] = []
+        for row_index, row_values in problematic_rows.head(10).iterrows():
+            table_value = str(row_values.get("Table", "UNKNOWN"))
+            field_value = str(row_values.get("Field", "UNKNOWN"))
+            field_labels.append(f"{table_value}.{field_value}")
+
+        extra_count = problematic_rows.shape[0] - len(field_labels)
+        details = ", ".join(field_labels)
+        if extra_count > 0:
+            details = f"{details}, and {extra_count} more"
+
+        st.error(
+            "ERROR!!! The CDE spreadsheet has NULL values in required columns. "
+            f"{required_columns}. "
+            f"Examples: {details}. Please report this bug to [support@dnastack.com](mailto:support@dnastack.com)",
+        )
+        st.stop()
+
+    return cde_dataframe
+
 
 def create_dtype_dict(cde_dataframe: pd.DataFrame) -> Dict[str, str]:
     """
