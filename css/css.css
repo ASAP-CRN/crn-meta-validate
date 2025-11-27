@@ -131,7 +131,7 @@ section[data-testid="stFileUploaderDropzone"] * {
     margin-right: auto !important;
 }
 span.st-emotion-cache-ycmcfb.e1d2qte93::after {
-    content: "Drag & drop files here\AOR\A\A";
+    content: "📂 Drag & drop\AOR\A\A";
     white-space: pre-wrap !important;
     visibility: visible !important;
     position: absolute;
@@ -139,7 +139,7 @@ span.st-emotion-cache-ycmcfb.e1d2qte93::after {
     left: 0;
     right: 0;
     text-align: center;
-    color: #0f557a;
+    color: black;
     font-weight: 500;
 }
 

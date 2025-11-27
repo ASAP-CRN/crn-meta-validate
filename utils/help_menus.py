@@ -10,7 +10,7 @@ def get_app_intro_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
 We do this in five steps:     
 
 **Step 1. Indicate your Dataset type:** the app will determine expected CSV files and columns.     
-**Step 2. Download template files:** a left-side bar will appear indicating expected files and provide file templates.     
+**Step 2. Download template files:** a left-side bar will appear indicating expected files and providing file templates.     
 **Step 3. Fill out and upload completed files:** offline, fill out the expected files with your metadata. Then, upload completed files via the Drag & drop box or Browse button.     
 **Step 4. Fix common issues:** follow app instructions to fix common issues (e.g. non-comma delimiters and missing values).     
 **Step 5. CDE validation:** the app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE) {cde_version}]({cde_google_sheet_url}).

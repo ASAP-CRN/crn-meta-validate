@@ -271,7 +271,7 @@ def main():
     st.sidebar.markdown('<h3 style="font-size: 23px;">Step 2: Download template files</h3>',
                 unsafe_allow_html=True)
     st.sidebar.download_button(
-        label=f"Click here to download template files: \n{table_list_formatted}",
+        label=f"📥 Click to download: {table_list_formatted}",
         data=templates_zip_bytes,
         file_name="TABLES.zip",
         mime="application/zip",
@@ -390,7 +390,7 @@ def main():
             with st.container(border=True):
                 left_col, right_col = st.columns([1, 2])
                 with left_col:
-                    if st.button("✅ Apply formatting decisions and continue", key="apply_delims"):
+                    if st.button("📝✔️ Apply formatting decisions and continue", key="apply_delims"):
                         _processed = delimiter_handler.apply_decisions(valid_files)
                         st.session_state["files_ready_for_validation"] = _processed
                         st.success(f"Prepared {len(_processed)} file(s) for validation.")
@@ -819,7 +819,7 @@ def main():
     ############
     ### Step 5: CDE validation
     ############
-    compare_label = f"🔍 Compare _{selected_table_name}_ vs. CDE {cde_version}"
+    compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {cde_version}"
     if prepared_df is not None:
         if (len(required_columns_with_missing) > 0) or (len(optional_columns_with_missing) > 0):
             st.markdown(
@@ -831,7 +831,7 @@ def main():
             #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
             prepared_csv = prepared_df.to_csv(index=False)
             st.download_button(
-                label=f"Click here to download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules",
+                label=f"📥 Download this version of **_{selected_table_name}_**. ⚠️ Note it hasn't been compared vs. CDE rules",
                 data=prepared_csv,
                 file_name=f"{selected_table_name}.before.cde_compared.csv",
                 mime="text/csv",
@@ -903,7 +903,7 @@ def main():
 
     # Download button for the markdown QC log (always enabled)
     st.download_button(
-        label=f"Download a **{selected_table_name}.md** QC log markdown file",
+        label=f"📥 Download a **{selected_table_name}.md** QC log markdown file",
         data=report_content,
         file_name=f"{selected_table_name}.md",
         mime="text/markdown",
@@ -912,7 +912,7 @@ def main():
 
     # Download button (or disabled mock) for sanitized CSV depending on errors
     sanitized_file_name = f"{selected_table_name}.cde_compared.csv"
-    label_for_sanitized = f"Download a **{sanitized_file_name}** file"
+    label_for_sanitized = f"📥 Download a **{sanitized_file_name}** file"
     label_for_sanitized_html = label_for_sanitized.replace("**", "<strong>", 1).replace("**", "</strong>", 1)
 
     # errors_counter = 0  # For testing, uncomment this line to simulate no errors
