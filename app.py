@@ -730,52 +730,40 @@ def main():
 
             # Helper: apply one of the choices to a column, using DataType and Validation
             def apply_fill_choice(series, user_choice: str, field_meta: dict, override_value: str | None = None):
-                datatype_text = str(field_meta.get("DataType", "") or "").strip()
-                validation_text = str(field_meta.get("Validation", "") or "").strip()
                 fillnull_text = str(field_meta.get("FillNull", "") or "").strip()
-                datatype_lower = datatype_text.lower()
 
                 mask = compute_missing_mask(series)
+
+                # 1) Highest priority: explicit override (free text or enum dropdown), if non-empty
+                if override_value is not None and str(override_value).strip() != "":
+                    return series.mask(mask, override_value)
+
+                # 2) CDE-driven choice from the radio buttons (FillNull-based)
                 fill_value = None
 
-                # Highest priority: explicit override (free text or enum dropdown)
-                if override_value:
-                    fill_value = override_value
-                else:
-                    # If user_choice was based on a FillNull radio option, extract the actual value
-                    if user_choice and user_choice.startswith('Fill out with "') and user_choice.endswith('"'):
+                if user_choice:
+                    # Expected pattern from render_missing_values_section:
+                    #   'Fill out with "<VALUE>"'
+                    if user_choice.startswith('Fill out with "') and user_choice.endswith('"'):
                         fill_value = user_choice[len('Fill out with "'): -1]
                     else:
-                        # Fallback to original DataType-based semantics
-                        if datatype_lower in ("integer", "float"):
-                            if user_choice == "Fill out with N/A":
-                                fill_value = "N/A"
-                            elif user_choice == "Fill out with 0":
-                                fill_value = "0"
-                        elif "enum" in datatype_lower:
-                            # Try to parse Validation as a Python list and use the first allowed value
-                            first_allowed = None
-                            if validation_text:
-                                try:
-                                    parsed = ast.literal_eval(validation_text)
-                                    if isinstance(parsed, (list, tuple)) and parsed:
-                                        first_allowed = str(parsed[0])
-                                except Exception:
-                                    first_allowed = None
+                        # Safety net: if the label format ever changes, try to map the choice
+                        # directly to one of the FillNull values.
+                        fillnull_values = []
+                        if fillnull_text:
+                            try:
+                                parsed = ast.literal_eval(fillnull_text)
+                                if isinstance(parsed, (list, tuple)):
+                                    fillnull_values = [str(value) for value in parsed]
+                                else:
+                                    fillnull_values = [str(parsed)]
+                            except Exception:
+                                fillnull_values = [fillnull_text]
 
-                            if user_choice == "Fill out with first allowed value from Validation" and first_allowed is not None:
-                                fill_value = first_allowed
-                            elif user_choice == 'Fill out with "Unknown"':
-                                fill_value = "Unknown"
-                            elif user_choice == 'Fill out with "Other"':
-                                fill_value = "Other"
-                        else:
-                            # Treat everything else as string
-                            if user_choice == "Fill out with Unknown":
-                                fill_value = "Unknown"
-                            elif user_choice == "Fill out with NA":
-                                fill_value = "NA"
+                        if user_choice in fillnull_values:
+                            fill_value = user_choice
 
+                # If we could not resolve a fill_value, leave the series unchanged
                 if fill_value is None:
                     return series
 
@@ -790,6 +778,7 @@ def main():
                     "Description": cde_row.get("Description", ""),
                     "DataType": cde_row.get("DataType", ""),
                     "Validation": cde_row.get("Validation", ""),
+                    "FillNull": cde_row.get("FillNull", ""),
                 }
 
             # Apply choices for required fields (per column)
