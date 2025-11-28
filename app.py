@@ -418,7 +418,6 @@ def main():
         #### Process valid files
         loader = ProcessedDataLoader()
         table_names, input_dataframes_dic, file_warnings, row_counts = loader.load(processed_files)
-        missing_tables_ls = tables_with_missing_values(input_dataframes_dic)
 
         # Surface per-file warnings in the UI
         for filename, warnings_list in file_warnings.items():
@@ -496,8 +495,14 @@ def main():
         st.stop()
     st.markdown("---")
 
-    if missing_tables_ls:
-        st.markdown(f"### Let's fill out missing values in these tables: {', '.join(missing_tables_ls)}")
+    # Determine which tables still contain true missing values (blank or null cells)
+    # based on the raw tables *before* any NA sentinel fill is applied.
+    raw_tables_for_missing_banner = st.session_state.get("raw_tables_before_fill", {})
+    tables_with_missing_values_ls = tables_with_missing_values(raw_tables_for_missing_banner)
+    if tables_with_missing_values_ls:
+        st.markdown(
+            f"### Let's fill out missing values in these tables: {', '.join(tables_with_missing_values_ls)}"
+        )
 
     ############
     #### Create file selection dropdown and run CDE validation for each selected file
@@ -506,7 +511,7 @@ def main():
         '''
         <h3 id="choose-a-file-to-continue"
             style="font-size: 25px; scroll-margin-top: 80px;">
-            Choose a file to continue <span style="color: red;">*</span>
+            Choose a table to continue <span style="color: red;">*</span>
         </h3>
         ''',
         unsafe_allow_html=True,
@@ -567,18 +572,16 @@ def main():
         if selected_table_name not in missing_value_choices:
             missing_value_choices[selected_table_name] = {
                 "required": {},
-                "required_free_text": {},
                 "required_enum_choice": {},
                 "optional": {},
-                "optional_free_text": {},
             }
 
         table_missing_choices = missing_value_choices[selected_table_name]
         required_column_choices = table_missing_choices.get("required", {})
-        required_free_text = table_missing_choices.get("required_free_text", {})
+        # required_free_text = table_missing_choices.get("required_free_text", {})
         required_enum_choice = table_missing_choices.get("required_enum_choice", {})
         optional_column_choices = table_missing_choices.get("optional", {})
-        optional_free_text = table_missing_choices.get("optional_free_text", {})
+        # optional_free_text = table_missing_choices.get("optional_free_text", {})
 
         # Determine required vs optional fields for this table from the CDE
         table_cde_rules = get_table_cde(cde_dataframe, selected_table_name)
@@ -621,6 +624,13 @@ def main():
         # Build lookup for CDE metadata per field (Description, DataType, Validation)
         cde_meta_by_field = build_cde_meta_by_field(table_cde_rules)
 
+        # Initialize per-table message collector for column-level comments (Task 2).
+        column_comments = st.session_state.get("column_comments", {})
+        if selected_table_name not in column_comments:
+            column_comments[selected_table_name] = {}
+        st.session_state["column_comments"] = column_comments
+
+
         required_columns_with_missing = render_missing_values_section(
             section_kind="required",
             selected_table_name=selected_table_name,
@@ -629,7 +639,6 @@ def main():
             compute_missing_mask=compute_missing_mask,
             cde_meta_by_field=cde_meta_by_field,
             column_choices=required_column_choices,
-            free_text=required_free_text,
             enum_choice=required_enum_choice,
         )
 
@@ -641,16 +650,15 @@ def main():
             compute_missing_mask=compute_missing_mask,
             cde_meta_by_field=cde_meta_by_field,
             column_choices=optional_column_choices,
-            free_text=optional_free_text,
             enum_choice=None,
             has_required_columns_with_missing=len(required_columns_with_missing) > 0,
         )
 
         table_missing_choices["required"] = required_column_choices
-        table_missing_choices["required_free_text"] = required_free_text
+        # table_missing_choices["required_free_text"] = required_free_text
         table_missing_choices["required_enum_choice"] = required_enum_choice
         table_missing_choices["optional"] = optional_column_choices
-        table_missing_choices["optional_free_text"] = optional_free_text
+        # table_missing_choices["optional_free_text"] = optional_free_text
 
         missing_value_choices[selected_table_name] = table_missing_choices
         st.session_state["missing_value_choices"] = missing_value_choices
@@ -683,17 +691,17 @@ def main():
                 selected_table_name,
                 {
                     "required": {},
-                    "required_free_text": {},
+                    # "required_free_text": {},
                     "required_enum_choice": {},
                     "optional": {},
-                    "optional_free_text": {},
+                    # "optional_free_text": {},
                 },
             )
             required_column_choices = table_missing_choices.get("required", {})
-            required_free_text = table_missing_choices.get("required_free_text", {})
+            # required_free_text = table_missing_choices.get("required_free_text", {})
             required_enum_choice = table_missing_choices.get("required_enum_choice", {})
             optional_column_choices = table_missing_choices.get("optional", {})
-            optional_free_text = table_missing_choices.get("optional_free_text", {})
+            # optional_free_text = table_missing_choices.get("optional_free_text", {})
 
             prepared_df = effective_raw_df.copy()
             table_cde_rules = get_table_cde(cde_dataframe, selected_table_name)
@@ -726,7 +734,7 @@ def main():
 
                 mask = compute_missing_mask(series)
 
-                # 1) Highest priority: explicit override (free text or enum dropdown), if non-empty
+                # 1) Highest priority: explicit override value (for example, from a controlled vocabulary dropdown), if non-empty
                 if override_value is not None and str(override_value).strip() != "":
                     return series.mask(mask, override_value)
 
@@ -768,14 +776,11 @@ def main():
             # Apply choices for required fields (per column)
             for field_name in required_fields:
                 user_choice = required_column_choices.get(field_name)
-                free_text_value = required_free_text.get(field_name, "")
                 enum_choice_value = required_enum_choice.get(field_name, "")
 
-                # Precedence: Free text > Enum dropdown > Radio choice
+                # Precedence: Enum dropdown > Radio choice
                 override_value = None
-                if free_text_value:
-                    override_value = free_text_value
-                elif enum_choice_value:
+                if enum_choice_value:
                     override_value = enum_choice_value
 
                 if user_choice or override_value:
@@ -790,11 +795,9 @@ def main():
             # Apply choices for optional fields (per column)
             for field_name in optional_fields:
                 user_choice_opt = optional_column_choices.get(field_name)
-                free_text_opt = optional_free_text.get(field_name, "")
 
+                # No free-text override; only radio-based FillNull choices are applied.
                 override_value_opt = None
-                if free_text_opt:
-                    override_value_opt = free_text_opt
 
                 if user_choice_opt or override_value_opt:
                     field_meta = cde_meta_by_field.get(field_name, {})

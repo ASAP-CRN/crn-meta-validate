@@ -160,7 +160,6 @@ def render_missing_values_section(
     compute_missing_mask: Callable[[Any], Any],
     cde_meta_by_field: Dict[str, Dict[str, str]],
     column_choices: Dict[str, str],
-    free_text: Dict[str, str],
     enum_choice: Dict[str, str] | None = None,
     has_required_columns_with_missing: bool = False,
 ) -> List[Tuple[str, int]]:
@@ -188,6 +187,173 @@ def render_missing_values_section(
 
     if len(columns_with_missing) == 0:
         return columns_with_missing
+
+    # Horizontal rule between required and optional sections
+    if section_kind == "optional" and has_required_columns_with_missing:
+        st.markdown("---")
+
+    # Section header
+    if section_kind == "required":
+        st.markdown(f"#### Missing values in _{selected_table_name}_ required columns")
+    else:
+        st.markdown(f"#### Missing values in _{selected_table_name}_ optional columns")
+
+    for field_index, (field_name, missing_count) in enumerate(columns_with_missing):
+        field_meta = cde_meta_by_field.get(field_name, {})
+        description_text = str(field_meta.get("Description", "") or "").strip()
+        datatype_text = str(field_meta.get("DataType", "") or "").strip()
+        validation_text = str(field_meta.get("Validation", "") or "").strip()
+        fillnull_text = str(field_meta.get("FillNull", "") or "").strip()
+
+        datatype_lower = datatype_text.lower()
+
+        # Build FillNull-driven options, with DataType fallbacks
+        fillnull_values = _parse_fillnull_values(fillnull_text)
+
+        option_labels: List[str] = []
+        if fillnull_values:
+            for fill_value in fillnull_values:
+                option_labels.append(f'Fill out with "{fill_value}"')
+        else:
+            st.error(
+                "ERROR!!! No FillNull values were found for "
+                f"field '{field_name}' in table '{selected_table_name}' "
+                f"(section: {section_kind}). Please ensure the CDE FillNull "
+                "column is complete and reload the app.",
+            )
+            st.stop()
+
+
+        existing_choice = column_choices.get(field_name, option_labels[0])
+        try:
+            default_index = option_labels.index(existing_choice)
+        except ValueError:
+            default_index = 0
+
+        # Hover tooltip: use only Description
+        hover_parts: List[str] = []
+        if description_text:
+            hover_parts.append(description_text)
+        hover_text = " | ".join(hover_parts)
+        hover_text_escaped = html.escape(hover_text, quote=True)
+
+        
+        # Card styling (required vs optional)
+        block_class = "missing-block-required" if section_kind == "required" else "missing-block-optional"
+        severity_icon = "⚠️"
+        section_label = "Required" if section_kind == "required" else "Optional"
+
+        st.markdown(
+            f"""
+            <div class="missing-block {block_class}">
+                <div class="missing-block-title">
+                    {severity_icon} <strong>{section_label}</strong> column
+                    <span class="tooltip-wrapper">
+                        <span class="missing-hover"><strong>{field_name}</strong></span>
+                        <span class="tooltip-text">{hover_text_escaped}</span>
+                    </span>
+                    has {missing_count} empty values. Expect data type: {datatype_text}.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        content_column, comments_column = st.columns(2)
+
+        with content_column:
+            # Required vs optional layout for enum dropdown
+            is_enum_required_column = (
+                section_kind == "required"
+                and "enum" in datatype_lower
+                and bool(validation_text)
+            )
+
+            if is_enum_required_column:
+                if enum_choice is None:
+                    enum_choice = {}
+
+                enum_key = f"mv_enum_required_{selected_table_name}_{field_name}_{field_index}"
+                existing_enum_choice = enum_choice.get(field_name, "")
+
+                validation_values: List[str] = []
+                try:
+                    parsed_validation = ast.literal_eval(validation_text)
+                    if isinstance(parsed_validation, (list, tuple)):
+                        validation_values = [str(value) for value in parsed_validation]
+                    else:
+                        validation_values = [str(parsed_validation)]
+                except Exception:
+                    validation_values = [validation_text]
+
+                if validation_values:
+                    placeholder_label = "Select an option"
+                    full_options = [placeholder_label] + validation_values
+
+                    if existing_enum_choice and existing_enum_choice not in full_options:
+                        full_options.append(existing_enum_choice)
+
+                    if existing_enum_choice and existing_enum_choice in full_options:
+                        default_enum_index = full_options.index(existing_enum_choice)
+                    else:
+                        default_enum_index = 0
+
+                    selected_enum_value = st.selectbox(
+                        "Use a controlled vocabulary to fill empty values in this column (overrides choice):",
+                        full_options,
+                        index=default_enum_index,
+                        key=enum_key,
+                    )
+
+                    if selected_enum_value != placeholder_label:
+                        # User explicitly chose a controlled vocabulary value; override choices.
+                        enum_choice[field_name] = selected_enum_value
+                    else:
+                        # Helper text selected; keep existing choice (if any) and do not override.
+                        enum_choice[field_name] = existing_enum_choice
+                else:
+                    enum_choice[field_name] = existing_enum_choice
+            elif section_kind == "required":
+                # Non-enum required column: maintain key in enum_choice without a value override.
+                if enum_choice is not None:
+                    existing_enum_choice = enum_choice.get(field_name, "")
+                    enum_choice[field_name] = existing_enum_choice
+
+            if is_enum_required_column:
+                st.markdown(
+                    """
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        text-align: center;
+                        margin: 0.5rem 0;
+                    ">
+                        <div style="flex: 1; border-top: 1px dotted #cccccc;"></div>
+                        <span style="margin: 0 0.5rem; font-weight: 600; color: #666;">
+                            OR
+                        </span>
+                        <div style="flex: 1; border-top: 1px dotted #cccccc;"></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            radio_label = f"Choose how to fill this {section_kind} column:"
+            radio_key_prefix = f"mv_radio_{section_kind}"
+            radio_key = f"{radio_key_prefix}_{selected_table_name}_{field_name}_{field_index}"
+
+            user_choice = st.radio(
+                radio_label,
+                option_labels,
+                index=default_index,
+                key=radio_key,
+            )
+            column_choices[field_name] = user_choice
+
+        # Column reserved for future per-column comments (Task 4).
+        with comments_column:
+            st.empty()
+    return columns_with_missing
 
     # Horizontal rule between required and optional sections
     if section_kind == "optional" and has_required_columns_with_missing:
@@ -271,76 +437,56 @@ def render_missing_values_section(
         )
         column_choices[field_name] = user_choice
 
-        # Required vs optional layout for free text and enum
+        # Required vs optional layout for enum dropdown
         if section_kind == "required":
-            free_text_col, enum_dropdown_col = st.columns(2)
+            if enum_choice is None:
+                enum_choice = {}
 
-            with free_text_col:
-                free_text_key = f"mv_free_required_{selected_table_name}_{field_name}_{field_index}"
-                existing_free_text = free_text.get(field_name, "")
-                free_text_value = st.text_input(
-                    "Free text (optional; overrides choice):",
-                    value=existing_free_text,
-                    key=free_text_key,
-                )
-                free_text[field_name] = free_text_value
+            enum_key = f"mv_enum_required_{selected_table_name}_{field_name}_{field_index}"
+            existing_enum_choice = enum_choice.get(field_name, "")
 
-            with enum_dropdown_col:
-                if enum_choice is None:
-                    enum_choice = {}
-
-                enum_key = f"mv_enum_required_{selected_table_name}_{field_name}_{field_index}"
-                existing_enum_choice = enum_choice.get(field_name, "")
-
-                if "enum" in datatype_lower and validation_text:
-                    validation_values: List[str] = []
-                    try:
-                        parsed_validation = ast.literal_eval(validation_text)
-                        if isinstance(parsed_validation, (list, tuple)):
-                            validation_values = [str(value) for value in parsed_validation]
-                        else:
-                            validation_values = [str(parsed_validation)]
-                    except Exception:
-                        validation_values = [validation_text]
-
-                    if validation_values:
-                        placeholder_label = "Select an option"
-                        full_options = [placeholder_label] + validation_values
-
-                        if existing_enum_choice and existing_enum_choice not in full_options:
-                            full_options.append(existing_enum_choice)
-
-                        if existing_enum_choice and existing_enum_choice in full_options:
-                            default_index = full_options.index(existing_enum_choice)
-                        else:
-                            default_index = 0
-
-                        selected_enum_value = st.selectbox(
-                            "Controlled vocabularies (optional; overrides choice):",
-                            full_options,
-                            index=default_index,
-                            key=enum_key,
-                        )
-
-                        if selected_enum_value != placeholder_label:
-                            # User explicitly chose a controlled vocabulary value; override choices.
-                            enum_choice[field_name] = selected_enum_value
-                        else:
-                            # Helper text selected; keep existing choice (if any) and do not override.
-                            enum_choice[field_name] = existing_enum_choice
+            if "enum" in datatype_lower and validation_text:
+                validation_values: List[str] = []
+                try:
+                    parsed_validation = ast.literal_eval(validation_text)
+                    if isinstance(parsed_validation, (list, tuple)):
+                        validation_values = [str(value) for value in parsed_validation]
                     else:
+                        validation_values = [str(parsed_validation)]
+                except Exception:
+                    validation_values = [validation_text]
+
+                if validation_values:
+                    placeholder_label = "Select an option"
+                    full_options = [placeholder_label] + validation_values
+
+                    if existing_enum_choice and existing_enum_choice not in full_options:
+                        full_options.append(existing_enum_choice)
+
+                    if existing_enum_choice and existing_enum_choice in full_options:
+                        default_index = full_options.index(existing_enum_choice)
+                    else:
+                        default_index = 0
+
+                    selected_enum_value = st.selectbox(
+                        "Controlled vocabularies (optional; overrides choice):",
+                        full_options,
+                        index=default_index,
+                        key=enum_key,
+                    )
+
+                    if selected_enum_value != placeholder_label:
+                        # User explicitly chose a controlled vocabulary value; override choices.
+                        enum_choice[field_name] = selected_enum_value
+                    else:
+                        # Helper text selected; keep existing choice (if any) and do not override.
                         enum_choice[field_name] = existing_enum_choice
                 else:
                     enum_choice[field_name] = existing_enum_choice
+            else:
+                enum_choice[field_name] = existing_enum_choice
         else:
-            # Optional section: full-width free text only
-            free_text_key = f"mv_free_optional_{selected_table_name}_{field_name}_{field_index}"
-            existing_free_text_opt = free_text.get(field_name, "")
-            free_text_value_opt = st.text_input(
-                "Free text (optional):",
-                value=existing_free_text_opt,
-                key=free_text_key,
-            )
-            free_text[field_name] = free_text_value_opt
+            # Optional section: no extra controls; only radio-based FillNull choices are used.
+            pass
 
     return columns_with_missing
