@@ -236,18 +236,17 @@ def render_missing_values_section(
             hover_parts.append(description_text)
         hover_text = " | ".join(hover_parts)
         hover_text_escaped = html.escape(hover_text, quote=True)
-
         
         # Card styling (required vs optional)
         block_class = "missing-block-required" if section_kind == "required" else "missing-block-optional"
-        severity_icon = "⚠️"
+        severity_icon = "❌" if section_kind == "required" else "⚠️"
         section_label = "Required" if section_kind == "required" else "Optional"
 
         st.markdown(
             f"""
             <div class="missing-block {block_class}">
                 <div class="missing-block-title">
-                    {severity_icon} <strong>{section_label}</strong> column
+                    {severity_icon} <strong>&nbsp;{section_label}</strong> column
                     <span class="tooltip-wrapper">
                         <span class="missing-hover"><strong>{field_name}</strong></span>
                         <span class="tooltip-text">{hover_text_escaped}</span>
@@ -322,8 +321,21 @@ def render_missing_values_section(
                     else:
                         default_enum_index = 0
 
+                    st.markdown(
+                        f"""
+                        <div style="font-size:16px;">
+                            Use a controlled vocabulary to fill out column
+                            <span class="tooltip-wrapper">
+                                <span class="missing-hover">{field_name}</span>
+                                <span class="tooltip-text">{hover_text_escaped}</span>
+                            </span>:
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
                     selected_enum_value = st.selectbox(
-                        "Use a controlled vocabulary to fill empty values in this column (overrides choice):",
+                        "",
                         full_options,
                         index=default_enum_index,
                         key=enum_key,
@@ -355,6 +367,7 @@ def render_missing_values_section(
                     existing_enum_choice = enum_choice.get(field_name, "")
                     enum_choice[field_name] = existing_enum_choice
 
+            # Dotted line '---OR---' separator for Enum required columns
             if is_enum_required_column:
                 st.markdown(
                     """
@@ -374,12 +387,25 @@ def render_missing_values_section(
                     unsafe_allow_html=True,
                 )
 
-            radio_label = f"Choose how to fill this {section_kind} column:"
+            # Radio buttons for generic FillNull options
             radio_key_prefix = f"mv_radio_{section_kind}"
             radio_key = f"{radio_key_prefix}_{selected_table_name}_{field_name}_{field_index}"
 
+            st.markdown(
+                f"""
+                <div style="font-size:16px;">
+                    Choose a generic value to fill out column 
+                    <span class="tooltip-wrapper">
+                        <span class="missing-hover">{field_name}</span>
+                        <span class="tooltip-text">{hover_text_escaped}</span>
+                    </span>:
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
             user_choice = st.radio(
-                radio_label,
+                "",
                 option_labels,
                 index=default_index,
                 key=radio_key,

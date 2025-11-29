@@ -425,9 +425,10 @@ def main():
                 st.warning(f"**{filename}** — {warning_text}")
 
         # Files ready for CDE validation
-        for table_name in table_names:
+        for filename in file_warnings.keys():
+            table_name = loader.sanitize_table_name(filename)
             current_row_count = row_counts.get(table_name, 0)
-            st.success(f"**{table_name}** ({current_row_count} rows) — Loaded and ready for validation of columns and values.")
+            st.success(f"✅ File **{filename}** loaded: {current_row_count} rows are ready for validation.")
 
         tables_loaded = True
         validation_report_dic = dict()
@@ -616,10 +617,10 @@ def main():
         )
         if extra_fields:
             message = (
-                f"Warning: the following {len(extra_fields)} columns from {selected_table_name} "
-                "couldn't be found in the CDE and will not be evaluated:  " + ", ".join(extra_fields)
+            f"⚠️ Warning: the following {len(extra_fields)} columns from {selected_table_name} "
+            f"couldn't be found in the CDE and will not be evaluated:  {', '.join(extra_fields)}"
             )
-            st.warning(message, icon="⚠️")
+            st.warning(message)
 
         # Build lookup for CDE metadata per field (Description, DataType, Validation)
         cde_meta_by_field = build_cde_meta_by_field(table_cde_rules)
@@ -671,6 +672,7 @@ def main():
     if (len(required_columns_with_missing) > 0) or (len(optional_columns_with_missing) > 0):
         ############
         #### Apply missing-value rules first, then preview, then compare vs. CDE
+        st.markdown("---")
         apply_label = "✅ Apply missing-value choices"
         apply_clicked = st.button(apply_label, key=f"apply_missing_{selected_table_name}")
     else:
@@ -861,7 +863,7 @@ def main():
         # Override the table to be validated with the prepared DataFrame
         input_dataframes_dic[selected_table_name] = prepared_df
     else:
-        st.info("After choosing how to fill missing values above, click the button to apply them and see a preview.")
+        st.info("After choosing how to fill missing values above, click the button to apply choices.")
         return
 
     ############

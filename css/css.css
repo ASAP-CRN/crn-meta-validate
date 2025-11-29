@@ -1,5 +1,5 @@
 /* ============================================
-   General font styles
+   General font styles. Note: !important used to override Streamlit defaults
    ============================================ */
 
 .big-font {
@@ -54,6 +54,26 @@ div.stButton > button:first-child {
     margin-bottom: 0.25rem;
     color: #333;   /* IMPORTANT: always dark grey to be compatible with dark-themed browsers */
 }
+
+/* Reduce vertical space between selectboxes and their headers */
+[data-testid="stSelectbox"] {
+    margin-top: -8px !important;
+}
+[data-testid="stSelectbox"] > div {
+    padding-top: 0 !important;
+    margin-top: -8px !important;
+}
+
+/* Reduce vertical space between radio widgets and their headers */
+[data-testid="stRadio"] {
+    margin-top: 4px !important;
+}
+
+[data-testid="stRadio"] > div {
+    padding-top: 0 !important;
+    margin-top: -25px !important;
+}
+
 
 /* ============================================
    Custom Tooltip container hover-over, used instead of

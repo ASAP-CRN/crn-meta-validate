@@ -207,7 +207,7 @@ class DelimiterHandler:
     ):
         if row_count == 0:
             st.error(
-                f"**{filename}** — file contains only headers with no data rows (detected {delimiter_name} delimiter). "
+                f"❌ File **{filename}** contains only headers with no data rows (detected **{delimiter_name}** delimiter). "
                 "This file will be skipped during validation."
             )
         else:
