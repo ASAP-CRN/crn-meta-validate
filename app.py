@@ -59,7 +59,7 @@ from io import StringIO
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field
-from utils.delimiter_handler import DelimiterHandler
+from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
@@ -561,7 +561,7 @@ def main():
             f'###### Preview _{selected_table_name}_ <u>before</u> filling out missing values',
             unsafe_allow_html=True
         )
-        st.dataframe(selected_raw_df.head(10))
+        st.dataframe(format_dataframe_for_preview(selected_raw_df).head(10))
 
         # Initialize per-table missing-value choices in session state
         if "missing_value_choices" not in st.session_state:
@@ -829,7 +829,8 @@ def main():
                 f'###### Preview _{selected_table_name}_ <u>after</u> filling out missing values',
                 unsafe_allow_html=True
             )
-            st.dataframe(prepared_df.head(10))
+            # st.dataframe(prepared_df.head(10))
+            st.dataframe(format_dataframe_for_preview(prepared_df).head(10))
 
             #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
             prepared_csv = prepared_df.to_csv(index=False)

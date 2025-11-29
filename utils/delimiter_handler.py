@@ -29,6 +29,25 @@ class FileStatus:
     filename: str
     filesize: int
     is_invalid: bool = False
+def format_dataframe_for_preview(dataframe: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    """
+    Return a copy of *dataframe* suitable for Streamlit previews,
+    where missing values appear as truly empty cells (no "None" strings).
+    This helper is shared by multiple preview locations.
+    """
+    if dataframe is None:
+        return None
+
+    formatted = dataframe.copy()
+    try:
+        formatted = formatted.astype("string")
+    except Exception:
+        # If conversion fails, continue with the original dtypes
+        pass
+
+    formatted = formatted.fillna("")
+    return formatted
+
 
 class DelimiterHandler:
     """
@@ -205,7 +224,8 @@ class DelimiterHandler:
     ):
         st.info(f"**{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0%}).")
         if preview_df is not None:
-            st.dataframe(preview_df.head(5))
+            st.dataframe(format_dataframe_for_preview(preview_df).head(10))
+
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button(f"Yes, convert {filename} to comma", key=f"convert_{file_key}"):
@@ -330,4 +350,3 @@ class DelimiterHandler:
         return processed
 
 # ---------- End of DelimiterHandler class ----------
-
