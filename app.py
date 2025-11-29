@@ -891,8 +891,8 @@ def main():
         st.markdown(
             """
             <div style="text-align: right;">
-                <a href="#choose-a-file-to-continue">
-                    <button>⬆️ Go back to select a file</button>
+                <a href="#choose-a-table-to-continue">
+                    <button>⬆️ Go back to select a table</button>
                 </a>
             </div>
             """,
