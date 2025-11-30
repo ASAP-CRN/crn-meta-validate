@@ -425,9 +425,10 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
                 ### Free-text Add comment box
                 st.markdown(free_text_markdown, unsafe_allow_html=True)
                 comment_value = st.text_area(
-                    "",
+                    "Free text comment box",
                     key=comment_widget_key,
                     height=15,
+                    label_visibility="collapsed",
                 )
 
                 table_comments[column_name] = comment_value

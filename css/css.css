@@ -59,31 +59,31 @@ div.stButton > button:first-child {
     color: #333;   /* IMPORTANT: always dark grey to be compatible with dark-themed browsers */
 }
 
-/* Reduce vertical space between selectboxes and their headers */
+/* Control vertical space between selectboxes and their headers */
 [data-testid="stSelectbox"] {
     margin-top: -8px !important;
 }
 [data-testid="stSelectbox"] > div {
     padding-top: 0 !important;
-    margin-top: -8px !important;
+    margin-top: 12px !important;
 }
 
-/* Reduce vertical space between radio widgets and their headers */
+/* Control vertical space between radio widgets and their headers */
 [data-testid="stRadio"] {
     margin-top: 4px !important;
 }
 [data-testid="stRadio"] > div {
     padding-top: 0 !important;
-    margin-top: -25px !important;
+    margin-top: 0px !important;
 }
 
-/* Reduce vertical space between free text boxes and their headers */
+/* Control vertical space between free text boxes and their headers */
 [data-testid="stTextArea"] {
     margin-top: 0px !important;
 }
 [data-testid="stTextArea"] > div {
     padding-top: 0 !important;
-    margin-top: -17px !important;
+    margin-top: 2px !important;
 }
 
 

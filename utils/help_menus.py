@@ -350,10 +350,11 @@ def render_missing_values_section(
                     )
 
                     selected_enum_value = st.selectbox(
-                        "",
+                        "Dropdown fill-null options",
                         full_options,
                         index=default_enum_index,
                         key=enum_key,
+                        label_visibility="collapsed",
                     )
 
                     # Track dropdown interaction
@@ -420,10 +421,11 @@ def render_missing_values_section(
             )
 
             user_choice = st.radio(
-                "",
+                "Radio button fill-null options",
                 option_labels,
                 index=default_index,
                 key=radio_key,
+                label_visibility="collapsed",
             )
             column_choices[field_name] = user_choice
             
@@ -458,9 +460,10 @@ def render_missing_values_section(
             ### Free-text Add comment box
             st.markdown(free_text_markdown, unsafe_allow_html=True)
             comment_value = st.text_area(
-                "",
+                "Free text comment box",
                 key=comment_widget_key,
                 height=15,
+                label_visibility="collapsed",
             )
 
             table_comments[field_name] = comment_value
