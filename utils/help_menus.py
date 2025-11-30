@@ -348,13 +348,12 @@ def render_missing_values_section(
                         """,
                         unsafe_allow_html=True,
                     )
-
                     selected_enum_value = st.selectbox(
                         "Dropdown fill-null options",
                         full_options,
-                        index=default_enum_index,
-                        key=enum_key,
                         label_visibility="collapsed",
+                        index=None,
+                        placeholder="Type to search controlled vocabulary…",
                     )
 
                     # Track dropdown interaction
