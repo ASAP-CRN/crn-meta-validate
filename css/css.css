@@ -9,8 +9,12 @@
     font-family:Arial; color:000000; font-size:18px;
 }
 textarea {
-    font-family:Arial; font-size: 25px;
-    }
+    font-family: Arial;
+    font-size: 25px;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1.2em;
+}
 input {
     font-family:Arial; font-size: 25px;
 }
@@ -68,10 +72,18 @@ div.stButton > button:first-child {
 [data-testid="stRadio"] {
     margin-top: 4px !important;
 }
-
 [data-testid="stRadio"] > div {
     padding-top: 0 !important;
     margin-top: -25px !important;
+}
+
+/* Reduce vertical space between free text boxes and their headers */
+[data-testid="stTextArea"] {
+    margin-top: 0px !important;
+}
+[data-testid="stTextArea"] > div {
+    padding-top: 0 !important;
+    margin-top: -17px !important;
 }
 
 

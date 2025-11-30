@@ -916,6 +916,34 @@ def main():
         on_click=cach_clean,
     )
 
+    # Download button for per-column comments (only if any comments exist)
+    column_comments = st.session_state.get("column_comments", {})
+    table_comments = column_comments.get(selected_table_name, {})
+
+    non_empty_comments = {
+        column_name: str(comment_text).strip()
+        for column_name, comment_text in table_comments.items()
+        if str(comment_text).strip()
+    }
+
+    if non_empty_comments:
+        comments_lines = [f"# Comments on {selected_table_name}"]
+        for column_name in sorted(non_empty_comments):
+            comments_lines.append("")
+            comments_lines.append(f"## {column_name}")
+            comments_lines.append("")
+            comments_lines.append(non_empty_comments[column_name])
+
+        comments_md_content = "\n".join(comments_lines)
+
+        st.download_button(
+            label=f"📥 Download a **{selected_table_name}_comments.md** file",
+            data=comments_md_content,
+            file_name=f"{selected_table_name}_comments.md",
+            mime="text/markdown",
+        )
+
+
     # Download button (or disabled mock) for sanitized CSV depending on errors
     sanitized_file_name = f"{selected_table_name}.cde_compared.csv"
     label_for_sanitized = f"📥 Download a **{sanitized_file_name}** file"

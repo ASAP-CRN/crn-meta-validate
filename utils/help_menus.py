@@ -3,22 +3,46 @@ import ast
 import html
 from typing import Any, Callable, Dict, List, Tuple
 
+def build_hover_text_from_description(description_text: str) -> str:
+    """Return HTML-escaped hover text built from a column description.
+    This keeps tooltip construction consistent across the app.
+    """
+    description_text_stripped = (description_text or "").strip()
+    hover_parts: List[str] = []
+    if description_text_stripped:
+        hover_parts.append(description_text_stripped)
+    hover_text = " | ".join(hover_parts)
+    return html.escape(hover_text, quote=True)
+
+def build_free_text_header_markdown(column_name: str, hover_text: str) -> None:
+    """Render the free-text comment box header markdown for a given column."""
+    free_text_header_markdown = f"""
+    <div style="font-size:16px;">
+        Record comments on column
+        <span class="tooltip-wrapper">
+            <span class="missing-hover">{column_name}</span>
+            <span class="tooltip-text">{hover_text}</span>
+        </span> (optional):
+    </div>
+    """
+    return free_text_header_markdown
+
 def get_app_intro_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
     """Return the main app introduction text shared between the UI and docs."""
     return f"""This app assists data contributors to QC their metadata tables in comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
 
 We do this in five steps:     
-
 **Step 1. Indicate your Dataset type:** the app will determine expected CSV files and columns.     
 **Step 2. Download template files:** a left-side bar will appear indicating expected files and providing file templates.     
-**Step 3. Fill out and upload completed files:** offline, fill out the expected files with your metadata. Then, upload completed files via the Drag & drop box or Browse button.     
+**Step 3. Fill out and upload files:** offline, fill out files with your metadata and upload them via the Drag & drop box or Browse button.     
 **Step 4. Fix common issues:** follow app instructions to fix common issues (e.g. non-comma delimiters and missing values).     
 **Step 5. CDE validation:** the app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE) {cde_version}]({cde_google_sheet_url}).
 
 Two types of issues will be reported:     
-
 **Errors:** must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
 **Warnings:** recommended to be fixed before uploading, but not required.     
+
+Free text boxes allow users to record per-column comments to provide context to data curators during review.
 """
 
 def render_app_intro(webapp_version: str, cde_version: str, cde_google_sheet_url: str) -> None:
@@ -164,7 +188,6 @@ def render_missing_values_section(
     has_required_columns_with_missing: bool = False,
 ) -> List[Tuple[str, int]]:
     """Render the missing-values UI for required or optional columns.
-
     Returns a list of (field_name, missing_count) for columns that had missing values.
     """
     columns_with_missing: List[Tuple[str, int]] = []
@@ -204,8 +227,9 @@ def render_missing_values_section(
         datatype_text = str(field_meta.get("DataType", "") or "").strip()
         validation_text = str(field_meta.get("Validation", "") or "").strip()
         fillnull_text = str(field_meta.get("FillNull", "") or "").strip()
-
         datatype_lower = datatype_text.lower()
+        hover_text_escaped = build_hover_text_from_description(description_text)
+        free_text_markdown = build_free_text_header_markdown(field_name, hover_text_escaped)
 
         # Build FillNull-driven options, with DataType fallbacks
         fillnull_values = _parse_fillnull_values(fillnull_text)
@@ -223,20 +247,12 @@ def render_missing_values_section(
             )
             st.stop()
 
-
         existing_choice = column_choices.get(field_name, option_labels[0])
         try:
             default_index = option_labels.index(existing_choice)
         except ValueError:
             default_index = 0
 
-        # Hover tooltip: use only Description
-        hover_parts: List[str] = []
-        if description_text:
-            hover_parts.append(description_text)
-        hover_text = " | ".join(hover_parts)
-        hover_text_escaped = html.escape(hover_text, quote=True)
-        
         # Card styling (required vs optional)
         block_class = "missing-block-required" if section_kind == "required" else "missing-block-optional"
         severity_icon = "❌" if section_kind == "required" else "⚠️"
@@ -258,10 +274,9 @@ def render_missing_values_section(
             unsafe_allow_html=True,
         )
 
-        content_column, comments_column = st.columns(2)
-
-        with content_column:
-            # Required vs optional layout for enum dropdown
+        fillout_tools_column, comments_column = st.columns(2)
+        with fillout_tools_column:
+            # Required vs. optional layout for enum dropdown
             is_enum_required_column = (
                 section_kind == "required"
                 and "enum" in datatype_lower
@@ -424,7 +439,31 @@ def render_missing_values_section(
                     st.session_state[last_interaction_key] = "radio"
                     st.session_state[prev_radio_key] = user_choice
 
-        # Column reserved for future per-column comments (Task 4).
+        # Column for per-column free-text comments.
         with comments_column:
-            st.empty()
+            column_comments = st.session_state.get("column_comments", {})
+            if selected_table_name not in column_comments:
+                column_comments[selected_table_name] = {}
+            table_comments = column_comments[selected_table_name]
+
+            existing_comment_text = table_comments.get(field_name, "")
+
+            comment_widget_key = (
+                f"mv_comment_{section_kind}_{selected_table_name}_{field_name}_{field_index}"
+            )
+
+            if comment_widget_key not in st.session_state:
+                st.session_state[comment_widget_key] = existing_comment_text
+
+            ### Free-text Add comment box
+            st.markdown(free_text_markdown, unsafe_allow_html=True)
+            comment_value = st.text_area(
+                "",
+                key=comment_widget_key,
+                height=15,
+            )
+
+            table_comments[field_name] = comment_value
+            column_comments[selected_table_name] = table_comments
+            st.session_state["column_comments"] = column_comments
     return columns_with_missing
