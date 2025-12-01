@@ -101,6 +101,7 @@ Free text boxes allow users to record per-column comments to provide context to 
   * Each of your CSV files will become a `TABLE` in the app memory.
 #### Step 4 -- Fix common issues
   * Follow the app instructions to `fix common issues`, (e.g non-comma delimiters and missing values).     
+  * For each colum with missing values, a free text box is provided to `Record comments` for ASAP curators.    
 #### Step 5 -- Validate vs. the CDE
   * Compare each `TABLE` vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
   * The app will report missing columns and value mismatches vs. the CDE.
@@ -108,8 +109,10 @@ Free text boxes allow users to record per-column comments to provide context to 
     * ✅ **Successful** steps.    
     * ❌ **Errors** to be fixed by _data contributors_ before uploading the CSV file to ASAP Google Cloud buckets.   
     * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration.   
-  * At the end, two files can be downloaded:
+  * For each colum with CDE validation issues, a free text box is provided to `Record comments` for ASAP curators.    
+  * At the end, three files can be downloaded:
     * A `TABLE.md` markup file with each `TABLE` run report.   
+    * A `TABLE_comments.md` markup file with user column-level comments that can be provided to ASAP curators.   
     * A sanitized `TABLE.cde_compared.csv` file. Note: button will be enabled only if no errors were found. You can upload this file to its Google bucket (see [Notes](#notes)).
 
 ### Notes:
