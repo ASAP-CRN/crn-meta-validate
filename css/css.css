@@ -163,7 +163,7 @@ section[data-testid="stFileUploaderDropzone"] * {
     margin-left: auto !important;
     margin-right: auto !important;
 }
-/* Hide the 'Limit 200MB per file • CSV' legend*/
+/* Hide the 'Limit 200MB per file â€¢ CSV' legend*/
 section[data-testid="stFileUploaderDropzone"] span + span {
     display: none !important;
 }
@@ -173,34 +173,51 @@ span.st-emotion-cache-1sct1q3.e1d2qte94 {
     display: none !important;
 }
 
-/* Replace default "Drag and drop files here" text with multi-line version */
-/* Target specifically the text span (e1d2qte93), NOT the icon span (e1d2qte92) */
-/* Works for both light mode (st-emotion-cache-ycmcfb) and potential dark mode variations */
-section[data-testid="stFileUploaderDropzone"] span.st-emotion-cache-ycmcfb.e1d2qte93,
-section[data-testid="stFileUploaderDropzone"] span[class*="st-emotion-cache-"][class*="e1d2qte93"] {
+/* ============================================
+   FIXED: Replace default "Drag and drop files here" text
+   Generic approach: works across different Streamlit versions/deployments
+   ============================================ */
+
+/* Hide ALL text content in dropzone by making everything font-size 0 */
+section[data-testid="stFileUploaderDropzone"] * {
     font-size: 0 !important;
-    line-height: 0 !important;
-    position: relative;
-    display: block !important;
 }
 
-section[data-testid="stFileUploaderDropzone"] span.st-emotion-cache-ycmcfb.e1d2qte93::before,
-section[data-testid="stFileUploaderDropzone"] span[class*="st-emotion-cache-"][class*="e1d2qte93"]::before {
+/* Restore font-size for the button text only */
+section[data-testid="stFileUploaderDropzone"] button,
+section[data-testid="stFileUploaderDropzone"] button * {
+    font-size: 16px !important;
+}
+
+/* Add custom text using ::before on the main dropzone container */
+section[data-testid="stFileUploaderDropzone"]::before {
     content: "📂 Drag & drop\AOR" !important;
     font-size: 16px !important;
     line-height: 1.3 !important;
-    white-space: pre-wrap !important;
+    white-space: pre !important;
     display: block !important;
     text-align: center !important;
     color: inherit !important;
     font-weight: 500 !important;
+    margin-bottom: -1rem !important;  /* Controls space between custom legend and Browse button */
+    padding-top: 0rem !important;
+}
+
+/* Reduce overall height of dropzone */
+section[data-testid="stFileUploaderDropzone"] {
+    padding-top: 1rem !important;  /* Reduced from 1.5rem */
+    padding-bottom: 1rem !important;  /* Reduced from 1.5rem */
+    min-height: auto !important;
+}
+
+/* Reduce spacing around button */
+section[data-testid="stFileUploaderDropzone"] button {
+    margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
 
-/* Hide the cloud upload icon for both themes */
-section[data-testid="stFileUploaderDropzone"] svg,
-section[data-testid="stFileUploaderDropzone"] span.st-emotion-cache-yo0lzo.e1d2qte92,
-section[data-testid="stFileUploaderDropzone"] span[class*="st-emotion-cache-"][class*="e1d2qte92"] {
+/* Hide the cloud upload icon */
+section[data-testid="stFileUploaderDropzone"] svg {
     display: none !important;
 }
 
@@ -221,5 +238,5 @@ section[data-testid="stFileUploaderDropzone"] button {
     padding-right: 16px !important;
     font-size: 16px !important;
     border-radius: 4px !important;
-    border: 1px solid #0F6EA1 !important;
+    border: 2px solid #0F6EA1 !important;
 }
