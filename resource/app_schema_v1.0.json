@@ -2,7 +2,7 @@
   "app_version": "v1.0",
   "cde_definition": {
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
-    "cde_version": "v3.4"
+    "cde_version": "v4.0"
   },
   "default_input_delimiter": ",",
   "kebab_menu": {
