@@ -54,6 +54,7 @@ import json
 import pandas as pd
 import html
 import streamlit as st
+from datetime import datetime
 import ast
 from pathlib import Path
 import os, sys
@@ -72,6 +73,16 @@ from utils.template_files import build_templates_zip
 webapp_version = "v1.0" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
+
+
+################################
+#### Ensure that CSS changes are reloaded
+#### Important whenever the app is re-run in Streamlit Cloud as it won't always reload CSS changes otherwise.
+################################
+def load_css(file_path):
+    with open(file_path, "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+load_css("css/css.css")
 
 ################################
 #### Load app schema from JSON
