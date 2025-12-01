@@ -12,6 +12,7 @@ Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v1.0 (CDE version v3.4), 25 November 2025
+Webapp v1.0 (CDE version v4.0), 01 December 2025
 
 Version notes:
 Webapp v0.4:
@@ -30,9 +31,12 @@ Webapp v0.5:
 * Adds download button for pre-CDE-validated sanitized CSV
 
 Webapp v1.0:
-* Update to use CDE version v3.4
+* Update to use CDE version v4.0
 * Using Assay Type for the dropdown menu instead of Modality
 * Provide template files as a zipped URL in Expected files section
+* Adds free-text box for user comments on each column (to be included in final report)
+* Makes dropdown menus searchable
+* Standardizes logs, documentation and aesthetics across the app
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
