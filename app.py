@@ -30,7 +30,7 @@ Webapp v0.5:
 * Comparison of each column vs. CDE using both Validation and FillNull (newly added in v0.5)
 * Adds download button for pre-CDE-validated sanitized CSV
 
-Webapp v1.0:
+Webapp v0.9 (before v1.0 into Production):
 * Update to use CDE version v4.0
 * Using Assay Type for the dropdown menu instead of Modality
 * Provide template files as a zipped URL in Expected files section
@@ -70,10 +70,9 @@ from utils.find_missing_values import compute_missing_mask, table_has_missing_va
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
-webapp_version = "v1.0" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
-
 
 ################################
 #### Ensure that CSS changes are reloaded

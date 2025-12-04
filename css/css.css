@@ -163,7 +163,7 @@ section[data-testid="stFileUploaderDropzone"] * {
     margin-left: auto !important;
     margin-right: auto !important;
 }
-/* Hide the 'Limit 200MB per file â€¢ CSV' legend*/
+/* Hide the 'Limit 200MB per file CSV' legend*/
 section[data-testid="stFileUploaderDropzone"] span + span {
     display: none !important;
 }
