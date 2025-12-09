@@ -1,0 +1,88 @@
+{
+  "app_version": "v0.6",
+  "cde_definition": {
+    "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
+    "cde_version": "v4.0"
+  },
+  "default_input_delimiter": ",",
+  "kebab_menu": {
+    "email": "support@dnastack.com",
+    "get_help_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX?tab=readme-ov-file#how-to-use-the-web-app",
+    "page_header": "ASAP CRN metadata quality control (QC) app"
+  },
+  "table_categories": {
+    "species": [
+      "Human",
+      "Mouse",
+      "Cyno macaque",
+      "Rhesus macaque",
+      "Other"
+    ],
+    "tissues_or_cells": [
+      "Brain",
+      "Skin",
+      "Blood",
+      "Embryonic fibroblast",
+      "Cell lines",
+      "iPSC",
+      "Fecal",
+      "Other"
+    ],
+    "assays": 
+    {
+      "atac_seq": "ATAC-seq",
+      "bisulfite_sequencing": "Bisulfite sequencing",
+      "bulk_rna_seq": "Bulk RNA-seq",
+      "chip_seq": "ChIP-seq",
+      "cite_seq": "CITE-seq",
+      "hi_c": "Hi-C",
+      "lipidomics": "Lipidomics",
+      "metaproteomics": "Metaproteomics",
+      "multi_seq": "MULTI-Seq",
+      "multiome": "Multiome",
+      "shotgun_proteomics_lc_ms": "Shotgun proteomics (LC-MS)",
+      "shotgun_metagenomics": "Shotgun metagenomics",
+      "single_cell_rna_seq": "Single-cell RNA-seq",
+      "single_nucleus_rna_seq": "Single-nucleus RNA-seq",
+      "spatial_transcriptomics_geomx": "Spatial transcriptomics (GeoMx)",
+      "spatial_transcriptomics_visium": "Spatial transcriptomics (Visium)",
+      "targeted_dna_sequencing": "Targeted DNA sequencing",
+      "targeted_proteomics_srm_prm": "Targeted proteomics (SRM/PRM)",
+      "untargeted_metabolomics": "Untargeted metabolomics",
+      "whole_exome_sequencing": "Whole-exome sequencing",
+      "whole_genome_genotyping_array": "Whole-genome genotyping array",
+      "whole_genome_sequencing": "Whole-genome sequencing",
+      "other": "Other"
+    }
+  },
+  "table_names": {
+    "required": [
+      "ASSAY",
+      "CONDITION",
+      "DATA",
+      "PROTOCOL",
+      "SAMPLE",
+      "STUDY",
+      "SUBJECT"
+    ],
+    "human_specific": [
+      "CLINPATH"
+    ],
+    "mouse_specific": [
+      ""
+    ],
+    "rhesus_macaque_specific": [
+      ""
+    ],
+    "cyno_macaque_specific": [
+      ""
+    ],
+    "other_specific": [
+      ""
+    ],
+    "cell_specific": [
+      ""
+    ]
+  },
+  "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files"
+}

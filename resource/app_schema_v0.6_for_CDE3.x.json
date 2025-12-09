@@ -1,8 +1,8 @@
 {
-  "app_version": "v1.0",
+  "app_version": "v0.6",
   "cde_definition": {
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
-    "cde_version": "v4.0"
+    "cde_version": "v3.3"
   },
   "default_input_delimiter": ",",
   "kebab_menu": {
@@ -19,7 +19,8 @@
       "Other"
     ],
     "tissues_or_cells": [
-      "Brain",
+      "Brain post-mortem (PMDBS)",
+      "Brain (not PMDBS)",
       "Skin",
       "Blood",
       "Embryonic fibroblast",
@@ -69,7 +70,7 @@
       "CLINPATH"
     ],
     "mouse_specific": [
-      ""
+      "MOUSE"
     ],
     "rhesus_macaque_specific": [
       ""
@@ -81,7 +82,19 @@
       ""
     ],
     "cell_specific": [
-      ""
+      "CELL"
+    ],
+    "pmdbs_specific": [
+      "PMDBS"
+    ],
+    "rna_seq_specific": [
+      "ASSAY_RNAseq"
+    ],
+    "spatial_specific": [
+      "SPATIAL"
+    ],
+    "proteomics_specific": [
+      "PROTEOMICS"
     ]
   },
   "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files"

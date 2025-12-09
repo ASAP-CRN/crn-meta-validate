@@ -11,8 +11,8 @@ Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
-Webapp v1.0 (CDE version v3.4), 25 November 2025
-Webapp v1.0 (CDE version v4.0), 01 December 2025
+Webapp v0.5 (CDE version v3.4), 25 November 2025
+Webapp v0.6 (CDE version v4.0), 01 December 2025
 
 Version notes:
 Webapp v0.4:
@@ -30,7 +30,7 @@ Webapp v0.5:
 * Comparison of each column vs. CDE using both Validation and FillNull (newly added in v0.5)
 * Adds download button for pre-CDE-validated sanitized CSV
 
-Webapp v0.9 (before v1.0 into Production):
+Webapp v0.6:
 * Update to use CDE version v4.0
 * Using Assay Type for the dropdown menu instead of Modality
 * Provide template files as a zipped URL in Expected files section
@@ -70,7 +70,7 @@ from utils.find_missing_values import compute_missing_mask, table_has_missing_va
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.9" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.6" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -593,11 +593,8 @@ def main():
 
         table_missing_choices = missing_value_choices[selected_table_name]
         required_column_choices = table_missing_choices.get("required", {})
-        # required_free_text = table_missing_choices.get("required_free_text", {})
         required_enum_choice = table_missing_choices.get("required_enum_choice", {})
         optional_column_choices = table_missing_choices.get("optional", {})
-        # optional_free_text = table_missing_choices.get("optional_free_text", {})
-
         # Determine required vs optional fields for this table from the CDE
         table_cde_rules = get_table_cde(cde_dataframe, selected_table_name)
 
@@ -670,10 +667,8 @@ def main():
         )
 
         table_missing_choices["required"] = required_column_choices
-        # table_missing_choices["required_free_text"] = required_free_text
         table_missing_choices["required_enum_choice"] = required_enum_choice
         table_missing_choices["optional"] = optional_column_choices
-        # table_missing_choices["optional_free_text"] = optional_free_text
 
         missing_value_choices[selected_table_name] = table_missing_choices
         st.session_state["missing_value_choices"] = missing_value_choices
@@ -707,17 +702,13 @@ def main():
                 selected_table_name,
                 {
                     "required": {},
-                    # "required_free_text": {},
                     "required_enum_choice": {},
                     "optional": {},
-                    # "optional_free_text": {},
                 },
             )
             required_column_choices = table_missing_choices.get("required", {})
-            # required_free_text = table_missing_choices.get("required_free_text", {})
             required_enum_choice = table_missing_choices.get("required_enum_choice", {})
             optional_column_choices = table_missing_choices.get("optional", {})
-            # optional_free_text = table_missing_choices.get("optional_free_text", {})
 
             prepared_df = effective_raw_df.copy()
             table_cde_rules = get_table_cde(cde_dataframe, selected_table_name)

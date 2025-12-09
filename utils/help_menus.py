@@ -39,8 +39,8 @@ We do this in five steps:
 **Step 5. CDE validation:** the app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE) {cde_version}]({cde_google_sheet_url}).
 
 Two types of issues will be reported:     
-**Errors:** must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
-**Warnings:** recommended to be fixed before uploading, but not required.     
+**Errors (❌):**  must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
+**Warnings (⚠️):** recommended to be fixed before uploading, but not required.     
 
 Free text boxes allow users to record per-column comments to provide context to data curators during review.
 """
