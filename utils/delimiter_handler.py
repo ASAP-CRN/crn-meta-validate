@@ -78,8 +78,9 @@ def build_styled_preview_with_differences(
 
     # Align invalid mask, if provided
     if invalid_mask is not None:
-        aligned_invalid = invalid_mask.reindex_like(formatted_updated).fillna(False)
-        invalid_values = aligned_invalid.to_numpy()
+        aligned_invalid = invalid_mask.reindex_like(formatted_updated)
+        # Convert to a plain boolean array, treating NA as False
+        invalid_values = aligned_invalid.to_numpy(dtype=bool, na_value=False)
     else:
         invalid_values = None
 
@@ -96,8 +97,9 @@ def build_styled_preview_with_differences(
         else:
             diff_only = difference_mask
 
-        base = np.where(diff_only, f"color: {app_schema['preview_fillout_color']}", base)
-
+        # Ensure there are no ambiguous pd.NA values in the mask
+        diff_only_array = diff_only.to_numpy(dtype=bool, na_value=False)
+        base = np.where(diff_only_array, f"color: {app_schema['preview_fillout_color']}", base)
         return pd.DataFrame(base, index=dataframe.index, columns=dataframe.columns)
 
     return formatted_updated.style.apply(_highlight_differences, axis=None)
