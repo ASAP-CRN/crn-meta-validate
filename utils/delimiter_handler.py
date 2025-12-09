@@ -16,6 +16,7 @@ Author: Javier Diaz
 
 from __future__ import annotations
 import pandas as pd
+import numpy as np
 import streamlit as st
 import io
 from typing import Tuple, Optional, Dict, List
@@ -47,6 +48,38 @@ def format_dataframe_for_preview(dataframe: Optional[pd.DataFrame]) -> Optional[
 
     formatted = formatted.fillna("")
     return formatted
+
+
+def build_styled_preview_with_differences(
+    original_df: Optional[pd.DataFrame],
+    updated_df: Optional[pd.DataFrame],
+) -> Optional[pd.io.formats.style.Styler]:
+    """
+    Return a pandas Styler object for *updated_df* suitable for use with ``st.dataframe``,
+    highlighting cells that differ from *original_df* using green font color.
+    """
+    formatted_updated = format_dataframe_for_preview(updated_df)
+    if formatted_updated is None:
+        return None
+
+    formatted_original = format_dataframe_for_preview(original_df)
+    if formatted_original is None:
+        return formatted_updated.style
+
+    # Align original to updated so that the comparison is on the same index/columns
+    aligned_original = formatted_original.reindex_like(formatted_updated)
+
+    difference_mask = aligned_original.ne(formatted_updated)
+
+    def _highlight_differences(dataframe: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(
+            np.where(difference_mask, "color: #28a745", ""),
+            index=dataframe.index,
+            columns=dataframe.columns,
+        )
+
+    return formatted_updated.style.apply(_highlight_differences, axis=None)
+
 
 
 class DelimiterHandler:
@@ -224,7 +257,9 @@ class DelimiterHandler:
     ):
         st.info(f"**{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0%}).")
         if preview_df is not None:
-            st.dataframe(format_dataframe_for_preview(preview_df).head(10))
+            rows_to_show = st.session_state.get('preview_max_rows', 10)
+            preview_df_formatted = format_dataframe_for_preview(preview_df)
+            st.dataframe(preview_df_formatted.head(rows_to_show))
 
         col1, col2, col3 = st.columns(3)
         with col1:

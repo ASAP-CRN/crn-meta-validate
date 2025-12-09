@@ -8,6 +8,7 @@ Google Sheets or local CSV files.
 
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
+from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
 
 NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitized.csv files
 
@@ -179,7 +180,7 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, validation_report: ReportCollector ):
+def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, validation_report: ReportCollector, not_filled_table=None, preview_max_rows=None):
     """
     Validate the table against the specific table entries from the CDE
 
@@ -193,7 +194,10 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     warnings_counter = 0
 
     ############
-    original_df = table_df.copy()
+    if not_filled_table is not None:
+        original_df = not_filled_table.copy()
+    else:
+        original_df = table_df.copy()
 
     ############
     #### Replace empty strings and various null representations with NULL_SENTINEL
@@ -366,6 +370,33 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
         warnings_counter += len(invalid_optional)
     else:
         validation_report.add_success(f"✅ -- No invalid values were found in optional columns\n")
+
+    ############
+    ### Preview of validated table
+    st.markdown("---")
+    st.markdown(
+        f'###### Preview _{table_name}_ after CDE comparison',
+        unsafe_allow_html=True
+    )
+    rows_to_show = st.session_state.get("preview_max_rows", preview_max_rows)
+    show_all_validated_key = f"show_all_rows_validated_{table_name}"
+    show_all_validated = st.session_state.get(show_all_validated_key, False)
+    if show_all_validated:
+        preview_original_df = original_df
+        preview_validated_df = table_df
+    else:
+        preview_original_df = original_df.head(rows_to_show)
+        preview_validated_df = table_df.head(rows_to_show)
+
+    styled_preview = build_styled_preview_with_differences(
+        preview_original_df,
+        preview_validated_df,
+    )
+    if styled_preview is not None:
+        st.dataframe(styled_preview)
+    else:
+        st.dataframe(format_dataframe_for_preview(preview_validated_df))
+    st.checkbox("Show all rows", key=show_all_validated_key, value=show_all_validated)
 
     # Provide a detailed non-redundant list of invalid values per column
     if len(invalid_entries) > 0:

@@ -21,13 +21,13 @@ Webapp v0.4:
 * Added reset button to sidebar, reset cache and file uploader
 * Added app_schema to manage app configuration
 * Added Classes for DelimiterHandler and ProcessedDataLoader to utils/
-* Improved delimiter detection and handling logic
+* Improved delimiter detection
 * Improved file upload handling and status display
 
 Webapp v0.5:
 * Assit users to fillout missing values on each column via radio buttons, free text or dropdown menus
-* Improved missing-values detection logic in utils/find_missing_values.py
-* Comparison of each column vs. CDE using both Validation and FillNull (newly added in v0.5)
+* Improved detection of missing values in utils/find_missing_values.py
+* Comparison of each column vs. CDE using both Validation and FillNull rules
 * Adds download button for pre-CDE-validated sanitized CSV
 
 Webapp v0.6:
@@ -37,6 +37,7 @@ Webapp v0.6:
 * Adds free-text box for user comments on each column (to be included in final report)
 * Makes dropdown menus searchable
 * Standardizes logs, documentation and aesthetics across the app
+* Adds colours to final table preview based on missing values status
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -152,6 +153,11 @@ def main():
     # Initialize file uploader key in session state
     if 'file_uploader_key' not in st.session_state:
         st.session_state.file_uploader_key = 0
+
+    # Initialize preview rows setting in session state
+    preview_max_rows = app_schema.get('preview_max_rows')
+    if 'preview_max_rows' not in st.session_state:
+        st.session_state['preview_max_rows'] = preview_max_rows
 
     # Main introduction text
     render_app_intro(
@@ -571,12 +577,24 @@ def main():
         input_dataframes_dic[selected_table_name] = selected_raw_df
         raw_tables_before_fill[selected_table_name] = selected_raw_df
 
+    not_filled_table = None
     if selected_raw_df is not None:
+
+        # Preview of raw table before filling missing values
+        not_filled_table = selected_raw_df.copy()
         st.markdown(
             f'###### Preview _{selected_table_name}_ <u>before</u> filling out missing values',
             unsafe_allow_html=True
         )
-        st.dataframe(format_dataframe_for_preview(selected_raw_df).head(10))
+        preview_df_before = format_dataframe_for_preview(selected_raw_df)
+        show_all_before_key = f"show_all_rows_before_fill_{selected_table_name}"
+        show_all_before = st.session_state.get(show_all_before_key, False)
+        if show_all_before:
+            df_to_show_before = preview_df_before
+        else:
+            df_to_show_before = preview_df_before.head(preview_max_rows)
+        st.dataframe(df_to_show_before)
+        st.checkbox("Show all rows", key=show_all_before_key, value=show_all_before)
 
         # Initialize per-table missing-value choices in session state
         if "missing_value_choices" not in st.session_state:
@@ -832,12 +850,21 @@ def main():
     compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {cde_version}"
     if prepared_df is not None:
         if (len(required_columns_with_missing) > 0) or (len(optional_columns_with_missing) > 0):
+
+            # Preview of prepared table after filling missing values
             st.markdown(
                 f'###### Preview _{selected_table_name}_ <u>after</u> filling out missing values',
                 unsafe_allow_html=True
             )
-            # st.dataframe(prepared_df.head(10))
-            st.dataframe(format_dataframe_for_preview(prepared_df).head(10))
+            preview_df_after = format_dataframe_for_preview(prepared_df)
+            show_all_after_key = f"show_all_rows_after_fill_{selected_table_name}"
+            show_all_after = st.session_state.get(show_all_after_key, False)
+            if show_all_after:
+                df_to_show_after = preview_df_after
+            else:
+                df_to_show_after = preview_df_after.head(preview_max_rows)
+            st.dataframe(df_to_show_after)
+            st.checkbox("Show all rows", key=show_all_after_key, value=show_all_after)
 
             #### Allow user to download the prepared CSV (i.e. after filling missing values but before CDE validation)
             prepared_csv = prepared_df.to_csv(index=False)
@@ -880,7 +907,9 @@ def main():
 
     # Perform the validation
     st.info(f"Validating **{selected_table_name}** ({len(selected_table)} rows × {len(selected_table.columns)} columns) vs. CDE {cde_version}")
-    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, cde_rules, report)
+
+    # Perform CDE validation. Includes preview of validated table.
+    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, cde_rules, report, not_filled_table, preview_max_rows)
 
     ############
     #### Display validation results and download buttons
@@ -947,7 +976,6 @@ def main():
             file_name=f"{selected_table_name}_comments.md",
             mime="text/markdown",
         )
-
 
     # Download button (or disabled mock) for sanitized CSV depending on errors
     sanitized_file_name = f"{selected_table_name}.cde_compared.csv"
