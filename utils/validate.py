@@ -180,7 +180,9 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, validation_report: ReportCollector, not_filled_table=None, preview_max_rows=None):
+def validate_table(table_df: pd.DataFrame, table_name: str, 
+                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, not_filled_table=None, 
+                   preview_max_rows=None, app_schema=None):
     """
     Validate the table against the specific table entries from the CDE
 
@@ -202,10 +204,13 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     ############
     #### Replace empty strings and various null representations with NULL_SENTINEL
     table_df = normalize_null_like_dataframe(table_df, sentinel=NULL)
-    
+
+    # Track per-cell invalid values (those not matching Validation or FillNull)
+    invalid_cell_mask = pd.DataFrame(False, index=table_df.index, columns=table_df.columns)
+
     def my_str(x):
         return f"'{str(x)}'"
-        
+
     ############
     #### Record:
     #### a) missing required and optional columns
@@ -255,6 +260,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
                 valid_mask = is_special | is_integer_numeric
                 invalid_mask = ~valid_mask
+                invalid_cell_mask.loc[invalid_mask, column] = True
 
                 invalid_values = entries[invalid_mask].unique()
                 n_invalid = invalid_values.shape[0]
@@ -283,6 +289,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
                 valid_mask = is_special | is_float_numeric
                 invalid_mask = ~valid_mask
+                invalid_cell_mask.loc[invalid_mask, column] = True
 
                 invalid_values = entries[invalid_mask].unique()
                 n_invalid = invalid_values.shape[0]
@@ -307,6 +314,8 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
 
                 entries = table_df[column]
                 valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+                invalid_mask = ~valid_entries
+                invalid_cell_mask.loc[invalid_mask, column] = True
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
@@ -375,9 +384,18 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
     ### Preview of validated table
     st.markdown("---")
     st.markdown(
-        f'###### Preview _{table_name}_ after CDE comparison',
-        unsafe_allow_html=True
+        f"""
+        <div style="font-size:16px; font-weight:600;">
+            Preview <i>{table_name}</i> <u>after</u> CDE comparison.
+        </div>
+        <div style="font-size:14px; margin-top:2px;">
+            Color code: <span style="color:{app_schema['preview_fillout_color']}; font-weight:400;">filled out</span>,
+            <span style="color:{app_schema['preview_invalid_cde_color']}; font-weight:400;">invalid vs. CDE</span>.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
     rows_to_show = st.session_state.get("preview_max_rows", preview_max_rows)
     show_all_validated_key = f"show_all_rows_validated_{table_name}"
     show_all_validated = st.session_state.get(show_all_validated_key, False)
@@ -388,9 +406,14 @@ def validate_table(table_df: pd.DataFrame, table_name: str, specific_cde_df: pd.
         preview_original_df = original_df.head(rows_to_show)
         preview_validated_df = table_df.head(rows_to_show)
 
+    # Align invalid-cell mask to the preview dataframe
+    preview_invalid_mask = invalid_cell_mask.reindex_like(preview_validated_df)
+
     styled_preview = build_styled_preview_with_differences(
         preview_original_df,
         preview_validated_df,
+        invalid_mask=preview_invalid_mask,
+        app_schema=app_schema,
     )
     if styled_preview is not None:
         st.dataframe(styled_preview)

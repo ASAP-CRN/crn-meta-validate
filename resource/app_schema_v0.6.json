@@ -85,5 +85,7 @@
     ]
   },
   "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files",
-  "preview_max_rows": 5
+  "preview_max_rows": 5,
+  "preview_fillout_color": "#28a745",
+  "preview_invalid_cde_color": "#ff9800"
 }

@@ -37,7 +37,7 @@ Webapp v0.6:
 * Adds free-text box for user comments on each column (to be included in final report)
 * Makes dropdown menus searchable
 * Standardizes logs, documentation and aesthetics across the app
-* Adds colours to final table preview based on missing values status
+* Adds colours to final table preview based on missing values and invalid vs. CDE status
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -909,7 +909,9 @@ def main():
     st.info(f"Validating **{selected_table_name}** ({len(selected_table)} rows × {len(selected_table.columns)} columns) vs. CDE {cde_version}")
 
     # Perform CDE validation. Includes preview of validated table.
-    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, cde_rules, report, not_filled_table, preview_max_rows)
+    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, 
+                                                                                              cde_rules, report, not_filled_table, 
+                                                                                              preview_max_rows, app_schema)
 
     ############
     #### Display validation results and download buttons

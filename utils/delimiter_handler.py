@@ -53,10 +53,15 @@ def format_dataframe_for_preview(dataframe: Optional[pd.DataFrame]) -> Optional[
 def build_styled_preview_with_differences(
     original_df: Optional[pd.DataFrame],
     updated_df: Optional[pd.DataFrame],
+    invalid_mask: Optional[pd.DataFrame] = None,
+    app_schema: Optional[Dict] = None,
 ) -> Optional[pd.io.formats.style.Styler]:
     """
     Return a pandas Styler object for *updated_df* suitable for use with ``st.dataframe``,
-    highlighting cells that differ from *original_df* using green font color.
+    highlighting:
+      * cells that differ from *original_df* in green, and
+      * cells that are invalid w.r.t. CDE Validation/FillNull in orange.
+    When a cell is both changed and invalid, the invalid (orange) color wins.
     """
     formatted_updated = format_dataframe_for_preview(updated_df)
     if formatted_updated is None:
@@ -71,12 +76,29 @@ def build_styled_preview_with_differences(
 
     difference_mask = aligned_original.ne(formatted_updated)
 
+    # Align invalid mask, if provided
+    if invalid_mask is not None:
+        aligned_invalid = invalid_mask.reindex_like(formatted_updated).fillna(False)
+        invalid_values = aligned_invalid.to_numpy()
+    else:
+        invalid_values = None
+
     def _highlight_differences(dataframe: pd.DataFrame) -> pd.DataFrame:
-        return pd.DataFrame(
-            np.where(difference_mask, "color: #28a745", ""),
-            index=dataframe.index,
-            columns=dataframe.columns,
-        )
+        base = np.full(dataframe.shape, "", dtype=object)
+
+        # First, mark invalid cells in orange
+        if invalid_values is not None:
+            base = np.where(invalid_values, f"color: {app_schema['preview_invalid_cde_color']}", base)
+
+        # Then, mark changed-but-valid cells in green
+        if invalid_values is not None:
+            diff_only = difference_mask & ~invalid_values
+        else:
+            diff_only = difference_mask
+
+        base = np.where(diff_only, f"color: {app_schema['preview_fillout_color']}", base)
+
+        return pd.DataFrame(base, index=dataframe.index, columns=dataframe.columns)
 
     return formatted_updated.style.apply(_highlight_differences, axis=None)
 
