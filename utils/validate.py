@@ -324,6 +324,42 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
 
+            elif datatype.item() == "Regex":
+                # Regex DataType: value must either match the pattern or be one of the FillNull tokens.
+                validation_raw = specific_cde_df.loc[entry_idx, "Validation"].item()
+                pattern = str(validation_raw).strip()
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+
+                entries = table_df[column]
+
+                def is_valid_regex_entry(entry_value):
+                    if entry_value in fillnull_values:
+                        return True
+                    if entry_value == NULL_SENTINEL:
+                        # Treat true nulls as invalid for Regex fields unless explicitly allowed via FillNull.
+                        return entry_value in fillnull_values
+                    try:
+                        return re.fullmatch(pattern, str(entry_value)) is not None
+                    except re.error:
+                        # If the pattern itself is invalid, treat all entries as invalid for this column.
+                        return False
+
+                valid_entries = entries.apply(is_valid_regex_entry)
+                invalid_mask = ~valid_entries
+                invalid_cell_mask.loc[invalid_mask, column] = True
+
+                invalid_values = entries[invalid_mask].unique()
+                n_invalid = invalid_values.shape[0]
+                if n_invalid > 0:
+                    valstr = f"Regex /{pattern}/ or FillNull values ({", ".join(map(my_str, fillnull_values))})"
+                    invalstr = ", ".join(map(my_str, invalid_values))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    if opt_req == "REQUIRED":
+                        invalid_required.append(column)
+                    else:
+                        invalid_optional.append(column)
+
             # Freeform dtype == String
             else:
                 pass
