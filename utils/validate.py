@@ -180,8 +180,8 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-def validate_table(table_df: pd.DataFrame, table_name: str, 
-                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, not_filled_table=None, 
+def validate_table(df_after_fill: pd.DataFrame, table_name: str, 
+                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None, 
                    preview_max_rows=None, app_schema=None):
     """
     Validate the table against the specific table entries from the CDE
@@ -196,17 +196,22 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
     warnings_counter = 0
 
     ############
-    if not_filled_table is not None:
-        original_df = not_filled_table.copy()
+    if df_raw_before_fill is not None:
+        df_preview_before_fill = df_raw_before_fill.copy()
     else:
-        original_df = table_df.copy()
+        df_preview_before_fill = df_after_fill.copy()
+
+    # Snapshot of the table *after* user fill-out but *before* null-like normalization.
+    # This is used to count truly missing cells (empty / NA) for the Step 5 summary,
+    # so that filling values in Step 4 actually clears "empty values" errors.
+    df_for_missing_check = df_after_fill.copy()
 
     ############
     #### Replace empty strings and various null representations with NULL_SENTINEL
-    table_df = normalize_null_like_dataframe(table_df, sentinel=NULL)
+    df_after_fill = normalize_null_like_dataframe(df_after_fill, sentinel=NULL)
 
     # Track per-cell invalid values (those not matching Validation or FillNull)
-    invalid_cell_mask = pd.DataFrame(False, index=table_df.index, columns=table_df.columns)
+    invalid_cell_mask = pd.DataFrame(False, index=df_after_fill.index, columns=df_after_fill.columns)
 
     def my_str(x):
         return f"'{str(x)}'"
@@ -233,7 +238,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
         else:
             total_optional += 1
 
-        if column not in table_df.columns:
+        if column not in df_after_fill.columns:
             if opt_req == "REQUIRED":
                 missing_required.append(column)
             else:
@@ -249,7 +254,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
                 allowed_specials = set(fillnull_values)
                 allowed_specials.add(NULL_SENTINEL)
 
-                entries = table_df[column]
+                entries = df_after_fill[column]
 
                 # Values that match allowed FillNull tokens (including canonical NULL) are always valid
                 is_special = entries.isin(allowed_specials)
@@ -278,7 +283,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
                 allowed_specials = set(fillnull_values)
                 allowed_specials.add(NULL_SENTINEL)
 
-                entries = table_df[column]
+                entries = df_after_fill[column]
 
                 # Values that match allowed FillNull tokens (including canonical NULL) are always valid
                 is_special = entries.isin(allowed_specials)
@@ -312,7 +317,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
                 # Merge Valid + FillNull
                 valid_and_fillnull_values = list(set(list(valid_values + fillnull_values)))
 
-                entries = table_df[column]
+                entries = df_after_fill[column]
                 valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
                 invalid_mask = ~valid_entries
                 invalid_cell_mask.loc[invalid_mask, column] = True
@@ -331,7 +336,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
                 fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
                 fillnull_values = parse_literal_list(fillnull_values_raw)
 
-                entries = table_df[column]
+                entries = df_after_fill[column]
 
                 def is_valid_regex_entry(entry_value):
                     if entry_value in fillnull_values:
@@ -364,8 +369,8 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
             else:
                 pass
             
-            if column in original_df.columns:
-                missing_mask_for_column = compute_missing_mask(original_df[column])
+            if column in df_for_missing_check.columns:
+                missing_mask_for_column = compute_missing_mask(df_for_missing_check[column])
                 n_null = int(missing_mask_for_column.sum())
                 if n_null > 0:
                     null_columns.append((opt_req, column, n_null))
@@ -378,7 +383,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
     if len(missing_required) > 0:
         validation_report.add_error(f"❌ -- Missing {len(missing_required)}/{total_required} **required** columns in *{table_name}*: {', '.join(missing_required)}")
         for column in missing_required:
-            table_df[column] = NULL
+            df_after_fill[column] = NULL
             errors_counter += 1
     else:
         validation_report.add_success(f"✅ -- All {total_required} **required** columns are present in *{table_name}*")
@@ -386,7 +391,7 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
     if len(missing_optional) > 0:
         validation_report.add_warning(f"⚠️ -- Missing {len(missing_optional)}/{total_optional} **optional** columns in *{table_name}*: {', '.join(missing_optional)}")
         for column in missing_optional:
-            table_df[column] = NULL
+            df_after_fill[column] = NULL
             warnings_counter += 1
     else:
         validation_report.add_success(f"✅ -- All {total_optional} **optional** columns are present in *{table_name}*")
@@ -436,17 +441,17 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
     show_all_validated_key = f"show_all_rows_validated_{table_name}"
     show_all_validated = st.session_state.get(show_all_validated_key, False)
     if show_all_validated:
-        preview_original_df = original_df
-        preview_validated_df = table_df
+        preview_df_preview_before_fill = df_preview_before_fill
+        preview_validated_df = df_after_fill
     else:
-        preview_original_df = original_df.head(rows_to_show)
-        preview_validated_df = table_df.head(rows_to_show)
+        preview_df_preview_before_fill = df_preview_before_fill.head(rows_to_show)
+        preview_validated_df = df_after_fill.head(rows_to_show)
 
     # Align invalid-cell mask to the preview dataframe
     preview_invalid_mask = invalid_cell_mask.reindex_like(preview_validated_df)
 
     styled_preview = build_styled_preview_with_differences(
-        preview_original_df,
+        preview_df_preview_before_fill,
         preview_validated_df,
         invalid_mask=preview_invalid_mask,
         app_schema=app_schema,
@@ -525,5 +530,4 @@ def validate_table(table_df: pd.DataFrame, table_name: str,
 
         column_comments[table_name] = table_comments
         st.session_state["column_comments"] = column_comments
-    return table_df, validation_report, errors_counter, warnings_counter
-
+    return df_after_fill, validation_report, errors_counter, warnings_counter
