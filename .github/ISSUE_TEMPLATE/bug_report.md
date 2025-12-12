@@ -7,24 +7,21 @@ assignees: jdime
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**Describe the bug**    
+A clear and concise description of what the bug is. Describe what you expected to happen.
 
-**Please include a link to the *.csv file(s) that you were trying to run, a screenshot of the run setup, and the log *.md files returned by the App (if any).**
+**Please include a link to the input \*.csv file(s) that you were trying to run, a screenshot of the run setup, and the log \*.md files returned by the App (if any).**
 
-**To Reproduce**
+**To Reproduce**    
 Steps to reproduce the behaviour:
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Expected behaviour**
-A clear and concise description of what you expected to happen.
-
-**Browser used:**
+**Browser used:**    
  - OS: [e.g. iOS]
  - Browser [e.g. chrome, safari]
 
-**Additional context**
+**Additional context**    
 Add any other context about the problem here.
