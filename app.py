@@ -2,19 +2,20 @@
 ASAP scRNAseq metadata data QC
 
 
-https://github.com/asap_sc_collect
+https://github.com/ASAP-CRN/crn-meta-validate
 
-v0.2
+v0.3
 
-metadata version v2
-20 August 2023
+Default Common Data Elements (CDE) version: v3.3
+Dec 12, 2025
 
-Author:
+Authors:
     @ergonyc : https://github.com/ergonyc
+
 
 Contributors:
     @AMCalejandro : https://github.com/AMCalejandro
-
+    @jdime : https://github.com/jdime
 """
 
 # conda create -n sl11 python=3.11 pip streamlit pandas
@@ -211,7 +212,7 @@ def setup_report_data(
 
 @st.cache_data
 def read_CDE(
-    metadata_version: str = "v3.2",
+    metadata_version: str = "v3.3",
     local: bool = False,
 ):
     """
@@ -362,7 +363,7 @@ def main():
     with col1:
         metadata_version = st.selectbox(
             "choose metadata schema version👇",
-            ["v3.2", "v3.3", "v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
+            ["v3.3", "v3.2", "v3.1", "v3.0", "v3.0-beta", "v2.1", "v2", "v1"],
             # index=None,
             # placeholder="Select TABLE..",
         )
