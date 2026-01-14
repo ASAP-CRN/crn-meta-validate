@@ -1,34 +1,64 @@
-# imports
+"""
+Validate tables utilities for ASAP CRN metadata QC app
+
+This module checks for handles loading and processing of CDE definitions from either
+Google Sheets or local CSV files.
+
+"""
+
+from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
+from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
+from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
+
+NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitized.csv files
+
 import pandas as pd
+import re
+import html
+import streamlit as st
+from ast import literal_eval
 
-# wrape this in try/except to make suing the ReportCollector portable
-# probably an abstract base class would be better
-try:
-    import streamlit as st
-    print("Streamlit imported successfully")
+def build_bullet_invalid_details_markdown(
+        column_name: str, hover_text: str, 
+        column_type: str, n_invalid_vals: int, 
+        invalid_descr: str, valid_descr: str) -> None:
+    
+    # HTML bullet with hover tooltip around column_name
+    bullet_text = f"""
+    <ul style="margin:0; padding-left:20px;">
+    <li>
+        <b>{column_type}</b> column 
+        <span class="tooltip-wrapper">
+            <span class="missing-hover">{column_name}</span>
+            <span class="tooltip-text">{hover_text}</span>
+        </span>
+        has {n_invalid_vals} invalid values:
+        <ul style="margin-top:4px;">
+            <li><b>Invalid values:</b> {invalid_descr}</li>
+            <li><b>Expected:</b> {valid_descr}</li>
+        </ul>
+    </li>
+    </ul>
+    """
+    return bullet_text
 
-except ImportError:
-    class DummyStreamlit:
-        @staticmethod
-        def markdown(self,msg):
-            pass
-        def error(self,msg):
-            pass
-        def header(self,msg):
-            pass        
-        def subheader(self,msg):
-            pass    
-        def divider(self):
-            pass
-    st = DummyStreamlit()
-    print("Streamlit NOT successfully imported")
-
-NULL = "NA"
-
-# streamlit specific helpers which don't depend on streamlit
-def load_css(file_name):
-   with open(file_name) as f:
-      st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+def get_extra_columns_not_in_cde(
+    table_name: str,
+    table_df: "pd.DataFrame",
+    table_cde_rules: "pd.DataFrame",
+) -> list[str]:
+    """
+    Return a sorted list of columns that are present in the input table_df
+    but not defined in the CDE for this table (table_cde_rules["Field"]).
+    """
+    extra_fields: list[str] = []
+    try:
+        cde_fields = set(table_cde_rules["Field"].astype(str))
+        input_fields = set(table_df.columns.astype(str))
+        extra_fields = sorted(input_fields - cde_fields)
+    except Exception:
+        extra_fields = []
+    return extra_fields
 
 def get_log(log_file):
     """ grab logged information from the log file."""
@@ -54,10 +84,20 @@ def read_meta_table(table_path):
     if table_df.columns[0] == "Unnamed: 0":
         table_df = table_df.drop(columns=["Unnamed: 0"])
         
-    table_df.replace({"":NULL, pd.NA:NULL, "none":NULL, "nan":NULL, "Nan":NULL}, inplace=True)
-
     return table_df
 
+def parse_literal_list(raw):
+    if raw is None:
+        return []
+    raw = str(raw).strip()
+    if not raw:
+        return []
+
+    val = literal_eval(raw)
+    if isinstance(val, list):
+        return val
+    else:
+        return [val] # force to list
 
 class ReportCollector:
     """
@@ -73,17 +113,25 @@ class ReportCollector:
         else:
             self.publish_to_streamlit = False
 
-
     def add_markdown(self, msg):
         self.entries.append(("markdown", msg))
         if self.publish_to_streamlit:
             st.markdown(msg)
 
+    def add_success(self, msg):
+        self.entries.append(("success", msg))
+        if self.publish_to_streamlit:
+            st.success(msg)
 
     def add_error(self, msg):
         self.entries.append(("error", msg))
         if self.publish_to_streamlit:
             st.error(msg)
+
+    def add_warning(self, msg):
+        self.entries.append(("warning", msg))
+        if self.publish_to_streamlit:
+            st.warning(msg)
 
     def add_header(self, msg):
         self.entries.append(("header", msg))
@@ -113,9 +161,9 @@ class ReportCollector:
         report_content = []
         for msg_type, msg in self.entries:
             if msg_type == "markdown":
-                report_content += msg + '\n'
+                report_content += f"{msg}\n"
             elif msg_type == "error":
-                report_content += f"🚨⚠️❗ **{msg}**\n"
+                report_content += f"{msg}\n"
             elif msg_type == "header":
                 report_content += f"# {msg}\n"
             elif msg_type == "subheader":
@@ -132,239 +180,354 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
-
-def validate_table_old(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
+def validate_table(df_after_fill: pd.DataFrame, table_name: str, 
+                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None, 
+                   preview_max_rows=None, app_schema=None):
     """
     Validate the table against the specific table entries from the CDE
+
+    Returns:
+    table_df: pd.DataFrame after filling out empty cells
+    validation_report: ReportCollector with validation messages
+    errors_counter: int counting the number of errors found
+    warnings_counter: int counting the number of warnings found
     """
+    errors_counter = 0
+    warnings_counter = 0
+
+    ############
+    if df_raw_before_fill is not None:
+        df_preview_before_fill = df_raw_before_fill.copy()
+    else:
+        df_preview_before_fill = df_after_fill.copy()
+
+    # Snapshot of the table *after* user fill-out but *before* null-like normalization.
+    # This is used to count truly missing cells (empty / NA) for the Step 5 summary,
+    # so that filling values in Step 4 actually clears "empty values" errors.
+    df_for_missing_check = df_after_fill.copy()
+
+    ############
+    #### Replace empty strings and various null representations with NULL_SENTINEL
+    df_after_fill = normalize_null_like_dataframe(df_after_fill, sentinel=NULL)
+
+    # Track per-cell invalid values (those not matching Validation or FillNull)
+    invalid_cell_mask = pd.DataFrame(False, index=df_after_fill.index, columns=df_after_fill.columns)
+
     def my_str(x):
         return f"'{str(x)}'"
-        
+
+    ############
+    #### Record:
+    #### a) missing required and optional columns
+    #### b) columns present but full of empty string
+    #### c) invalid entries in columns (not matching expected values according to CDE)
     missing_required = []
     missing_optional = []
-    null_fields = []
+    invalid_required = []
+    invalid_optional = []
+    null_columns = []
     invalid_entries = []
-    total_rows = df.shape[0]
-    for field in specific_cde_df["Field"]:
-        entry_idx = specific_cde_df["Field"]==field
+    total_required = 0
+    total_optional = 0
+    for column in specific_cde_df["Field"]:
+        entry_idx = specific_cde_df["Field"]==column
 
         opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
+        if opt_req == "REQUIRED":
+            total_required += 1
+        else:
+            total_optional += 1
 
-        if field not in df.columns:
+        if column not in df_after_fill.columns:
             if opt_req == "REQUIRED":
-                missing_required.append(field)
+                missing_required.append(column)
             else:
-                missing_optional.append(field)
-
-            # print(f"missing {opt_req} column {field}")
-
+                missing_optional.append(column)
         else:
             datatype = specific_cde_df.loc[entry_idx,"DataType"]
+
+            # Test that Integer columns are all int or NULL or allowed FillNull strings
             if datatype.item() == "Integer":
-                # recode "Unknown" as NULL
-                print(f"recoding {field} as int")
+                # Allowed special non-numeric tokens for this column (e.g. "Not Reported", "Unknown", "NA")
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+                allowed_specials = set(fillnull_values)
+                allowed_specials.add(NULL_SENTINEL)
 
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field].apply(lambda x: int(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "int or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                entries = df_after_fill[column]
 
-                # test that all are integer or NULL, flag NULL entries
+                # Values that match allowed FillNull tokens (including canonical NULL) are always valid
+                is_special = entries.isin(allowed_specials)
+
+                # For the remaining values, require that they are integer-like numbers
+                numeric = pd.to_numeric(entries, errors="coerce")
+                is_integer_numeric = numeric.notna() & ((numeric % 1) == 0)
+
+                valid_mask = is_special | is_integer_numeric
+                invalid_mask = ~valid_mask
+                invalid_cell_mask.loc[invalid_mask, column] = True
+
+                invalid_values = entries[invalid_mask].unique()
+                n_invalid = invalid_values.shape[0]
+                if n_invalid > 0:
+                    valstr = f"int or NULL ('{NULL_SENTINEL}') or FillNull values ({', '.join(map(my_str, fillnull_values))})"
+                    invalstr = ', '.join(map(my_str, invalid_values))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req == "REQUIRED" else invalid_optional.append(column)
+
+            # Test that Float columns are all float or NULL or allowed FillNull strings
             elif datatype.item() == "Float":
-                # recode "Unknown" as NULL
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "float or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
+                # Allowed special non-numeric tokens for this column (e.g. "Not Reported", "Unknown", "NA")
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+                allowed_specials = set(fillnull_values)
+                allowed_specials.add(NULL_SENTINEL)
 
-                # test that all are float or NULL, flag NULL entries
+                entries = df_after_fill[column]
+
+                # Values that match allowed FillNull tokens (including canonical NULL) are always valid
+                is_special = entries.isin(allowed_specials)
+
+                # For the remaining values, require that they are float-like numbers
+                numeric = pd.to_numeric(entries, errors="coerce")
+                is_float_numeric = numeric.notna()
+
+                valid_mask = is_special | is_float_numeric
+                invalid_mask = ~valid_mask
+                invalid_cell_mask.loc[invalid_mask, column] = True
+
+                invalid_values = entries[invalid_mask].unique()
+                n_invalid = invalid_values.shape[0]
+                if n_invalid > 0:
+                    valstr = f"float or NULL ('{NULL_SENTINEL}') or FillNull values ({', '.join(map(my_str, fillnull_values))})"
+                    invalstr = ', '.join(map(my_str, invalid_values))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req == "REQUIRED" else invalid_optional.append(column)
+
+            # Test that Enum types match CDE Validation (controlled vocabularies) or FillNull (allowed null representations)
             elif datatype.item() == "Enum":
+                # Get list of allowed Valid values from CDE
+                validation_raw = specific_cde_df.loc[entry_idx,"Validation"].item()
+                valid_values = parse_literal_list(validation_raw)
 
-                valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
-                valid_values += [NULL]
-                entries = df[field]
-                valid_entries = entries.apply(lambda x: x in valid_values)
+                # Get list of allowed FillNull values from CDE
+                fillnull_values_raw = specific_cde_df.loc[entry_idx,"FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
+
+                # Merge Valid + FillNull
+                valid_and_fillnull_values = list(set(list(valid_values + fillnull_values)))
+
+                entries = df_after_fill[column]
+                valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+                invalid_mask = ~valid_entries
+                invalid_cell_mask.loc[invalid_mask, column] = True
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_values))
+                    valstr = ', '.join(map(my_str, valid_and_fillnull_values))
                     invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-            else: #dtype == String
-                pass
-            
-            n_null = (df[field]==NULL).sum()
-            if n_null > 0:            
-                null_fields.append((opt_req, field, n_null))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
 
+            elif datatype.item() == "Regex":
+                # Regex DataType: value must either match the pattern or be one of the FillNull tokens.
+                validation_raw = specific_cde_df.loc[entry_idx, "Validation"].item()
+                pattern = str(validation_raw).strip()
+                fillnull_values_raw = specific_cde_df.loc[entry_idx, "FillNull"].item()
+                fillnull_values = parse_literal_list(fillnull_values_raw)
 
-    # now compose report...
-    if len(missing_required) > 0:
-        out.add_error(f"Missing Required Fields in {table_name}: {', '.join(missing_required)}")
-    else:
-        out.add_markdown(f"All required fields are present in *{table_name}* table.")
+                entries = df_after_fill[column]
 
-    if len(missing_optional) > 0:
-        out.add_error(f"Missing Optional Fields in {table_name}: {', '.join(missing_optional)}")
-    
+                def is_valid_regex_entry(entry_value):
+                    if entry_value in fillnull_values:
+                        return True
+                    if entry_value == NULL_SENTINEL:
+                        # Treat true nulls as invalid for Regex fields unless explicitly allowed via FillNull.
+                        return entry_value in fillnull_values
+                    try:
+                        return re.fullmatch(pattern, str(entry_value)) is not None
+                    except re.error:
+                        # If the pattern itself is invalid, treat all entries as invalid for this column.
+                        return False
 
-    if len(null_fields) > 0:
-        # print(f"{opt_req} {field} has {n_null}/{df.shape[0]} NULL entries ")
-        out.add_error(f"{len(null_fields)} Fields with empty (NULL) values:")
-        for opt_req, field, count in null_fields:
-            out.add_markdown(f"\n\t- {field}: {count}/{total_rows} empty rows ({opt_req})")
-    else:
-        out.add_markdown(f"No empty entries (NULL) found .")
+                valid_entries = entries.apply(is_valid_regex_entry)
+                invalid_mask = ~valid_entries
+                invalid_cell_mask.loc[invalid_mask, column] = True
 
-
-    if len(invalid_entries) > 0:
-        out.add_error(f"{len(invalid_entries)} Fields with invalid entries:")
-        for opt_req, field, count, valstr, invalstr in invalid_entries:
-            str_out = f"- _*{field}*_:  invalid values 💩{invalstr}\n"
-            str_out += f"    - valid ➡️ {valstr}"
-            out.add_markdown(str_out)
-    else:
-        out.add_markdown(f"No invalid entries found in Enum fields.")
-
-
-    for field in df.columns:
-        if field not in specific_cde_df["Field"].values:
-            out.add_error(f"Extra field in {table_name}: {field}")
-
-
-    return df.copy(), out
-
-
-
-def validate_table(df: pd.DataFrame, table_name: str, specific_cde_df: pd.DataFrame, out: ReportCollector ):
-    """
-    Validate the table against the specific table entries from the CDE
-    """
-    def my_str(x):
-        return f"'{str(x)}'"
-        
-    missing_required = []
-    missing_optional = []
-    null_fields = []
-    invalid_entries = []
-    total_rows = df.shape[0]
-    for field in specific_cde_df["Field"]:
-        entry_idx = specific_cde_df["Field"]==field
-
-        opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
-
-        if field not in df.columns:
-            if opt_req == "REQUIRED":
-                missing_required.append(field)
-            else:
-                missing_optional.append(field)
-
-            # print(f"missing {opt_req} column {field}")
-
-        else:
-            datatype = specific_cde_df.loc[entry_idx,"DataType"]
-            if datatype.item() == "Integer":
-                # recode "Unknown" as NULL
-                print(f"recoding {field} as int")
-
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field].apply(lambda x: int(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "int or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-
-                # test that all are integer or NULL, flag NULL entries
-            elif datatype.item() == "Float":
-                # recode "Unknown" as NULL
-                df.replace({"Unknown":NULL, "unknown":NULL}, inplace=True)
-                try:
-                    df[field] = df[field].apply(lambda x: float(x) if x!=NULL else x )
-                except Exception as e:
-                    # print(e)
-                    # print(f"Error in {field}")
-                    invalid_values = df[field].unique()
-                    n_invalid = invalid_values.shape[0]
-                    valstr = "float or NULL ('NA')"
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-
-                # test that all are float or NULL, flag NULL entries
-            elif datatype.item() == "Enum":
-
-                valid_values = eval(specific_cde_df.loc[entry_idx,"Validation"].item())
-                valid_values += [NULL]
-                entries = df[field]
-                valid_entries = entries.apply(lambda x: x in valid_values)
-                invalid_values = entries[~valid_entries].unique()
+                invalid_values = entries[invalid_mask].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_values))
-                    invalstr = ', '.join(map(my_str,invalid_values))
-                    invalid_entries.append((opt_req, field, n_invalid, valstr, invalstr))
-            else: #dtype == String
+                    valstr = f"Regex /{pattern}/ or FillNull values ({", ".join(map(my_str, fillnull_values))})"
+                    invalstr = ", ".join(map(my_str, invalid_values))
+                    invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
+                    if opt_req == "REQUIRED":
+                        invalid_required.append(column)
+                    else:
+                        invalid_optional.append(column)
+
+            # Freeform dtype == String
+            else:
                 pass
             
-            n_null = (df[field]==NULL).sum()
-            if n_null > 0:            
-                null_fields.append((opt_req, field, n_null))
+            if column in df_for_missing_check.columns:
+                missing_mask_for_column = compute_missing_mask(df_for_missing_check[column])
+                n_null = int(missing_mask_for_column.sum())
+                if n_null > 0:
+                    null_columns.append((opt_req, column, n_null))
 
 
-    # now compose report...
+    ############
+    #### Compose report, get error and warning counters to either provide the user with a download link for the sanitized file or not
+
+    ## Report missing columns, either required (throw errors) or optional (throw warnings)
     if len(missing_required) > 0:
-        out.add_error(f"Missing Required Fields in {table_name}: {', '.join(missing_required)}")
-        for field in missing_required:
-            df[field] = NULL
-
+        validation_report.add_error(f"❌ -- Missing {len(missing_required)}/{total_required} **required** columns in *{table_name}*: {', '.join(missing_required)}")
+        for column in missing_required:
+            df_after_fill[column] = NULL
+            errors_counter += 1
     else:
-        out.add_markdown(f"All required fields are present in *{table_name}* table.")
+        validation_report.add_success(f"✅ -- All {total_required} **required** columns are present in *{table_name}*")
 
     if len(missing_optional) > 0:
-        out.add_error(f"Missing Optional Fields in {table_name}: {', '.join(missing_optional)}")
-        for field in missing_optional:
-            df[field] = NULL
-
-    if len(null_fields) > 0:
-        # print(f"{opt_req} {field} has {n_null}/{df.shape[0]} NULL entries ")
-        out.add_error(f"{len(null_fields)} Fields with empty (NULL) values:")
-        for opt_req, field, count in null_fields:
-            out.add_markdown(f"\n\t- {field}: {count}/{total_rows} empty rows ({opt_req})")
+        validation_report.add_warning(f"⚠️ -- Missing {len(missing_optional)}/{total_optional} **optional** columns in *{table_name}*: {', '.join(missing_optional)}")
+        for column in missing_optional:
+            df_after_fill[column] = NULL
+            warnings_counter += 1
     else:
-        out.add_markdown(f"No empty entries (NULL) found .")
+        validation_report.add_success(f"✅ -- All {total_optional} **optional** columns are present in *{table_name}*")
 
+    ## Report columns with null/empty values, either required (throw errors) or optional (throw warnings)
+    if len(null_columns) > 0:
+        for opt_req, column, count in null_columns:
+            if opt_req == "REQUIRED":
+                validation_report.add_error(f"❌ -- **required** column _**{column}**_ has {count} empty values. Please fill them out with valid CDE values or 'Unknown' if that's the case, before uploading to Google buckets")
+                errors_counter += 1
+            else:
+                validation_report.add_warning(f"⚠️ -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid CDE values or not before uploading to Google buckets")
+                warnings_counter += 1
+    else:
+        validation_report.add_success(f"✅ -- No columns with empty values were found\n")
 
+    ## Report summary of invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
+    if len(invalid_required) > 0:
+        validation_report.add_error(f"❌ -- {len(invalid_required)} required columns with invalid values (details below): {', '.join(invalid_required)}")
+        errors_counter += len(invalid_required)
+    else:
+        validation_report.add_success(f"✅ -- No invalid values were found in required columns\n")
+
+    if len(invalid_optional) > 0:
+        validation_report.add_warning(f"⚠️ -- {len(invalid_optional)} optional columns with invalid values: {', '.join(invalid_optional)}")
+        warnings_counter += len(invalid_optional)
+    else:
+        validation_report.add_success(f"✅ -- No invalid values were found in optional columns\n")
+
+    ############
+    ### Preview of validated table
+    st.markdown("---")
+    st.markdown(
+        f"""
+        <div style="font-size:16px; font-weight:600;">
+            Preview <i>{table_name}</i> <u>after</u> CDE comparison.
+        </div>
+        <div style="font-size:14px; margin-top:2px;">
+            Color code: <span style="color:{app_schema['preview_fillout_color']}; font-weight:400;">filled out</span>,
+            <span style="color:{app_schema['preview_invalid_cde_color']}; font-weight:400;">invalid vs. CDE</span>.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rows_to_show = st.session_state.get("preview_max_rows", preview_max_rows)
+    show_all_validated_key = f"show_all_rows_validated_{table_name}"
+    show_all_validated = st.session_state.get(show_all_validated_key, False)
+    if show_all_validated:
+        preview_df_preview_before_fill = df_preview_before_fill
+        preview_validated_df = df_after_fill
+    else:
+        preview_df_preview_before_fill = df_preview_before_fill.head(rows_to_show)
+        preview_validated_df = df_after_fill.head(rows_to_show)
+
+    # Align invalid-cell mask to the preview dataframe
+    preview_invalid_mask = invalid_cell_mask.reindex_like(preview_validated_df)
+
+    styled_preview = build_styled_preview_with_differences(
+        preview_df_preview_before_fill,
+        preview_validated_df,
+        invalid_mask=preview_invalid_mask,
+        app_schema=app_schema,
+    )
+    if styled_preview is not None:
+        st.dataframe(styled_preview)
+    else:
+        st.dataframe(format_dataframe_for_preview(preview_validated_df))
+    st.checkbox("Show all rows", key=show_all_validated_key, value=show_all_validated)
+
+    # Provide a detailed non-redundant list of invalid values per column
     if len(invalid_entries) > 0:
-        out.add_error(f"{len(invalid_entries)} Fields with invalid entries:")
-        for opt_req, field, count, valstr, invalstr in invalid_entries:
-            str_out = f"- _*{field}*_:  invalid values 💩{invalstr}\n"
-            str_out += f"    - valid ➡️ {valstr}"
-            out.add_markdown(str_out)
-    else:
-        out.add_markdown(f"No invalid entries found in Enum fields.")
+        header_text = (
+            "**Details of invalid values by column (i.e. not matching CDE controlled vocabularies):**"
+        )
 
-    for field in df.columns:
-        if field not in specific_cde_df["Field"].values:
-            out.add_error(f"Extra field in {table_name}: {field}")
-   
+        # Log header for markdown QC report and show it once in the app.
+        validation_report.entries.append(("markdown", header_text))
+        st.markdown(header_text)
 
+        column_comments = st.session_state.get("column_comments", {})
+        if table_name not in column_comments:
+            column_comments[table_name] = {}
+        table_comments = column_comments[table_name]
 
-    return df, out
+        for entry_index, (opt_req_flag, column_name, n_invalid_vals, valid_descr, invalid_descr) in enumerate(
+            invalid_entries,
+        ):
+            column_type = opt_req_flag[0] + opt_req_flag[1:].lower()
+
+            # Hover tooltip: use column Description from CDE when available
+            description_text = ""
+            if "Description" in specific_cde_df.columns:
+                entry_idx = specific_cde_df["Field"] == column_name
+                try:
+                    description_value = specific_cde_df.loc[entry_idx, "Description"].iloc[0]
+                except (KeyError, IndexError):
+                    description_value = ""
+                if pd.notna(description_value):
+                    description_text = str(description_value)
+
+            hover_text = build_hover_text_from_description(description_text)
+            free_text_markdown = build_free_text_header_markdown(column_name, hover_text)
+            bullet_text = build_bullet_invalid_details_markdown(
+                column_name, hover_text,
+                column_type, n_invalid_vals,
+                invalid_descr, valid_descr
+            )
+
+            # Persist the detailed message for inclusion in the QC markdown log.
+            validation_report.entries.append(("markdown", bullet_text))
+
+            values_column, comments_column = st.columns(2)
+
+            with values_column:
+                st.markdown(bullet_text, unsafe_allow_html=True)
+            with comments_column:
+                existing_comment_text = table_comments.get(column_name, "")
+                comment_widget_key = (
+                    f"invalid_comment_{table_name}_{column_name}_{entry_index}"
+                )
+
+                if comment_widget_key not in st.session_state:
+                    st.session_state[comment_widget_key] = existing_comment_text
+
+                ### Free-text Add comment box
+                st.markdown(free_text_markdown, unsafe_allow_html=True)
+                comment_value = st.text_area(
+                    "Free text comment box",
+                    key=comment_widget_key,
+                    height=15,
+                    label_visibility="collapsed",
+                )
+
+                table_comments[column_name] = comment_value
+
+        column_comments[table_name] = table_comments
+        st.session_state["column_comments"] = column_comments
+    return df_after_fill, validation_report, errors_counter, warnings_counter
