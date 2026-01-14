@@ -1,34 +1,41 @@
 """
 Utility script to sync the README app-intro section with the shared intro
 text defined in utils.help_menus.get_app_intro_markdown() and the values
-from app_schema_{webapp_version}.json.
+from resource/app_schema_{webapp_version}.json.
 
 Usage (run from the repo root):
-    python3 utils/generate_readme.py -v v1.0
+    python3 utils/generate_readme.py -v v0.6
 
-This script tries two strategies to locate the intro block
-inside README.md:
+This script updates two parts in README.md:
+  1) The header version in:
+       "Metadata validator for ASAP CRN metadata (vX.Y)"
+     to match --webapp-version.
+  2) The intro block (either between markers or via a fallback heuristic)
+     to match get_app_intro_markdown().
+
+Intro block location strategies:
 
 1) Preferred: markers
-   If the README contains the markers:
+   If README contains:
        <!-- APP_INTRO_START -->
        <!-- APP_INTRO_END -->
    then everything between them will be replaced.
 
 2) Fallback: heuristic
-   If the markers are not present, the script looks for the text
-   starting at "This app assists" and ending just after the bullet
-   line that starts with "* Warnings".
+   If markers are not present, the script looks for text starting at
+   "This app assists" and ending at the line that starts with "* Warnings".
 
-If neither strategy works, the script raises RuntimeError.
+If either the header or intro block cannot be located, the script raises
+RuntimeError and leaves README.md unchanged.
 """
 
 import argparse
 import json
-import os, sys
+import os
+import re
+import sys
 from pathlib import Path
 from typing import Tuple
-import streamlit as st
 
 def build_cde_url(schema: dict) -> str:
     """Build the public Google Sheets URL for the CDE definition."""
@@ -89,15 +96,41 @@ def find_heuristic_intro_block(readme_text: str) -> Tuple[int, int]:
     return about_start_index, region_end
 
 
+def replace_readme_header_version(readme_text: str, webapp_version: str) -> str:
+    """
+    Replace the version in the README header line:
+        'Metadata validator for ASAP CRN metadata (vX.Y)'
+    using the provided webapp_version.
+    """
+    pattern = r"(Metadata validator for ASAP CRN metadata \(v[0-9]+\.[0-9]+\))"
+    replacement = f"Metadata validator for ASAP CRN metadata ({webapp_version})"
+    updated_text, num_subs = re.subn(pattern, replacement, readme_text, count=1)
+
+    if num_subs == 0:
+        raise RuntimeError(
+            "Could not replace README header version. "
+            "Expected header like: 'Metadata validator for ASAP CRN metadata (v0.5)'."
+        )
+
+    return updated_text
+
+
 def update_readme_intro(repo_root: str, webapp_version: str) -> None:
     """
-    Replace the intro section in README.md with markdown generated from
+    Replace the intro section and header version in README.md with markdown generated from
     utils.help_menus.get_app_intro_markdown(), using values from
     app_schema_{webapp_version}.json.
     """
     schema_filename = f"app_schema_{webapp_version}.json"
-    schema_path = os.path.join(repo_root, "resource", schema_filename)
-    readme_path = os.path.join(repo_root,"README.md")
+    schema_path = os.path.join(
+        repo_root,
+        "resource",
+        schema_filename,
+    )
+    readme_path = os.path.join(
+        repo_root,
+        "README.md",
+    )
 
     if not os.path.exists(schema_path):
         raise RuntimeError(f"Schema file not found at: {schema_path}")
@@ -109,7 +142,8 @@ def update_readme_intro(repo_root: str, webapp_version: str) -> None:
     cde_version = schema["cde_definition"]["cde_version"]
     cde_google_sheet_url = build_cde_url(schema=schema)
 
-    # Ensure repo_root is on sys.path so that `import utils...` works
+    # Ensure repo_root is on sys.path so that `import utils...` works when
+    # executing this script as utils/generate_readme.py
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
 
@@ -125,6 +159,12 @@ def update_readme_intro(repo_root: str, webapp_version: str) -> None:
 
     with open(readme_path, "r", encoding="utf-8") as readme_file:
         readme_text = readme_file.read()
+
+    # Update header version first
+    readme_text = replace_readme_header_version(
+        readme_text=readme_text,
+        webapp_version=webapp_version,
+    )
 
     region_start, region_end = find_marked_intro_block(readme_text=readme_text)
     using_markers = region_start != -1 and region_end != -1
@@ -161,8 +201,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="generate_readme",
         description=(
-            "Sync the README intro section with the shared app intro text "
-            "using app_schema_{webapp_version}.json at the repo root."
+            "Sync README header version and intro block using "
+            "resource/app_schema_{webapp_version}.json."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -171,8 +211,8 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--webapp-version",
         required=True,
         help=(
-            "Webapp version string used to select the corresponding "
-            "app_schema_{webapp_version}.json file at the repo root."
+            "Webapp version used to select resource/app_schema_{webapp_version}.json "
+            "and update the README header."
         ),
     )
     return parser.parse_args(argv)
