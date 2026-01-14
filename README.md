@@ -1,5 +1,5 @@
 # crn-meta-validate
-Metadata validator for ASAP CRN metadata (v0.5)
+Metadata validator for ASAP CRN metadata (v0.6)
 
 <!-- PROJECT SHIELDS -->
 <!--
@@ -70,7 +70,7 @@ Free text boxes allow users to record per-column comments to provide context to 
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-#### Go to the [web app URL](https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app)     
+#### Go to the [web app URL](https://asap-meta-qc.streamlit.app/)     
 #### Step 1 -- Set up your run:   
   * In the dropdown menus, specify the following properties for your Dataset:    
     * `Species`    
@@ -85,7 +85,7 @@ Free text boxes allow users to record per-column comments to provide context to 
           - Integer (numeric, e.g. 0, 1, 2, 3, etc.)      
           - Float (numeric, e.g. 0.1, 1.2, 10.1, etc.)      
           - String (free form text)      
-          - Enum (controlled vocabularies, see Validation below)      
+          - Enum (controlled vocabularies, see Validation vs. the CDE below)      
     4. Column required status      
           - Required (mandatory columns)      
           - Optional (optional columns)      
@@ -161,7 +161,7 @@ Contributions are what make the open source community such an amazing place to l
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request, use [this PR description template](https://github.com/ASAP-CRN/crn-meta-validate/blob/main/.github/pull_request_template.md).
+5. Open a Pull Request
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
