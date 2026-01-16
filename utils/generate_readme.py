@@ -212,7 +212,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         required=True,
         help=(
             "Webapp version used to select resource/app_schema_{webapp_version}.json "
-            "and update the README header."
+            "and update the README header (e.g. v0.6)."
         ),
     )
     return parser.parse_args(argv)
