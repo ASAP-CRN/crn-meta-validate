@@ -15,16 +15,20 @@ Author: Javier Diaz
 """
 
 from __future__ import annotations
-import pandas as pd
-import numpy as np
-import streamlit as st
-import io
-from typing import Tuple, Optional, Dict, List
-from dataclasses import dataclass
-import statistics
 
-LINES_TO_EVALUATE = 50 # Number of lines to read for delimiter detection
-SUPPORTED_DELIMITERS = [",", ";", "\t", "|"] # Supported delimiters for detection
+import csv
+import io
+import re
+import statistics
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+LINES_TO_EVALUATE = 50  # Number of lines to read for delimiter detection
+SUPPORTED_DELIMITERS = [",", ";", "\t", "|"]  # Supported delimiters for detection
 
 @dataclass
 class FileStatus:
@@ -286,6 +290,64 @@ class DelimiterHandler:
             # There are data-looking lines, but parsing failed.
             return -1
 
+    def validate_and_report_structure(self, file_content: bytes, delimiter: str, filename: str) -> bool:
+        """
+        Validate that all rows have the same number of fields as the header.
+
+        We attempt a strict pandas parse first (fast, uses C engine). If pandas raises a ParserError like:
+            "Expected 24 fields in line 4, saw 25"
+        then we parse the message and emit a targeted Streamlit error.
+
+        Returns:
+            True  : structure appears consistent (or at least parseable)
+            False : structure mismatch detected (first offending line reported)
+        """
+        decoded = (
+            file_content.decode("utf-8", errors="ignore")
+            if isinstance(file_content, (bytes, bytearray))
+            else str(file_content)
+        )
+
+        try:
+            # Strict read: error on any malformed row.
+            pd.read_csv(io.StringIO(decoded), sep=delimiter, dtype=str)
+            return True
+        except pd.errors.ParserError as exc:
+            message = str(exc)
+            match = re.search(r"Expected\s+(\d+)\s+fields\s+in\s+line\s+(\d+),\s+saw\s+(\d+)", message)
+            if match:
+                expected_fields = int(match.group(1))
+                line_number = int(match.group(2))
+                saw_fields = int(match.group(3))
+                st.error(
+                    f"❌ File **{filename}** has {saw_fields} fields in row {line_number}, "
+                    f"but {expected_fields} fields in header"
+                )
+                return False
+
+            # Fallback: compute the first mismatch using the csv module for clearer reporting.
+            reader = csv.reader(io.StringIO(decoded), delimiter=delimiter)
+            try:
+                header = next(reader)
+            except StopIteration:
+                st.error(f"❌ File **{filename}** appears to be empty.")
+                return False
+
+            header_fields = len(header)
+            for row_index_1based, row in enumerate(reader, start=2):
+                if not row:
+                    continue
+                if len(row) != header_fields:
+                    st.error(
+                        f"❌ File **{filename}** has {len(row)} fields in row {row_index_1based}, "
+                        f"but {header_fields} fields in header"
+                    )
+                    return False
+
+            # If we cannot locate it, emit the original parser error to help debugging.
+            st.error(f"❌ File **{filename}** could not be parsed: {message}")
+            return False
+
     def is_file_invalid(self, filename: str, filesize: int) -> bool:
         file_key = self.get_file_key(filename, filesize)
         invalid = st.session_state.invalid_files
@@ -316,7 +378,7 @@ class DelimiterHandler:
                 "This file will be skipped during validation."
             )
         else:
-            st.error(f"**{filename}** — Could not parse file.")
+            st.error(f"❌ File **{filename}** — Could not parse file.")
 
     def show_conversion_prompt(
         self,
@@ -406,6 +468,13 @@ class DelimiterHandler:
             delimiter, confidence, preview_df = self.detect_delimiter(file_content, data_file.name)
             delimiter_name = self.get_delimiter_name(delimiter)
             row_count = self.get_row_count(file_content, delimiter)
+            # Structural validation: catch malformed rows early so the app does not crash later.
+            if not self.validate_and_report_structure(file_content, delimiter, data_file.name):
+                if isinstance(st.session_state.invalid_files, set):
+                    st.session_state.invalid_files.add(file_key)
+                else:
+                    st.session_state.invalid_files[file_key] = True
+                continue
 
             # Invalid if truly header-only (0). If -1, we warn but do not drop.
             if row_count == 0:

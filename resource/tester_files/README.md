@@ -23,3 +23,6 @@
 
 #### SUBJECT.csv
 * This file has only column headers and hence will be flagged to skip validation.
+
+#### CLINPATH.csv
+* This file has has 25 fields in row 4, but 24 fields in header, which leads to a parsing error.
