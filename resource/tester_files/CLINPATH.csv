@@ -1,0 +1,5 @@
+subject_id,source_subject_id,duration_pmi,age_at_death,AMPPD_id,GP2_id,ethnicity,family_history,last_diagnosis,age_at_onset,age_at_diagnosis,first_motor_symptom,hx_dementia_mci,hx_melanoma,smoking_status,smoking_years,APOE_e4_status,cognitive_status,time_from_baseline,path_autopsy_dx_main,path_autopsy_second_dx,path_autopsy_third_dx,dig_slide_avail,quant_path_avail
+Individual_1,source_1,4.5,79,NA,BBDP_000001,Unknown,Unknown,Parkinson's disease,50,50,50,Yes,NA,Unknown,NA,23,Dementia,1072,Parkinson's disease,,,No,No
+Individual_2,source_2,2.75,86,NA,BBDP_000002,Unknown,Unknown,Control,51,,NA,No,NA,Former smoker,50,33,Normal,1403,Control,PART,Control,Mild,Moderate
+Individual_3,source_3,2.5,89,NA,BBDP_000003,Unknown,Yes,Control,52,,NA,No,NA,Unknown,NA,34,Normal,3499,Control,PART,Control,Moderate,No,Extra
+Individual_4,source_4,3.5,95,NA,BBDP_000004,Unknown,No,Mild Cognitive Impairment,53,,NA,Yes,NA,Former smoker,NA,33,MCI,132,Control,PART,Control,Moderate,Mild
