@@ -21,6 +21,7 @@ import streamlit as st
 import io
 from typing import Tuple, Optional, Dict, List
 from dataclasses import dataclass
+import statistics
 
 LINES_TO_EVALUATE = 50 # Number of lines to read for delimiter detection
 SUPPORTED_DELIMITERS = [",", ";", "\t", "|"] # Supported delimiters for detection
@@ -133,124 +134,157 @@ class DelimiterHandler:
         return names.get(delimiter, repr(delimiter))
 
     # ---------- Detection / conversion ----------
-
     def detect_delimiter(
         self, file_content: bytes, filename: str, num_lines: int = None
     ) -> Tuple[str, float, Optional[pd.DataFrame]]:
         """
-        Detect the delimiter used in a CSV-like file by scoring candidate delimiters.
+        Detect the delimiter used in a CSV-like file using line-level statistics.
+
+        This avoids false positives where an *incorrect* delimiter appears to "work"
+        simply because pandas can read the entire file as a single column (e.g., picking ';'
+        for a malformed comma-delimited file).
+
         Returns (best_delimiter, confidence, preview_df).
         """
         if num_lines is None:
             num_lines = LINES_TO_EVALUATE
 
-        # Read as text with robust decoding
+        # Decode with a small set of common encodings
         encodings_to_try = ("utf-8", "latin-1", "cp1252")
-        decoded = None
+        decoded: Optional[str] = None
         for enc in encodings_to_try:
             try:
-                decoded = file_content.decode(enc) if isinstance(file_content, bytes) else file_content
+                decoded = (
+                    file_content.decode(enc)
+                    if isinstance(file_content, (bytes, bytearray))
+                    else str(file_content)
+                )
                 break
             except Exception:
                 continue
         if decoded is None:
             decoded = (
                 file_content.decode("utf-8", errors="ignore")
-                if isinstance(file_content, bytes)
-                else file_content
+                if isinstance(file_content, (bytes, bytearray))
+                else str(file_content)
             )
 
-        # Score delimiters by number of columns variance across first lines
-        lines = decoded.splitlines()[: max(2, num_lines)]
-        header = lines[0] if lines else ""
-        delimiter_scores: Dict[str, Tuple[int, float]] = {}
+        # Keep only the first N non-empty lines for scoring
+        lines = [line for line in decoded.splitlines() if line.strip()]
+        if not lines:
+            return ",", 0.0, None
+
+        header_line = lines[0]
+        candidate_lines = lines[: max(2, min(len(lines), num_lines))]
+
+        # Score delimiters by:
+        # - presence in header (hard requirement)
+        # - typical count per line (median)
+        # - consistency across lines (fraction matching median)
+        # - preference for producing >1 column in header
+        delimiter_scores: Dict[str, float] = {}
 
         for delim in SUPPORTED_DELIMITERS:
-            try:
-                preview = pd.read_csv(io.StringIO(decoded), delimiter=delim, nrows=num_lines, dtype=str)
-                cols = preview.shape[1]
-                # Heuristic: prefer delimiters creating more columns; tie-breaker = ability to read >1 rows
-                data_rows = max(0, len(preview) - 1)
-                confidence = 0.5 + 0.5 * (1.0 if data_rows > 0 else 0.0)
-                delimiter_scores[delim] = (cols, confidence)
-            except Exception:
-                delimiter_scores[delim] = (0, 0.0)
+            if delim not in header_line:
+                # If the delimiter is not in the header, disqualify it.
+                delimiter_scores[delim] = -1.0
+                continue
 
-        best_delim = max(delimiter_scores.items(), key=lambda x: (x[1][1], x[1][0]))[0]
-        confidence = delimiter_scores[best_delim][1]
+            counts = [line.count(delim) for line in candidate_lines]
+            if not counts:
+                delimiter_scores[delim] = -1.0
+                continue
 
-        # Create preview dataframe
+            median_count = statistics.median(counts)
+            if median_count <= 0:
+                delimiter_scores[delim] = -1.0
+                continue
+
+            # Consistency: how many lines match the median delimiter count?
+            matches = sum(1 for count in counts if count == median_count)
+            consistency = matches / float(len(counts))
+
+            # Column estimate from header line
+            est_cols = header_line.count(delim) + 1
+            if est_cols <= 1:
+                delimiter_scores[delim] = -1.0
+                continue
+
+            # Weighted score: consistency dominates; higher median_count slightly preferred
+            delimiter_scores[delim] = (consistency * 100.0) + float(median_count)
+
+        # Choose best delimiter; fall back to comma
+        best_delim = max(delimiter_scores, key=delimiter_scores.get)
+        best_score = delimiter_scores.get(best_delim, -1.0)
+
+        if best_score < 0:
+            best_delim = ","
+            confidence = 0.0
+        else:
+            # Map (roughly) to 0-100 confidence
+            confidence = min(100.0, max(0.0, best_score))
+
+        # Build a preview dataframe using a forgiving read so malformed rows do not zero-out detection.
+        preview_df: Optional[pd.DataFrame] = None
         try:
             preview_df = pd.read_csv(
                 io.StringIO(decoded),
-                delimiter=best_delim,
-                nrows=num_lines,
+                sep=best_delim,
                 dtype=str,
+                engine="python",
+                on_bad_lines="skip",
+                nrows=20,
             )
+            preview_df = format_dataframe_for_preview(preview_df)
         except Exception:
             preview_df = None
 
-        return best_delim, confidence, preview_df
-
-    def convert_delimiter(self, file_content: bytes, from_delimiter: str, to_delimiter: str) -> bytes:
-        """Convert content from one delimiter to another with robust decoding."""
-        encodings_to_try = ("utf-8", "latin-1", "cp1252")
-
-        for enc in encodings_to_try:
-            try:
-                text = file_content.decode(enc) if isinstance(file_content, bytes) else file_content
-                df = pd.read_csv(io.StringIO(text), delimiter=from_delimiter, dtype=str)
-                return df.to_csv(index=False, sep=to_delimiter).encode("utf-8")
-            except Exception:
-                continue
-
-        text = (
-            file_content.decode("utf-8", errors="ignore")
-            if isinstance(file_content, bytes)
-            else file_content
-        )
-        df = pd.read_csv(io.StringIO(text), delimiter=from_delimiter, dtype=str)
-        return df.to_csv(index=False, sep=to_delimiter).encode("utf-8")
-
+        return best_delim, float(confidence), preview_df
     def get_row_count(self, file_content: bytes, delimiter: str) -> int:
         """
-        Get the number of data rows (excluding header), robust to encoding issues.
+        Return the number of data rows in the file for the provided delimiter.
+
+        Important: some real-world CSVs are malformed (rows with extra delimiters).
+        We therefore attempt a strict parse first and, on failure, fall back to a
+        forgiving parse that skips bad lines.
+
+        Returns:
+            >= 0 : number of parsed data rows
+            -1   : file appears to contain data rows, but parsing failed even with fallback
         """
-        encodings_to_try = ("utf-8", "latin-1", "cp1252")
-        for enc in encodings_to_try:
-            try:
-                text = file_content.decode(enc) if isinstance(file_content, bytes) else file_content
-                df = pd.read_csv(io.StringIO(text), sep=delimiter, dtype=str)
-                return max(0, len(df))
-            except Exception:
-                continue
-        try:
-            text = (
-                file_content.decode("utf-8", errors="ignore")
-                if isinstance(file_content, bytes)
-                else file_content
-            )
-            df = pd.read_csv(io.StringIO(text), sep=delimiter, dtype=str)
-            return max(0, len(df))
-        except Exception:
+        if not file_content:
             return 0
 
-    # ---------- Validation & session-state support ----------
+        decoded = (
+            file_content.decode("utf-8", errors="ignore")
+            if isinstance(file_content, (bytes, bytearray))
+            else str(file_content)
+        )
 
-    def is_file_valid(self, preview_df: Optional[pd.DataFrame], row_count: int) -> bool:
-        if preview_df is None:
-            return False
-        if row_count <= 0:
-            return False
-        return True
+        non_empty_lines = [line for line in decoded.splitlines() if line.strip()]
+        if len(non_empty_lines) <= 1:
+            return 0
 
-    def mark_file_as_invalid(self, filename: str, filesize: int):
-        file_key = self.get_file_key(filename, filesize)
-        invalid = st.session_state.invalid_files
-        if isinstance(invalid, set):
-            invalid.add(file_key)
-        else:
-            invalid[file_key] = True
+        # First attempt: strict parse
+        try:
+            df = pd.read_csv(io.StringIO(decoded), sep=delimiter, dtype=str)
+            return max(0, len(df))
+        except Exception:
+            pass
+
+        # Second attempt: forgiving parse (skip bad lines)
+        try:
+            df = pd.read_csv(
+                io.StringIO(decoded),
+                sep=delimiter,
+                dtype=str,
+                engine="python",
+                on_bad_lines="skip",
+            )
+            return max(0, len(df))
+        except Exception:
+            # There are data-looking lines, but parsing failed.
+            return -1
 
     def is_file_invalid(self, filename: str, filesize: int) -> bool:
         file_key = self.get_file_key(filename, filesize)
@@ -258,6 +292,15 @@ class DelimiterHandler:
         if isinstance(invalid, set):
             return file_key in invalid
         return invalid.get(file_key, False)
+    
+    def is_file_valid(self, preview_df: Optional[pd.DataFrame], row_count: int) -> bool:
+        """Return True if the file should be treated as valid for validation purposes."""
+        if row_count == 0:
+            return False
+        # row_count < 0 means "appears to contain data, but parsing had issues" -> treat as valid
+        if preview_df is None:
+            return row_count != 0
+        return True
 
     def show_invalid_file_error(
         self, filename: str, row_count: int, preview_df: Optional[pd.DataFrame], delimiter_name: str
@@ -265,6 +308,11 @@ class DelimiterHandler:
         if row_count == 0:
             st.error(
                 f"❌ File **{filename}** contains only headers with no data rows (detected **{delimiter_name}** delimiter). "
+                "This file will be skipped during validation."
+            )
+        elif row_count < 0:
+            st.error(
+                f"❌ File **{filename}** appears to contain data rows, but one or more rows could not be parsed (detected **{delimiter_name}** delimiter). "
                 "This file will be skipped during validation."
             )
         else:
@@ -314,32 +362,73 @@ class DelimiterHandler:
         invalid = len(self.get_invalid_file_names(data_files))
         decided = len(st.session_state.get("delimiter_decisions", {}))
         return f"{valid} valid, {invalid} invalid, {decided} decisions recorded"
-
+    
     def check_delimiter_decisions(self, data_files: List[Any]) -> bool:
         """
-        Pre-pass over files to (a) detect delimiter, (b) compute row_count,
-        (c) prompt/record decisions, (d) mark invalid. Returns True when all
-        *valid* non-comma files have a recorded decision; otherwise False.
+        Pre-pass over files to:
+        (a) detect delimiter
+        (b) compute row_count (with malformed-row tolerance)
+        (c) mark invalid (truly empty / header-only)
+        (d) prompt for conversion decisions for non-comma files
+
+        Returns True when all *valid* non-comma files have a recorded decision;
+        otherwise False (the caller should st.stop()).
         """
-        # Ensure state collections exist
         if "delimiter_decisions" not in st.session_state:
             st.session_state.delimiter_decisions = {}
         if "invalid_files" not in st.session_state:
             st.session_state.invalid_files = set()
+
         missing = 0
+
         for data_file in data_files:
             file_key = self.get_file_key(data_file.name, data_file.size)
-            file_content = data_file.getvalue()
+
+            try:
+                file_content = data_file.getvalue()
+            except Exception:
+                file_content = data_file.read()
+
+            if not file_content:
+                # Treat as invalid/empty
+                if isinstance(st.session_state.invalid_files, set):
+                    st.session_state.invalid_files.add(file_key)
+                else:
+                    st.session_state.invalid_files[file_key] = True
+                self.show_invalid_file_error(
+                    filename=data_file.name,
+                    row_count=0,
+                    preview_df=None,
+                    delimiter_name="unknown",
+                )
+                continue
 
             delimiter, confidence, preview_df = self.detect_delimiter(file_content, data_file.name)
             delimiter_name = self.get_delimiter_name(delimiter)
             row_count = self.get_row_count(file_content, delimiter)
 
-            # If invalid, mark and show error; skip decision
-            if not self.is_file_valid(preview_df, row_count):
-                self.mark_file_as_invalid(data_file.name, data_file.size)
-                self.show_invalid_file_error(data_file.name, row_count, preview_df, delimiter_name)
+            # Invalid if truly header-only (0). If -1, we warn but do not drop.
+            if row_count == 0:
+                if isinstance(st.session_state.invalid_files, set):
+                    st.session_state.invalid_files.add(file_key)
+                else:
+                    st.session_state.invalid_files[file_key] = True
+                self.show_invalid_file_error(
+                    filename=data_file.name,
+                    row_count=row_count,
+                    preview_df=preview_df,
+                    delimiter_name=delimiter_name,
+                )
                 continue
+
+            # Non-fatal parsing issue
+            if row_count < 0:
+                self.show_invalid_file_error(
+                    filename=data_file.name,
+                    row_count=row_count,
+                    preview_df=preview_df,
+                    delimiter_name=delimiter_name,
+                )
 
             # For valid files: only prompt if not comma and no decision yet
             if delimiter != "," and file_key not in st.session_state.delimiter_decisions:
