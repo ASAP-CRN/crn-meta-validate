@@ -663,7 +663,7 @@ def main():
         if extra_fields:
             message = (
             f"⚠️ Warning: the following {len(extra_fields)} columns from {selected_table_name} "
-            f"couldn't be found in the CDE and will not be evaluated:  {', '.join(extra_fields)}"
+            f"couldn't be found in the CDE {cde_version} and will not be evaluated:  {', '.join(extra_fields)}"
             )
             st.warning(message)
 
@@ -866,30 +866,16 @@ def main():
     step5_cde_version = st.session_state.get("step5_cde_version", cde_version)
 
     if allow_old_cde and old_cde_version:
-        toggle_left_col, toggle_right_col = st.columns([4, 1])
-        with toggle_left_col:
-            if step5_cde_version == cde_version:
-                st.markdown(
-                    f"Comparing against **CDE {cde_version}**. Optionally switch to an older CDE for Step 5 only:",
-                )
-            else:
-                st.markdown(
-                    f"Comparing against **CDE {step5_cde_version}** (Step 5 only). You can switch back to the default:",
-                )
-        with toggle_right_col:
-            toggle_target_version = old_cde_version if step5_cde_version == cde_version else cde_version
-            toggle_label = f"Use CDE {toggle_target_version}"
-            toggle_clicked = st.button(
-                toggle_label,
-                key=f"toggle_cde_step5_{selected_table_name}",
-            )
-            if toggle_clicked:
-                st.session_state["step5_cde_version"] = toggle_target_version
-                st.session_state[f"compare_done_{selected_table_name}"] = False
-                st.rerun()
+        toggle_key = "step5_use_old_cde"
+        if toggle_key not in st.session_state:
+            st.session_state[toggle_key] = (step5_cde_version == old_cde_version)
 
-        st.markdown("---")
-
+        if st.session_state.get(toggle_key, False):
+            st.session_state["step5_cde_version"] = old_cde_version
+            step5_cde_version = old_cde_version
+        else:
+            st.session_state["step5_cde_version"] = cde_version
+            step5_cde_version = cde_version
 
     compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {step5_cde_version}"
     if prepared_df is not None:
@@ -927,7 +913,26 @@ def main():
         if compare_state_key not in st.session_state:
             st.session_state[compare_state_key] = False
 
-        compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
+        if allow_old_cde and old_cde_version:
+            compare_col, spacer_col_1, spacer_col_2, toggle_col = st.columns([6, 1, 1, 2])
+
+            with compare_col:
+                compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
+            with spacer_col_1: st.write("")
+            with spacer_col_2: st.write("")
+            with toggle_col:
+                def _on_step5_cde_toggle_change() -> None:
+                    use_old_cde = bool(st.session_state.get("step5_use_old_cde", False))
+                    st.session_state["step5_cde_version"] = old_cde_version if use_old_cde else cde_version
+                    st.session_state[compare_state_key] = False
+
+                st.toggle(
+                    f"Use CDE {old_cde_version}",
+                    key="step5_use_old_cde",
+                    on_change=_on_step5_cde_toggle_change,
+                )
+        else:
+            compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
 
         if compare_clicked:
             st.session_state[compare_state_key] = True
