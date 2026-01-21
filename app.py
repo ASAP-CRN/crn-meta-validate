@@ -13,6 +13,7 @@ Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
+Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
 
 Version notes:
 Webapp v0.4:
@@ -38,6 +39,10 @@ Webapp v0.6:
 * Makes dropdown menus searchable
 * Standardizes logs, documentation and aesthetics across the app
 * Adds colours to final table preview based on missing values and invalid vs. CDE status
+
+Webapp v0.7:
+* Fix bug accepting malformed Pandas dataframes
+* Allow switching between CDE versions for Step 5 validation (if enabled in app_schema)
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -72,7 +77,7 @@ from utils.find_missing_values import compute_missing_mask, table_has_missing_va
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.6" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.7" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -94,11 +99,17 @@ with open(app_schema_path, "r") as json_file:
 
 # Extract configuration from app_schema
 cde_version = app_schema['cde_definition']['cde_version']
+old_cde_version = app_schema['cde_definition'].get('old_cde_version')
+allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
 cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
 cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
 use_local = False  # Set to False to use Google Sheets
 default_delimiter = app_schema['default_input_delimiter']
+
+old_cde_google_sheet = None
+if allow_old_cde and old_cde_version:
+    old_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
 SPECIES = app_schema['table_categories']['species']
@@ -166,6 +177,10 @@ def main():
         cde_version=cde_version,
         cde_google_sheet_url=cde_google_sheet_current,
     )
+
+    # Step 5 can optionally compare against an older CDE version (if enabled in app_schema)
+    if "step5_cde_version" not in st.session_state:
+        st.session_state["step5_cde_version"] = cde_version
 
     ############
     ### Step 1: Indicate your Dataset type
@@ -648,7 +663,7 @@ def main():
         if extra_fields:
             message = (
             f"⚠️ Warning: the following {len(extra_fields)} columns from {selected_table_name} "
-            f"couldn't be found in the CDE and will not be evaluated:  {', '.join(extra_fields)}"
+            f"couldn't be found in the CDE {cde_version} and will not be evaluated:  {', '.join(extra_fields)}"
             )
             st.warning(message)
 
@@ -848,7 +863,21 @@ def main():
     ############
     ### Step 5: CDE validation
     ############
-    compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {cde_version}"
+    step5_cde_version = st.session_state.get("step5_cde_version", cde_version)
+
+    if allow_old_cde and old_cde_version:
+        toggle_key = "step5_use_old_cde"
+        if toggle_key not in st.session_state:
+            st.session_state[toggle_key] = (step5_cde_version == old_cde_version)
+
+        if st.session_state.get(toggle_key, False):
+            st.session_state["step5_cde_version"] = old_cde_version
+            step5_cde_version = old_cde_version
+        else:
+            st.session_state["step5_cde_version"] = cde_version
+            step5_cde_version = cde_version
+
+    compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {step5_cde_version}"
     if prepared_df is not None:
         if (len(required_columns_with_missing) > 0) or (len(optional_columns_with_missing) > 0):
 
@@ -884,7 +913,26 @@ def main():
         if compare_state_key not in st.session_state:
             st.session_state[compare_state_key] = False
 
-        compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
+        if allow_old_cde and old_cde_version:
+            compare_col, spacer_col_1, spacer_col_2, toggle_col = st.columns([6, 1, 1, 2])
+
+            with compare_col:
+                compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
+            with spacer_col_1: st.write("")
+            with spacer_col_2: st.write("")
+            with toggle_col:
+                def _on_step5_cde_toggle_change() -> None:
+                    use_old_cde = bool(st.session_state.get("step5_use_old_cde", False))
+                    st.session_state["step5_cde_version"] = old_cde_version if use_old_cde else cde_version
+                    st.session_state[compare_state_key] = False
+
+                st.toggle(
+                    f"Use CDE {old_cde_version}",
+                    key="step5_use_old_cde",
+                    on_change=_on_step5_cde_toggle_change,
+                )
+        else:
+            compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
 
         if compare_clicked:
             st.session_state[compare_state_key] = True
@@ -901,13 +949,32 @@ def main():
 
     ############
     #### Collect results via ReportCollector and run validation
-    validation_report_dic = setup_report_data(validation_report_dic, selected_table_name, input_dataframes_dic, cde_dataframe)
+    if step5_cde_version == cde_version:
+        step5_cde_dataframe = cde_dataframe
+    else:
+        step5_cde_google_sheet = old_cde_google_sheet
+        if not step5_cde_google_sheet:
+            step5_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
+        step5_cde_dataframe, step5_dtype_dict_unused = read_CDE(
+            cde_version=step5_cde_version,
+            cde_google_sheet=step5_cde_google_sheet,
+            local=use_local,
+        )
+
+    validation_report_dic = setup_report_data(
+        validation_report_dic,
+        selected_table_name,
+        input_dataframes_dic,
+        step5_cde_dataframe,
+    )
     report = ReportCollector()
 
     selected_table, cde_rules = validation_report_dic[selected_table_name]
 
     # Perform the validation
-    st.info(f"Validating **{selected_table_name}** ({len(selected_table)} rows × {len(selected_table.columns)} columns) vs. CDE {cde_version}")
+    st.info(
+        f"Validating **{selected_table_name}** ({len(selected_table)} rows × {len(selected_table.columns)} columns) vs. CDE {step5_cde_version}"
+    )
 
     # Perform CDE validation. Includes preview of validated table.
     validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, 

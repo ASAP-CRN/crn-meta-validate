@@ -1,5 +1,5 @@
 # crn-meta-validate
-Metadata validator for ASAP CRN metadata (v0.6)
+Metadata validator for ASAP CRN metadata (v0.7)
 
 <!-- PROJECT SHIELDS -->
 <!--
