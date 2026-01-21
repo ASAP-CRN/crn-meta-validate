@@ -23,7 +23,7 @@ def read_CDE(
     Parameters
     ----------
     cde_version : str
-        Version of the CDE to load (e.g., 'v3.3', 'v3.2', 'v3.1', etc.)
+        Version of the CDE to load (e.g., 'v4.0', 'v3.4', etc.)
     cde_google_sheet : str
         URL to the Google Sheets CDE document
     local : bool, optional

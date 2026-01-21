@@ -1,8 +1,10 @@
 {
-  "app_version": "v0.6",
+  "app_version": "v0.7",
   "cde_definition": {
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
-    "cde_version": "v3.3"
+    "cde_version": "v4.0",
+    "old_cde_version": "v3.4",
+    "allow_old_cde": true
   },
   "default_input_delimiter": ",",
   "kebab_menu": {
@@ -19,37 +21,36 @@
       "Other"
     ],
     "tissues_or_cells": [
-      "Brain post-mortem (PMDBS)",
-      "Brain (not PMDBS)",
+      "Brain",
       "Skin",
+      "Fecal",
       "Blood",
-      "Embryonic fibroblast",
       "Cell lines",
       "iPSC",
-      "Fecal",
+      "Embryonic fibroblast",
       "Other"
     ],
     "assays": 
     {
-      "atac_seq": "ATAC-seq",
-      "bisulfite_sequencing": "Bisulfite sequencing",
       "bulk_rna_seq": "Bulk RNA-seq",
-      "chip_seq": "ChIP-seq",
-      "cite_seq": "CITE-seq",
-      "hi_c": "Hi-C",
-      "lipidomics": "Lipidomics",
-      "metaproteomics": "Metaproteomics",
-      "multi_seq": "MULTI-Seq",
-      "multiome": "Multiome",
-      "shotgun_proteomics_lc_ms": "Shotgun proteomics (LC-MS)",
-      "shotgun_metagenomics": "Shotgun metagenomics",
       "single_cell_rna_seq": "Single-cell RNA-seq",
       "single_nucleus_rna_seq": "Single-nucleus RNA-seq",
       "spatial_transcriptomics_geomx": "Spatial transcriptomics (GeoMx)",
       "spatial_transcriptomics_visium": "Spatial transcriptomics (Visium)",
+      "atac_seq": "ATAC-seq",
+      "multi_seq": "MULTI-Seq",
+      "multiome": "Multiome",
+      "shotgun_metagenomics": "Shotgun metagenomics",
+      "untargeted_metabolomics": "Untargeted metabolomics",
+      "lipidomics": "Lipidomics",
+      "shotgun_proteomics_lc_ms": "Shotgun proteomics (LC-MS)",
+      "bisulfite_sequencing": "Bisulfite sequencing",
+      "chip_seq": "ChIP-seq",
+      "cite_seq": "CITE-seq",
+      "hi_c": "Hi-C",
+      "metaproteomics": "Metaproteomics",
       "targeted_dna_sequencing": "Targeted DNA sequencing",
       "targeted_proteomics_srm_prm": "Targeted proteomics (SRM/PRM)",
-      "untargeted_metabolomics": "Untargeted metabolomics",
       "whole_exome_sequencing": "Whole-exome sequencing",
       "whole_genome_genotyping_array": "Whole-genome genotyping array",
       "whole_genome_sequencing": "Whole-genome sequencing",
@@ -70,7 +71,7 @@
       "CLINPATH"
     ],
     "mouse_specific": [
-      "MOUSE"
+      ""
     ],
     "rhesus_macaque_specific": [
       ""
@@ -82,20 +83,11 @@
       ""
     ],
     "cell_specific": [
-      "CELL"
-    ],
-    "pmdbs_specific": [
-      "PMDBS"
-    ],
-    "rna_seq_specific": [
-      "ASSAY_RNAseq"
-    ],
-    "spatial_specific": [
-      "SPATIAL"
-    ],
-    "proteomics_specific": [
-      "PROTEOMICS"
+      ""
     ]
   },
-  "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files"
+  "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files",
+  "preview_max_rows": 5,
+  "preview_fillout_color": "#28a745",
+  "preview_invalid_cde_color": "#ff9800"
 }
