@@ -120,7 +120,7 @@ Free text boxes allow users to record per-column comments to provide context to 
 * Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing).     
 * Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.     
 * We are here to help. [Contact us](#contact-report-bugs-and-request-features) if you have questions.    
-* Example CSV files to test the app can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files).
+* Example CSV files to test the app can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 

@@ -6,7 +6,7 @@ https://github.com/ASAP-CRN/crn-meta-validate
 
 Web app production version: https://asap-meta-qc.streamlit.app/
 Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app/
-Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/Update_Streamlit_NewModalties_and_UX/resource/tester_files
+Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files
 
 Webapp v0.2 (CDE version v2), 20 August 2023
 Webapp v0.3 (CDE version v3), 01 April 2025
@@ -256,10 +256,10 @@ def main():
         if tissue_or_cell in TISSUES_OR_CELLS:
             tissue_or_cell_success = True
             if tissue_or_cell in ["iPSC", "Cell lines"]:
-                # table_list.extend(["CELL"]) ## No longer used starting CDE v3.4
+                # table_list.extend(["CELL"]) ## No longer used starting CDE v4.0
                 pass
             elif tissue_or_cell in ["Brain","Skin","Blood","Other"]:
-                # table_list.extend(["PMDBS"]) ## No longer used starting CDE v3.4
+                # table_list.extend(["PMDBS"]) ## No longer used starting CDE v4.0
                 pass
 
             if assay_type in ASSAY_KEYS:
@@ -267,13 +267,13 @@ def main():
                 # Map assay keys to expected table suffixes
                 if assay_type in ["bulk_rna_seq", "single_cell_rna_seq", "single_nucleus_rna_seq", "atac_seq"]:
                     # table_list.extend(["ASSAY_RNAseq"])
-                    pass  # No longer used starting CDE v3.4
+                    pass  # No longer used starting CDE v4.0
                 elif assay_type in ["spatial_transcriptomics_geomx", "spatial_transcriptomics_visium"]:
-                    # table_list.extend(["SPATIAL"]) ## No longer used starting CDE v3.4
+                    # table_list.extend(["SPATIAL"]) ## No longer used starting CDE v4.0
                     pass
                 elif assay_type in ["shotgun_proteomics_lc_ms", "metaproteomics", "targeted_proteomics_srm_prm"]:
                     # table_list.extend(["PROTEOMICS"])
-                    pass  # No longer used starting CDE v3.4
+                    pass  # No longer used starting CDE v4.0
                 else:
                     # Multi-omics, genetics, metabolomics, etc. currently do not add extra tables
                     pass
@@ -544,20 +544,24 @@ def main():
     ############
     #### Create file selection dropdown and run CDE validation for each selected file
     #### Add anchor for "Go back to select a file" button
-    st.markdown(
-        '''
-        <h3 id="choose-a-file-to-continue"
-            style="font-size: 25px; scroll-margin-top: 80px;">
-            Choose a table to continue <span style="color: red;">*</span>
-        </h3>
-        ''',
-        unsafe_allow_html=True,
-    )
-    selected_table_name = st.selectbox(
-        "Table to fill",
-        table_names,
-        label_visibility="collapsed",
-    )
+    #### Wrap call to Choose a table and dropdown in a box for more prominent display
+    st.markdown('<div class="table-select-container">', unsafe_allow_html=True)
+    with st.container(border=True, key="table_select_container"):
+        st.markdown(
+            '''
+            <h3 id="choose-a-file-to-continue"
+                style="font-size: 25px; scroll-margin-top: 80px;">
+                Choose a table to continue <span style="color: red;">*</span>
+            </h3>
+            ''',
+            unsafe_allow_html=True,
+        )
+        selected_table_name = st.selectbox(
+            "Table to fill",
+            table_names,
+            label_visibility="collapsed",
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     ############
     #### Per-file preview and missing-value handling options
