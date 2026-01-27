@@ -195,8 +195,8 @@ def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_c
         Parsed app schema JSON dict.
     keys_cde: touple[str, str]
         ("TABLE", "field")
-    keys_json: touple[list[str], str] | list[str]
-        (["path", "to", "node"], "keys").
+    keys_json: touple[str, str]
+        ("parent", "child") - child can be either list or dict (keys)
     """
     logger = logging.getLogger(__name__)
 
