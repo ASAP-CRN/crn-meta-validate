@@ -80,8 +80,7 @@ def filter_cde_rules_for_selection(
         filtered_df = filtered_df[
             filtered_df["SpecificSpecies"].apply(lambda cell_value: _axis_allows(cell_value, selected_species))
         ]
-    
-    st.dataframe(filtered_df)
+    # st.dataframe(filtered_df) ## DEBUGGING: shows filtered CDE for table
 
     return filtered_df.reset_index(drop=True)
 
