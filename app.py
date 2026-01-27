@@ -77,7 +77,7 @@ from utils.find_missing_values import compute_missing_mask, table_has_missing_va
 from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.7" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.8" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
