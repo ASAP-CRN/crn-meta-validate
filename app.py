@@ -69,7 +69,7 @@ import re
 import time
 from io import StringIO
 from collections import defaultdict
-from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde
+from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, validate_cde_vs_schema
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
@@ -299,6 +299,34 @@ def main():
         cde_google_sheet=cde_google_sheet,
         local=use_local,
     )
+
+    ############
+    #### Validate app_schema categories against CDE Validation lists
+    ############
+    assays_match = validate_cde_vs_schema(
+        cde_dataframe,
+        app_schema,
+        ("ASSAY", "assay"),
+        ("table_categories", "assays")
+    )
+    species_match = validate_cde_vs_schema(
+        cde_dataframe,
+        app_schema,
+        ("SAMPLE", "organism"),
+        ("table_categories", "species")
+    )
+    sample_source_match = validate_cde_vs_schema(
+        cde_dataframe,
+        app_schema,
+        ("ASSAY", "sample_source"),
+        ("table_categories", "tissues_or_cells")
+    )
+    if not assays_match or not species_match or not sample_source_match:
+        st.error(
+            "App configuration error: app_schema table categories do not match the CDE Validation lists. "
+            "See logs for details.",
+        )
+        st.stop()
 
     ############
     #### Build TABLES.zip with template TSV files for each expected table
