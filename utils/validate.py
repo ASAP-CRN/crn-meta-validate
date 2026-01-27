@@ -6,6 +6,8 @@ Google Sheets or local CSV files.
 
 """
 
+from dataclasses import field
+from dataclasses import field
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
 from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
@@ -16,6 +18,7 @@ import pandas as pd
 import re
 import html
 import streamlit as st
+import logging
 from ast import literal_eval
 
 def build_bullet_invalid_details_markdown(
@@ -179,6 +182,57 @@ class ReportCollector:
 
     def print_log(self):
         print(self.get_log())
+
+def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_cde, keys_json) -> bool:
+    """
+    Compare CDE Validation values vs JSON values/keys for a given pair definition.
+
+    Parameters
+    ----------
+    cde_dataframe: pd.DataFrame
+        CDE dataframe (as returned by utils.cde.read_CDE).
+    app_schema: dict
+        Parsed app schema JSON dict.
+    keys_cde: touple[str, str]
+        ("TABLE", "field")
+    keys_json: touple[list[str], str] | list[str]
+        (["path", "to", "node"], "keys").
+    """
+    logger = logging.getLogger(__name__)
+
+    # Get CDE values
+    cde_table, cde_field = keys_cde
+    cde_values = cde_dataframe[(cde_dataframe["Table"] == cde_table) & (cde_dataframe["Field"] == cde_field)]
+    if cde_values.empty:
+        raise ValueError(f"No CDE row found for Table={cde_table!r}, Field={cde_field!r}")
+    cde_validation_raw = cde_values.iloc[0].get("Validation")
+    cde_list = parse_literal_list(cde_validation_raw)
+
+    # Get JSON values
+    json_parent, json_child = keys_json
+    if isinstance(app_schema[json_parent][json_child], list):
+        json_list = app_schema[json_parent][json_child]
+    elif isinstance(app_schema[json_parent][json_child], dict):
+        json_list = list(app_schema[json_parent][json_child].keys())
+    else:
+        raise ValueError(f"Unexpected type for app_schema[{json_parent}][{json_child}]: {type(app_schema[json_parent][json_child])}")
+
+    # Compare CDE vs Schema (JSON)
+    cde_set = set(map(str, cde_list))
+    json_set = set(map(str, json_list))
+    only_in_cde = sorted(cde_set - json_set)
+    only_in_json = sorted(json_set - cde_set)
+    label_left = f"CDE:{cde_table}:{cde_field}:Validation"
+    label_right = f"schema:{json_parent}:{json_child}:keys"
+    if only_in_cde or only_in_json:
+        if only_in_cde:
+            logger.error("%s has values not in %s: %s", label_left, label_right, only_in_cde)
+        if only_in_json:
+            logger.error("%s has values not in %s: %s", label_right, label_left, only_in_json)
+        return False
+
+    logger.info("OK: %s matches %s", label_left, label_right)
+    return True
 
 def validate_table(df_after_fill: pd.DataFrame, table_name: str, 
                    specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None, 
@@ -357,7 +411,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
                 invalid_values = entries[invalid_mask].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = f"Regex /{pattern}/ or FillNull values ({", ".join(map(my_str, fillnull_values))})"
+                    valstr = f"Regex /{pattern}/ or FillNull values ({', '.join(map(my_str, fillnull_values))})"
                     invalstr = ", ".join(map(my_str, invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     if opt_req == "REQUIRED":
