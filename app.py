@@ -70,7 +70,7 @@ import time
 from io import StringIO
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, validate_cde_vs_schema
-from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field
+from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
@@ -149,10 +149,22 @@ def load_css(file_name):
 
 @st.cache_data
 def setup_report_data(
-    report_data_dict: dict, selected_table: str, input_dataframes_dict: dict, cde_dataframe: pd.DataFrame
+    report_data_dict: dict,
+    selected_table: str,
+    input_dataframes_dict: dict,
+    cde_dataframe: pd.DataFrame,
+    selected_species: str | None = None,
+    selected_tissue_cell: str | None = None,
+    selected_assay_type: str | None = None,
 ):
     submit_table_df = input_dataframes_dict[selected_table]
-    table_specific_cde = get_table_cde(cde_dataframe, selected_table)
+    table_specific_cde = get_table_cde(
+        cde_dataframe,
+        selected_table,
+        selected_species=selected_species,
+        selected_tissue_cell=selected_tissue_cell,
+        selected_assay_type=selected_assay_type,
+    )
     table_data = (submit_table_df, table_specific_cde)
     report_data_dict[selected_table] = table_data
     return report_data_dict
@@ -303,12 +315,6 @@ def main():
     ############
     #### Validate app_schema categories against CDE Validation lists
     ############
-    assays_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("ASSAY", "assay"),
-        ("table_categories", "assays")
-    )
     species_match = validate_cde_vs_schema(
         cde_dataframe,
         app_schema,
@@ -321,22 +327,34 @@ def main():
         ("ASSAY", "sample_source"),
         ("table_categories", "tissues_or_cells")
     )
-    if not assays_match or not species_match or not sample_source_match:
+    assays_match = validate_cde_vs_schema(
+        cde_dataframe,
+        app_schema,
+        ("ASSAY", "assay"),
+        ("table_categories", "assays")
+    )
+    if not species_match or not sample_source_match or not assays_match:
         st.error(
-            "App configuration error: app_schema table categories do not match the CDE Validation lists. "
-            "See logs for details.",
+            f"ERROR!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
+            f"Species:{'✅' if species_match else '❌'}, Tissue/Cell:{'✅' if sample_source_match else '❌'}, Assay:{'✅' if assays_match else '❌'}. "
         )
         st.stop()
 
     ############
-    #### Build TABLES.zip with template TSV files for each expected table
-    templates_zip_bytes, number_of_helper_rows = build_templates_zip(cde_dataframe)
-
-    ############
     ### Step 2: Provide template files
+    ###         Restrict printed columns by Selected Species, Tissue/Cell, Assay Type
     ############
     st.sidebar.markdown('<h3 style="font-size: 23px;">Step 2: Download template files</h3>',
                 unsafe_allow_html=True)
+
+    # Build templates ZIP filtered by Step 1 selection (SpecificSpecies / SpecificTissueCell / SpecificAssay).
+    filtered_cde_for_templates = filter_cde_rules_for_selection(
+        cde_dataframe[cde_dataframe["Table"].isin(table_list)].reset_index(drop=True),
+        selected_species=species,
+        selected_tissue_cell=tissue_or_cell,
+        selected_assay_type=assay_type,
+    )
+    templates_zip_bytes, number_of_helper_rows = build_templates_zip(filtered_cde_for_templates)
     st.sidebar.download_button(
         label=f"📥 Click to download: {table_list_formatted}",
         data=templates_zip_bytes,
@@ -998,6 +1016,9 @@ def main():
         selected_table_name,
         input_dataframes_dic,
         step5_cde_dataframe,
+        selected_species=species,
+        selected_tissue_cell=tissue_or_cell,
+        selected_assay_type=assay_type,
     )
     report = ReportCollector()
 
