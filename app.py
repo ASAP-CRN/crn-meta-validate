@@ -14,6 +14,7 @@ Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
 Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
+Webapp v0.8 (CDE version v4.0-beta, optional v3.4), 27 January 2026
 
 Version notes:
 Webapp v0.4:
@@ -43,6 +44,11 @@ Webapp v0.6:
 Webapp v0.7:
 * Fix bug accepting malformed Pandas dataframes
 * Allow switching between CDE versions for Step 5 validation (if enabled in app_schema)
+
+Webapp v0.8:
+* Fix bug not using Specific[Species|TissueCell|Assay] filters when building template files and validating tables
+* Slim down coloured logs and direct used to "see below" sections details on missing columns and invalid values
+* Add free-text box for "Other" entries in Step 1 dropdowns
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -74,7 +80,14 @@ from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_c
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
-from utils.help_menus import CustomMenu, render_missing_values_section, render_app_intro
+from utils.help_menus import (
+    CustomMenu,
+    build_step1_report_markdown,
+    ensure_step1_other_options,
+    render_missing_values_section,
+    render_app_intro,
+    render_step1_selectbox_with_other_text,
+)
 from utils.template_files import build_templates_zip
 
 webapp_version = "v0.8" # Update this to load corresponding resource/app_schema_{webapp_version}.json
@@ -112,12 +125,21 @@ if allow_old_cde and old_cde_version:
     old_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
-SPECIES = app_schema['table_categories']['species']
-TISSUES_OR_CELLS = app_schema['table_categories']['tissues_or_cells']
+SPECIES = list(app_schema['table_categories']['species'])
+TISSUES_OR_CELLS = list(app_schema['table_categories']['tissues_or_cells'])
 ASSAY_DICT = app_schema['table_categories']['assays']
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
 ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
 ASSAY_KEYS = set(ASSAY_DICT.keys())
+
+# # Ensure "Other" is available for Step 1 drop-downs (and handled consistently downstream)
+# (SPECIES, TISSUES_OR_CELLS, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS) = ensure_step1_other_options(
+#     species_options=SPECIES,
+#     tissue_or_cell_options=TISSUES_OR_CELLS,
+#     assay_type_options=ASSAY_TYPES,
+#     assay_label_to_key=ASSAY_LABEL_TO_KEY,
+#     assay_keys=ASSAY_KEYS,
+# )
 # Extract required table names
 REQUIRED_TABLES = app_schema['table_names']['required']
 
@@ -216,38 +238,61 @@ def main():
     # Drop down menu to select species
     # Currently, it includes both species and tissue/cell source. Will separate later.
     with col1:
-        st.markdown('<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
-                    unsafe_allow_html=True)
-        species = st.selectbox(
-            "Dataset species",
-            SPECIES,
-            label_visibility="collapsed",
-            index=None,
-            placeholder="Type to search species…",
+        species, other_species_value = render_step1_selectbox_with_other_text(
+            heading_html='<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
+            selectbox_label="Dataset species",
+            selectbox_options=SPECIES,
+            selectbox_key="step1_species_select",
+            selectbox_placeholder="Type to search species…",
+            other_text_label="Specify other dataset species",
+            other_text_key="step1_other_species_text",
         )
     # Drop down menu to select tissue/cell source
     with col2:
-        st.markdown('<h3 style="font-size: 25px;">Choose tissue/cell <span style="color: red;">*</span></h3>',
-                    unsafe_allow_html=True)
-        tissue_or_cell = st.selectbox(
-            "Tissue or cell source",
-            TISSUES_OR_CELLS,
-            label_visibility="collapsed",
-            index=None,
-            placeholder="Type to search tissue/cell…",
+        tissue_or_cell, other_tissue_or_cell_value = render_step1_selectbox_with_other_text(
+            heading_html='<h3 style="font-size: 25px;">Choose tissue/cell <span style="color: red;">*</span></h3>',
+            selectbox_label="Tissue or cell source",
+            selectbox_options=TISSUES_OR_CELLS,
+            selectbox_key="step1_tissue_cell_select",
+            selectbox_placeholder="Type to search tissue/cell…",
+            other_text_label="Specify other tissue/cell",
+            other_text_key="step1_other_tissue_cell_text",
         )
     # Drop down menu to select assay type
     with col3:
-        st.markdown('<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
-                    unsafe_allow_html=True)
-        assay_label = st.selectbox(
-            "Assay type",
-            ASSAY_TYPES,
-            label_visibility="collapsed",
-            index=None,
-            placeholder="Type to search assay types…",
+        assay_label, other_assay_label_value = render_step1_selectbox_with_other_text(
+            heading_html='<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
+            selectbox_label="Assay type",
+            selectbox_options=ASSAY_TYPES,
+            selectbox_key="step1_assay_type_select",
+            selectbox_placeholder="Type to search assay types…",
+            other_text_label="Specify other assay type",
+            other_text_key="step1_other_assay_type_text",
         )
         assay_type = ASSAY_LABEL_TO_KEY.get(assay_label)
+
+    # Collect Step 1 free-text "Other" entries for a step1_report.md file
+    if "step1_report_fields" not in st.session_state:
+        st.session_state["step1_report_fields"] = {
+            "species_other": "",
+            "tissue_or_cell_other": "",
+            "assay_type_other": "",
+        }
+    st.session_state["step1_report_fields"]["species_other"] = str(other_species_value or "").strip()
+    st.session_state["step1_report_fields"]["tissue_or_cell_other"] = str(other_tissue_or_cell_value or "").strip()
+    st.session_state["step1_report_fields"]["assay_type_other"] = str(other_assay_label_value or "").strip()
+    any_step1_other_selected = any(
+        selected_value == "Other"
+        for selected_value in (species, tissue_or_cell, assay_label,)
+    )
+    if any_step1_other_selected:
+        step1_report_md = build_step1_report_markdown(st.session_state["step1_report_fields"])
+        st.download_button(
+            label="📥 Download **step1_report.md**",
+            data=step1_report_md,
+            file_name="step1_report.md",
+            mime="text/markdown",
+        )
 
     ############
     #### Determine expected tables based on species, tissue/cell source and assay type
