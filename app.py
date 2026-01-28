@@ -14,7 +14,7 @@ Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
 Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
-Webapp v0.8 (CDE version v4.0-beta, optional v3.4), 27 January 2026
+Webapp v0.8 (CDE version v4.1, optional v3.4), 28 January 2026
 
 Version notes:
 Webapp v0.4:
@@ -131,16 +131,6 @@ ASSAY_DICT = app_schema['table_categories']['assays']
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
 ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
 ASSAY_KEYS = set(ASSAY_DICT.keys())
-
-# # Ensure "Other" is available for Step 1 drop-downs (and handled consistently downstream)
-# (SPECIES, TISSUES_OR_CELLS, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS) = ensure_step1_other_options(
-#     species_options=SPECIES,
-#     tissue_or_cell_options=TISSUES_OR_CELLS,
-#     assay_type_options=ASSAY_TYPES,
-#     assay_label_to_key=ASSAY_LABEL_TO_KEY,
-#     assay_keys=ASSAY_KEYS,
-# )
-# Extract required table names
 REQUIRED_TABLES = app_schema['table_names']['required']
 
 # Version display for UI

@@ -188,7 +188,7 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta"]:
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta", "v4.1"]:
         return f"ASAP_CDE_{cde_version}"
     elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
         return "ASAP_CDE_v3.0"
