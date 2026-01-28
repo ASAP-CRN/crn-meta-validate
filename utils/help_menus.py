@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 import ast
 import html
@@ -65,7 +66,7 @@ def render_step1_selectbox_with_other_text(
             key=other_text_key,
             height=15,
             label_visibility="collapsed",
-            placeholder="Type here…",
+            placeholder=f"{other_text_label} here…",
         )
     else:
         st.session_state[other_text_key] = ""
