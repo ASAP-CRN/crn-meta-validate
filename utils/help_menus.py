@@ -3,6 +3,107 @@ import ast
 import html
 from typing import Any, Callable, Dict, List, Tuple
 
+def ensure_step1_other_options(
+    species_options: List[str],
+    tissue_or_cell_options: List[str],
+    assay_type_options: List[str],
+    assay_label_to_key: Dict[str, str],
+    assay_keys: set[str],
+) -> Tuple[List[str], List[str], List[str], Dict[str, str], set[str]]:
+    """Ensure that Step 1 drop-downs include an "Other" option.
+
+    Returns the (possibly updated) containers to make usage explicit at call sites.
+    """
+    if "Other" not in species_options:
+        species_options.append("Other")
+    if "Other" not in tissue_or_cell_options:
+        tissue_or_cell_options.append("Other")
+    if "Other" not in assay_type_options:
+        assay_type_options.append("Other")
+
+    if "Other" not in assay_label_to_key:
+        assay_label_to_key["Other"] = "other"
+    assay_keys.add("other")
+
+    return (
+        species_options,
+        tissue_or_cell_options,
+        assay_type_options,
+        assay_label_to_key,
+        assay_keys,
+    )
+
+def render_step1_selectbox_with_other_text(
+    *,
+    heading_html: str,
+    selectbox_label: str,
+    selectbox_options: List[str],
+    selectbox_key: str,
+    selectbox_placeholder: str,
+    other_text_label: str,
+    other_text_key: str,
+) -> Tuple[str | None, str]:
+    """Render a Step 1 selectbox that conditionally reveals an "Other" free-text input.
+
+    The free-text value is stored in st.session_state[other_text_key]. If the selectbox
+    is not set to "Other", the stored value is cleared.
+    """
+    st.markdown(heading_html, unsafe_allow_html=True)
+    selected_value = st.selectbox(
+        selectbox_label,
+        selectbox_options,
+        label_visibility="collapsed",
+        index=None,
+        placeholder=selectbox_placeholder,
+        key=selectbox_key,
+    )
+
+    other_text_value = ""
+    if selected_value == "Other":
+        other_text_value = st.text_area(
+            other_text_label,
+            key=other_text_key,
+            height=15,
+            label_visibility="collapsed",
+            placeholder="Type here…",
+        )
+    else:
+        st.session_state[other_text_key] = ""
+
+    return selected_value, str(other_text_value or "")
+
+
+def build_step1_report_markdown(step1_other_fields: Dict[str, str]) -> str:
+    """Build the step1_report.md content for Step 1 "Other" free-text entries."""
+    report_lines: List[str] = [
+        "# General report",
+        "",
+        "## Step 1: Free-text entries for 'Other' selections",
+        "",
+    ]
+
+    species_other_text = str(step1_other_fields.get("species_other", "") or "").strip()
+    tissue_other_text = str(step1_other_fields.get("tissue_or_cell_other", "") or "").strip()
+    assay_other_text = str(step1_other_fields.get("assay_type_other", "") or "").strip()
+
+    other_entries_present = False
+    if species_other_text:
+        other_entries_present = True
+        report_lines.append(f"- **Dataset species (Other):** {species_other_text}")
+    if tissue_other_text:
+        other_entries_present = True
+        report_lines.append(f"- **Tissue/cell (Other):** {tissue_other_text}")
+    if assay_other_text:
+        other_entries_present = True
+        report_lines.append(f"- **Assay type (Other):** {assay_other_text}")
+
+    if not other_entries_present:
+        report_lines.append("_No 'Other' free-text entries were provided in Step 1._")
+
+    report_lines.append("")
+    return "\n".join(report_lines)
+
+
 def build_hover_text_from_description(description_text: str) -> str:
     """Return HTML-escaped hover text built from a column description.
     This keeps tooltip construction consistent across the app.
@@ -158,7 +259,7 @@ class CustomMenu:
             unsafe_allow_html=True
         )
 
-def _parse_fillnull_values(fillnull_text: str) -> List[str]:
+def parse_fillnull_values(fillnull_text: str) -> List[str]:
     """Parse the FillNull field from the CDE into a list of string values."""
     fillnull_values: List[str] = []
     if not fillnull_text:
@@ -232,7 +333,7 @@ def render_missing_values_section(
         free_text_markdown = build_free_text_header_markdown(field_name, hover_text_escaped)
 
         # Build FillNull-driven options, with DataType fallbacks
-        fillnull_values = _parse_fillnull_values(fillnull_text)
+        fillnull_values = parse_fillnull_values(fillnull_text)
 
         option_labels: List[str] = []
         if fillnull_values:
