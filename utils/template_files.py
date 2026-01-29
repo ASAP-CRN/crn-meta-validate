@@ -44,7 +44,7 @@ def build_templates_zip(cde_dataframe: pd.DataFrame) -> bytes:
         Bytes of a ZIP archive containing {TABLE}.csv templates.
     """
     zip_buffer = BytesIO()
-
+    
     # Use a deterministic order for reproducibility
     unique_tables: List[str] = sorted(
         table_name for table_name in cde_dataframe["Table"].dropna().unique()

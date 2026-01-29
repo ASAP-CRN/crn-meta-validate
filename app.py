@@ -19,7 +19,7 @@ Webapp v0.8 (CDE version v4.1, optional v3.4), 28 January 2026
 Version notes:
 Webapp v0.4:
 * CDE version is provided in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
-* Added supported species, assay and tissue/cell source dropdowns to select expected tables
+* Added supported species, assay and sample_source dropdowns to select expected tables
 * Added reset button to sidebar, reset cache and file uploader
 * Added app_schema to manage app configuration
 * Added Classes for DelimiterHandler and ProcessedDataLoader to utils/
@@ -46,7 +46,7 @@ Webapp v0.7:
 * Allow switching between CDE versions for Step 5 validation (if enabled in app_schema)
 
 Webapp v0.8:
-* Fix bug not using Specific[Species|TissueCell|Assay] filters when building template files and validating tables
+* Fix bug not using Specific[Species|SampleSource|Assay] filters when building template files and validating tables
 * Slim down coloured logs and direct used to "see below" sections details on missing columns and invalid values
 * Add free-text box for "Other" entries in Step 1 dropdowns
 
@@ -126,7 +126,7 @@ if allow_old_cde and old_cde_version:
 
 # Extract table categories
 SPECIES = list(app_schema['table_categories']['species'])
-TISSUES_OR_CELLS = list(app_schema['table_categories']['tissues_or_cells'])
+SAMPLE_SOURCE = list(app_schema['table_categories']['sample_source'])
 ASSAY_DICT = app_schema['table_categories']['assays']
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
 ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
@@ -166,7 +166,7 @@ def setup_report_data(
     input_dataframes_dict: dict,
     cde_dataframe: pd.DataFrame,
     selected_species: str | None = None,
-    selected_tissue_cell: str | None = None,
+    selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
 ):
     submit_table_df = input_dataframes_dict[selected_table]
@@ -174,7 +174,7 @@ def setup_report_data(
         cde_dataframe,
         selected_table,
         selected_species=selected_species,
-        selected_tissue_cell=selected_tissue_cell,
+        selected_sample_source=selected_sample_source,
         selected_assay_type=selected_assay_type,
     )
     table_data = (submit_table_df, table_specific_cde)
@@ -226,7 +226,6 @@ def main():
     col1, col2, col3 = st.columns(3)
 
     # Drop down menu to select species
-    # Currently, it includes both species and tissue/cell source. Will separate later.
     with col1:
         species, other_species_value = render_step1_selectbox_with_other_text(
             heading_html='<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
@@ -237,16 +236,16 @@ def main():
             other_text_label="Specify other dataset species",
             other_text_key="step1_other_species_text",
         )
-    # Drop down menu to select tissue/cell source
+    # Drop down menu to select sample_source
     with col2:
-        tissue_or_cell, other_tissue_or_cell_value = render_step1_selectbox_with_other_text(
-            heading_html='<h3 style="font-size: 25px;">Choose tissue/cell <span style="color: red;">*</span></h3>',
-            selectbox_label="Tissue or cell source",
-            selectbox_options=TISSUES_OR_CELLS,
-            selectbox_key="step1_tissue_cell_select",
-            selectbox_placeholder="Type to search tissue/cell…",
-            other_text_label="Specify other tissue/cell",
-            other_text_key="step1_other_tissue_cell_text",
+        sample_source, other_sample_source_value = render_step1_selectbox_with_other_text(
+            heading_html='<h3 style="font-size: 25px;">Choose sample source <span style="color: red;">*</span></h3>',
+            selectbox_label="Sample source",
+            selectbox_options=SAMPLE_SOURCE,
+            selectbox_key="step1_sample_source_select",
+            selectbox_placeholder="Type to search sample sources…",
+            other_text_label="Specify other sample source",
+            other_text_key="step1_other_sample_source_text",
         )
     # Drop down menu to select assay type
     with col3:
@@ -265,15 +264,15 @@ def main():
     if "step1_report_fields" not in st.session_state:
         st.session_state["step1_report_fields"] = {
             "species_other": "",
-            "tissue_or_cell_other": "",
+            "sample_source_other": "",
             "assay_type_other": "",
         }
     st.session_state["step1_report_fields"]["species_other"] = str(other_species_value or "").strip()
-    st.session_state["step1_report_fields"]["tissue_or_cell_other"] = str(other_tissue_or_cell_value or "").strip()
+    st.session_state["step1_report_fields"]["sample_source_other"] = str(other_sample_source_value or "").strip()
     st.session_state["step1_report_fields"]["assay_type_other"] = str(other_assay_label_value or "").strip()
     any_step1_other_selected = any(
         selected_value == "Other"
-        for selected_value in (species, tissue_or_cell, assay_label,)
+        for selected_value in (species, sample_source, assay_label,)
     )
     if any_step1_other_selected:
         step1_report_md = build_step1_report_markdown(st.session_state["step1_report_fields"])
@@ -285,10 +284,10 @@ def main():
         )
 
     ############
-    #### Determine expected tables based on species, tissue/cell source and assay type
+    #### Determine expected tables based on species, sample_source and assay type
     table_list = []
     species_success = False
-    tissue_or_cell_success = False
+    sample_source_success = False
     assay_success = False
 
     table_list = REQUIRED_TABLES.copy()
@@ -303,15 +302,15 @@ def main():
         species_specific_tables_ls = [item for item in species_specific_tables_ls if item]
         table_list.extend(species_specific_tables_ls)
 
-        if tissue_or_cell in TISSUES_OR_CELLS:
-            tissue_or_cell_success = True
+        if sample_source in SAMPLE_SOURCE:
+            sample_source_success = True
             if assay_type in ASSAY_KEYS:
                 assay_success = True
 
     ############
     #### Pause until user selects species_success and assay_success
-    if not species_success or not tissue_or_cell_success or not assay_success:
-        st.info("Please select Species, Tissue/Cell, and Assay Type of your dataset")
+    if not species_success or not sample_source_success or not assay_success:
+        st.info("Please select Species, Sample Source, and Assay Type of your dataset")
         st.stop()
 
     ############
@@ -333,6 +332,7 @@ def main():
     ############
     #### Validate app_schema categories against CDE Validation lists
     ############
+    ## Input as: validate_cde_vs_schema(cde_dataframe, app_schema, CDE:(table, field), schema:(schema_section, schema_field))
     species_match = validate_cde_vs_schema(
         cde_dataframe,
         app_schema,
@@ -343,7 +343,7 @@ def main():
         cde_dataframe,
         app_schema,
         ("ASSAY", "sample_source"),
-        ("table_categories", "tissues_or_cells")
+        ("table_categories", "sample_source")
     )
     assays_match = validate_cde_vs_schema(
         cde_dataframe,
@@ -354,22 +354,22 @@ def main():
     if not species_match or not sample_source_match or not assays_match:
         st.error(
             f"ERROR!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
-            f"Species:{'✅' if species_match else '❌'}, Tissue/Cell:{'✅' if sample_source_match else '❌'}, Assay:{'✅' if assays_match else '❌'}. "
+            f"Species:{'✅' if species_match else '❌'}, Sample Source:{'✅' if sample_source_match else '❌'}, Assay:{'✅' if assays_match else '❌'}. "
         )
         st.stop()
 
     ############
     ### Step 2: Provide template files
-    ###         Restrict printed columns by Selected Species, Tissue/Cell, Assay Type
+    ###         Restrict printed columns by Selected Species, Sample Source, Assay Type
     ############
     st.sidebar.markdown('<h3 style="font-size: 23px;">Step 2: Download template files</h3>',
                 unsafe_allow_html=True)
 
-    # Build templates ZIP filtered by Step 1 selection (SpecificSpecies / SpecificTissueCell / SpecificAssay).
+    # Build templates ZIP filtered by Step 1 selection (SpecificSpecies / SpecificSampleSource / SpecificAssay).
     filtered_cde_for_templates = filter_cde_rules_for_selection(
         cde_dataframe[cde_dataframe["Table"].isin(table_list)].reset_index(drop=True),
         selected_species=species,
-        selected_tissue_cell=tissue_or_cell,
+        selected_sample_source=sample_source,
         selected_assay_type=assay_type,
     )
     templates_zip_bytes, number_of_helper_rows = build_templates_zip(filtered_cde_for_templates)
@@ -1035,7 +1035,7 @@ def main():
         input_dataframes_dic,
         step5_cde_dataframe,
         selected_species=species,
-        selected_tissue_cell=tissue_or_cell,
+        selected_sample_source=sample_source,
         selected_assay_type=assay_type,
     )
     report = ReportCollector()
