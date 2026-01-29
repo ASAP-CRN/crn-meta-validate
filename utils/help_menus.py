@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Tuple
 
 def ensure_step1_other_options(
     species_options: List[str],
-    tissue_or_cell_options: List[str],
+    sample_source_options: List[str],
     assay_type_options: List[str],
     assay_label_to_key: Dict[str, str],
     assay_keys: set[str],
@@ -17,8 +17,8 @@ def ensure_step1_other_options(
     """
     if "Other" not in species_options:
         species_options.append("Other")
-    if "Other" not in tissue_or_cell_options:
-        tissue_or_cell_options.append("Other")
+    if "Other" not in sample_source_options:
+        sample_source_options.append("Other")
     if "Other" not in assay_type_options:
         assay_type_options.append("Other")
 
@@ -28,7 +28,7 @@ def ensure_step1_other_options(
 
     return (
         species_options,
-        tissue_or_cell_options,
+        sample_source_options,
         assay_type_options,
         assay_label_to_key,
         assay_keys,
@@ -84,16 +84,16 @@ def build_step1_report_markdown(step1_other_fields: Dict[str, str]) -> str:
     ]
 
     species_other_text = str(step1_other_fields.get("species_other", "") or "").strip()
-    tissue_other_text = str(step1_other_fields.get("tissue_or_cell_other", "") or "").strip()
+    sample_source_other_text = str(step1_other_fields.get("sample_source_other", "") or "").strip()
     assay_other_text = str(step1_other_fields.get("assay_type_other", "") or "").strip()
 
     other_entries_present = False
     if species_other_text:
         other_entries_present = True
         report_lines.append(f"- **Dataset species (Other):** {species_other_text}")
-    if tissue_other_text:
+    if sample_source_other_text:
         other_entries_present = True
-        report_lines.append(f"- **Tissue/cell (Other):** {tissue_other_text}")
+        report_lines.append(f"- **Sample source (Other):** {sample_source_other_text}")
     if assay_other_text:
         other_entries_present = True
         report_lines.append(f"- **Assay type (Other):** {assay_other_text}")

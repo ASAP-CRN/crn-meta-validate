@@ -395,8 +395,10 @@ def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_c
     if only_in_cde or only_in_json:
         if only_in_cde:
             logger.error("%s has values not in %s: %s", label_left, label_right, only_in_cde)
+            st.error(f"ERROR!!! {label_left} has values not in {label_right}: {only_in_cde}")
         if only_in_json:
             logger.error("%s has values not in %s: %s", label_right, label_left, only_in_json)
+            st.error(f"ERROR!!! {label_right} has values not in {label_left}: {only_in_json}")
         return False
 
     logger.info("OK: %s matches %s", label_left, label_right)

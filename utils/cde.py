@@ -4,7 +4,7 @@ CDE (Common Data Elements) loading utilities for ASAP CRN metadata QC app
 This module handles loading and processing of CDE definitions from either
 Google Sheets or local CSV files.
 
-Applies filtering of CDE rules based on selected species, tissue/cell type and assay type.
+Applies filtering of CDE rules based on selected species, sample source and assay type.
 """
 
 import pandas as pd
@@ -39,10 +39,10 @@ def parse_json_list_cell(cell_value: str) -> List[str]:
 def filter_cde_rules_for_selection(
     cde_dataframe: pd.DataFrame,
     selected_species: str | None = None,
-    selected_tissue_cell: str | None = None,
+    selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
 ) -> pd.DataFrame:
-    """Filter CDE rows based on SpecificSpecies / SpecificTissueCell / SpecificAssays.
+    """Filter CDE rows based on SpecificSpecies / SpecificSampleSource / SpecificAssays.
 
     Semantics:
     - If a Specific* cell is empty, the row applies to all selections for that axis.
@@ -51,7 +51,7 @@ def filter_cde_rules_for_selection(
 
     Notes:
     - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
-    - SpecificTissueCell and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
+    - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
     """
     if cde_dataframe.empty:
         return cde_dataframe
@@ -71,16 +71,15 @@ def filter_cde_rules_for_selection(
             filtered_df["SpecificAssays"].apply(lambda cell_value: _axis_allows(cell_value, selected_assay_type))
         ]
 
-    if "SpecificTissueCell" in filtered_df.columns:
+    if "SpecificSampleSource" in filtered_df.columns:
         filtered_df = filtered_df[
-            filtered_df["SpecificTissueCell"].apply(lambda cell_value: _axis_allows(cell_value, selected_tissue_cell))
+            filtered_df["SpecificSampleSource"].apply(lambda cell_value: _axis_allows(cell_value, selected_sample_source))
         ]
 
     if "SpecificSpecies" in filtered_df.columns:
         filtered_df = filtered_df[
             filtered_df["SpecificSpecies"].apply(lambda cell_value: _axis_allows(cell_value, selected_species))
         ]
-    # st.dataframe(filtered_df) ## DEBUGGING: shows filtered CDE for table
 
     return filtered_df.reset_index(drop=True)
 
@@ -117,7 +116,7 @@ def read_CDE(
     """
     
     # Define column list based on CDE version
-    # Specificity column headers of Species-, Tissue/Cell-, and Assay-specific values as: SpecificAssays, SpecificTissueCell, SpecificSpecies
+    # Specificity column headers of Species-, Sample Source-, and Assay-specific values as: SpecificAssays, SpecificSampleSource, SpecificSpecies
     column_list = [
         "Table",
         "Field",
@@ -128,7 +127,7 @@ def read_CDE(
         "Validation",
         "FillNull",
         "SpecificAssays",
-        "SpecificTissueCell",
+        "SpecificSampleSource",
         "SpecificSpecies",
     ]
     
@@ -147,7 +146,16 @@ def read_CDE(
         cde_google_sheet=cde_google_sheet,
         cde_version=cde_version,
     )
-    
+
+    # Validate that all required columns are present in CDE
+    missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(cde_dataframe.columns)].tolist()
+    if not missing_columns:
+        st.success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
+    else:
+        support_message = "If you think that this is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)"
+        st.error(f"❌ CDE {cde_version} is missing required columns: {missing_columns}.\n {support_message}")
+        st.stop()
+
     # Filter and clean the dataframe
     cde_dataframe = clean_cde_dataframe(
         cde_dataframe,
@@ -159,11 +167,6 @@ def read_CDE(
 
     # Validate completeness of critical CDE columns
     cde_dataframe = validate_cde_completeness(cde_dataframe)
-
-    # Ensure specificity columns exist for older CDE versions
-    for col in ["SpecificAssays", "SpecificTissueCell", "SpecificSpecies"]:
-        if col not in cde_dataframe.columns:
-            cde_dataframe[col] = pd.NA
 
     # Create dtype dictionary
     dtype_dict = create_dtype_dict(cde_dataframe)
@@ -188,7 +191,7 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta"]:
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta", "v4.1"]:
         return f"ASAP_CDE_{cde_version}"
     elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
         return "ASAP_CDE_v3.0"
@@ -369,7 +372,7 @@ def get_table_cde(
     cde_dataframe: pd.DataFrame,
     table_name: str,
     selected_species: str | None = None,
-    selected_tissue_cell: str | None = None,
+    selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
 ) -> pd.DataFrame:
     """
@@ -391,7 +394,7 @@ def get_table_cde(
     return filter_cde_rules_for_selection(
         table_cde_rules,
         selected_species=selected_species,
-        selected_tissue_cell=selected_tissue_cell,
+        selected_sample_source=selected_sample_source,
         selected_assay_type=selected_assay_type,
     )
 

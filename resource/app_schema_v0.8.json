@@ -2,7 +2,7 @@
   "app_version": "v0.8",
   "cde_definition": {
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
-    "cde_version": "v4.0-beta",
+    "cde_version": "v4.1",
     "old_cde_version": "v3.4",
     "allow_old_cde": true
   },
@@ -20,7 +20,7 @@
       "Rhesus macaque",
       "Other"
     ],
-    "tissues_or_cells": [
+    "sample_source": [
       "Brain",
       "Skin",
       "Blood",
@@ -44,7 +44,9 @@
       "single_nucleus_rna_seq": "Single-nucleus RNA-seq",
       "spatial_transcriptomics_geomx": "Spatial transcriptomics (GeoMx)",
       "spatial_transcriptomics_visium": "Spatial transcriptomics (Visium)",
-      "atac_seq": "ATAC-seq",
+      "bulk_atac_seq": "Bulk ATAC-seq",
+      "single_cell_atac_seq": "Single-cell ATAC-seq",
+      "single_nucleus_atac_seq": "Single-nucleus ATAC-seq",
       "multi_seq": "MULTI-Seq",
       "multiome": "Multiome",
       "amplicon_metagenomics": "Amplicon metagenomics",
