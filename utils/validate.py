@@ -6,6 +6,7 @@ Google Sheets or local CSV files.
 
 """
 
+from dataclasses import field
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
 from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
@@ -14,14 +15,19 @@ NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitize
 
 import pandas as pd
 import re
-import html
 import streamlit as st
+import logging
 from ast import literal_eval
 
 def build_bullet_invalid_details_markdown(
-        column_name: str, hover_text: str, 
-        column_type: str, n_invalid_vals: int, 
-        invalid_descr: str, valid_descr: str) -> None:
+        column_name: str, 
+        hover_text: str, 
+        column_type: str, 
+        n_invalid_vals: int, 
+        invalid_descr: str, 
+        valid_descr: str,
+        table_name: str,
+        ) -> None:
     
     # HTML bullet with hover tooltip around column_name
     bullet_text = f"""
@@ -37,6 +43,27 @@ def build_bullet_invalid_details_markdown(
             <li><b>Invalid values:</b> {invalid_descr}</li>
             <li><b>Expected:</b> {valid_descr}</li>
         </ul>
+    </li>
+    </ul>
+    """
+    return bullet_text
+
+def build_bullet_missing_details_markdown(
+        column_name: str,
+        hover_text: str,
+        column_type: str,
+        table_name: str,
+        ) -> str:
+    """Return an HTML bullet describing a missing column, with hover text on the column name."""
+    bullet_text = f"""
+    <ul style="margin:0; padding-left:20px;">
+    <li>
+        <b>{column_type}</b> column
+        <span class="tooltip-wrapper">
+            <span class="missing-hover">{column_name}</span>
+            <span class="tooltip-text">{hover_text}</span>
+        </span>
+        is missing in <b><i>{table_name}</i></b>
     </li>
     </ul>
     """
@@ -98,6 +125,150 @@ def parse_literal_list(raw):
         return val
     else:
         return [val] # force to list
+
+
+def get_hover_text_for_column(
+    specific_cde_df: "pd.DataFrame",
+    column_name: str,
+) -> str:
+    """Return hover text for a column using the CDE Description when available."""
+    description_text = ""
+    if (
+        specific_cde_df is not None
+        and hasattr(specific_cde_df, "columns")
+        and "Description" in specific_cde_df.columns
+        and "Field" in specific_cde_df.columns
+    ):
+        entry_mask = specific_cde_df["Field"] == column_name
+        try:
+            description_value = specific_cde_df.loc[entry_mask, "Description"].iloc[0]
+        except (KeyError, IndexError):
+            description_value = ""
+        if pd.notna(description_value):
+            description_text = str(description_value)
+
+    return build_hover_text_from_description(description_text)
+
+
+def render_missing_columns(
+    *,
+    validation_report: "ReportCollector",
+    table_name: str,
+    specific_cde_df: "pd.DataFrame",
+    table_comments: dict[str, str],
+    missing_columns: list[str],
+    total_columns: int,
+    column_type_label: str,
+    widget_key_prefix: str,
+) -> None:
+    """Render missing-column bullets + per-column comment boxes, and log to validation_report."""
+    if not missing_columns:
+        return
+
+    summary_text = (
+        f"**Missing {column_type_label.lower()} columns ({len(missing_columns)}/{total_columns}):**"
+    )
+    validation_report.entries.append(("markdown", summary_text))
+    st.markdown(summary_text)
+
+    for entry_index, column_name in enumerate(missing_columns):
+        hover_text = get_hover_text_for_column(specific_cde_df, column_name)
+        free_text_markdown = build_free_text_header_markdown(column_name, hover_text)
+        bullet_text = build_bullet_missing_details_markdown(
+            column_name,
+            hover_text,
+            column_type_label,
+            table_name,
+        )
+
+        validation_report.entries.append(("markdown", bullet_text))
+
+        values_column, comments_column = st.columns(2)
+
+        with values_column:
+            st.markdown(bullet_text, unsafe_allow_html=True)
+
+        with comments_column:
+            existing_comment_text = table_comments.get(column_name, "")
+            comment_widget_key = (
+                f"{widget_key_prefix}_{table_name}_{column_name}_{entry_index}"
+            )
+
+            if comment_widget_key not in st.session_state:
+                st.session_state[comment_widget_key] = existing_comment_text
+
+            st.markdown(free_text_markdown, unsafe_allow_html=True)
+            comment_value = st.text_area(
+                "Free text comment box",
+                key=comment_widget_key,
+                height=15,
+                label_visibility="collapsed",
+            )
+            table_comments[column_name] = comment_value
+
+
+def render_invalid_values(
+    *,
+    validation_report: "ReportCollector",
+    table_name: str,
+    specific_cde_df: "pd.DataFrame",
+    table_comments: dict[str, str],
+    invalid_entries: list[tuple[str, str, int, str, str]],
+    widget_key_prefix: str,
+) -> None:
+    """Render invalid-value bullets + per-column comment boxes, and log to validation_report."""
+    if not invalid_entries:
+        return
+
+    header_text = (
+    f"<b>Columns not matching CDE controlled vocabularies in "
+    f"<i>{table_name}</i>:</b>"
+    )
+    validation_report.entries.append(("markdown", header_text))
+    st.markdown(header_text, unsafe_allow_html=True)
+
+    for entry_index, (opt_req_flag, column_name, n_invalid_vals, valid_descr, invalid_descr) in enumerate(
+        invalid_entries,
+    ):
+        column_type = opt_req_flag[0] + opt_req_flag[1:].lower()
+
+        hover_text = get_hover_text_for_column(specific_cde_df, column_name)
+        free_text_markdown = build_free_text_header_markdown(column_name, hover_text)
+        bullet_text = build_bullet_invalid_details_markdown(
+            column_name,
+            hover_text,
+            column_type,
+            n_invalid_vals,
+            invalid_descr,
+            valid_descr,
+            table_name,
+        )
+
+        validation_report.entries.append(("markdown", bullet_text))
+
+        values_column, comments_column = st.columns(2)
+
+        with values_column:
+            st.markdown(bullet_text, unsafe_allow_html=True)
+
+        with comments_column:
+            existing_comment_text = table_comments.get(column_name, "")
+            comment_widget_key = (
+                f"{widget_key_prefix}_{table_name}_{column_name}_{entry_index}"
+            )
+
+            if comment_widget_key not in st.session_state:
+                st.session_state[comment_widget_key] = existing_comment_text
+
+            st.markdown(free_text_markdown, unsafe_allow_html=True)
+            comment_value = st.text_area(
+                "Free text comment box",
+                key=comment_widget_key,
+                height=15,
+                label_visibility="collapsed",
+            )
+
+            table_comments[column_name] = comment_value
 
 class ReportCollector:
     """
@@ -179,6 +350,59 @@ class ReportCollector:
 
     def print_log(self):
         print(self.get_log())
+
+def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_cde, keys_json) -> bool:
+    """
+    Compare CDE Validation values vs JSON values/keys for a given pair definition.
+
+    Parameters
+    ----------
+    cde_dataframe: pd.DataFrame
+        CDE dataframe (as returned by utils.cde.read_CDE).
+    app_schema: dict
+        Parsed app schema JSON dict.
+    keys_cde: touple[str, str]
+        ("TABLE", "field")
+    keys_json: touple[str, str]
+        ("parent", "child") - child can be either list or dict (keys)
+    """
+    logger = logging.getLogger(__name__)
+
+    # Get CDE values
+    cde_table, cde_field = keys_cde
+    cde_values = cde_dataframe[(cde_dataframe["Table"] == cde_table) & (cde_dataframe["Field"] == cde_field)]
+    if cde_values.empty:
+        raise ValueError(f"No CDE row found for Table={cde_table!r}, Field={cde_field!r}")
+    cde_validation_raw = cde_values.iloc[0].get("Validation")
+    cde_list = parse_literal_list(cde_validation_raw)
+
+    # Get JSON values
+    json_parent, json_child = keys_json
+    if isinstance(app_schema[json_parent][json_child], list):
+        json_list = app_schema[json_parent][json_child]
+    elif isinstance(app_schema[json_parent][json_child], dict):
+        json_list = list(app_schema[json_parent][json_child].keys())
+    else:
+        raise ValueError(f"Unexpected type for app_schema[{json_parent}][{json_child}]: {type(app_schema[json_parent][json_child])}")
+
+    # Compare CDE vs Schema (JSON)
+    cde_set = set(map(str, cde_list))
+    json_set = set(map(str, json_list))
+    only_in_cde = sorted(cde_set - json_set)
+    only_in_json = sorted(json_set - cde_set)
+    label_left = f"CDE:{cde_table}:{cde_field}:Validation"
+    label_right = f"schema:{json_parent}:{json_child}:keys"
+    if only_in_cde or only_in_json:
+        if only_in_cde:
+            logger.error("%s has values not in %s: %s", label_left, label_right, only_in_cde)
+            st.error(f"ERROR!!! {label_left} has values not in {label_right}: {only_in_cde}")
+        if only_in_json:
+            logger.error("%s has values not in %s: %s", label_right, label_left, only_in_json)
+            st.error(f"ERROR!!! {label_right} has values not in {label_left}: {only_in_json}")
+        return False
+
+    logger.info("OK: %s matches %s", label_left, label_right)
+    return True
 
 def validate_table(df_after_fill: pd.DataFrame, table_name: str, 
                    specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None, 
@@ -357,7 +581,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
                 invalid_values = entries[invalid_mask].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = f"Regex /{pattern}/ or FillNull values ({", ".join(map(my_str, fillnull_values))})"
+                    valstr = f"Regex /{pattern}/ or FillNull values ({', '.join(map(my_str, fillnull_values))})"
                     invalstr = ", ".join(map(my_str, invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     if opt_req == "REQUIRED":
@@ -375,48 +599,35 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
                 if n_null > 0:
                     null_columns.append((opt_req, column, n_null))
 
-
     ############
-    #### Compose report, get error and warning counters to either provide the user with a download link for the sanitized file or not
+    #### Compose summary report and log of errors and warnings
 
-    ## Report missing columns, either required (throw errors) or optional (throw warnings)
+    #### Report summary of --missing-- columns
     if len(missing_required) > 0:
-        validation_report.add_error(f"❌ -- Missing {len(missing_required)}/{total_required} **required** columns in *{table_name}*: {', '.join(missing_required)}")
+        validation_report.add_error(f"❌ -- See details below: {len(missing_required)} of {total_required} **required** columns are missing in {table_name}\n")
         for column in missing_required:
             df_after_fill[column] = NULL
             errors_counter += 1
     else:
-        validation_report.add_success(f"✅ -- All {total_required} **required** columns are present in *{table_name}*")
+        validation_report.add_success(f"✅ -- All {total_required} **required** columns are present in {table_name}\n")
 
     if len(missing_optional) > 0:
-        validation_report.add_warning(f"⚠️ -- Missing {len(missing_optional)}/{total_optional} **optional** columns in *{table_name}*: {', '.join(missing_optional)}")
+        validation_report.add_warning(f"⚠️ -- See details below: {len(missing_optional)} of {total_optional} **optional** columns are missing in {table_name}\n")
         for column in missing_optional:
             df_after_fill[column] = NULL
             warnings_counter += 1
     else:
-        validation_report.add_success(f"✅ -- All {total_optional} **optional** columns are present in *{table_name}*")
+        validation_report.add_success(f"✅ -- All {total_optional} **optional** columns are present in {table_name}\n")
 
-    ## Report columns with null/empty values, either required (throw errors) or optional (throw warnings)
-    if len(null_columns) > 0:
-        for opt_req, column, count in null_columns:
-            if opt_req == "REQUIRED":
-                validation_report.add_error(f"❌ -- **required** column _**{column}**_ has {count} empty values. Please fill them out with valid CDE values or 'Unknown' if that's the case, before uploading to Google buckets")
-                errors_counter += 1
-            else:
-                validation_report.add_warning(f"⚠️ -- **optional** column _**{column}**_ has {count} empty values. You can opt to fill them out with valid CDE values or not before uploading to Google buckets")
-                warnings_counter += 1
-    else:
-        validation_report.add_success(f"✅ -- No columns with empty values were found\n")
-
-    ## Report summary of invalid entries (i.e. not matching CDE), either required (throw errors) or optional (throw warnings)
+    #### Report summary of --invalid-- entries (i.e. not matching CDE)
     if len(invalid_required) > 0:
-        validation_report.add_error(f"❌ -- {len(invalid_required)} required columns with invalid values (details below): {', '.join(invalid_required)}")
+        validation_report.add_error(f"❌ -- See details below: {len(invalid_required)} of {total_required} **required** columns have invalid values in {table_name}\n")
         errors_counter += len(invalid_required)
     else:
         validation_report.add_success(f"✅ -- No invalid values were found in required columns\n")
 
     if len(invalid_optional) > 0:
-        validation_report.add_warning(f"⚠️ -- {len(invalid_optional)} optional columns with invalid values: {', '.join(invalid_optional)}")
+        validation_report.add_warning(f"⚠️ -- See details below: {len(invalid_optional)} of {total_optional} **optional** columns have invalid values in {table_name}\n")
         warnings_counter += len(invalid_optional)
     else:
         validation_report.add_success(f"✅ -- No invalid values were found in optional columns\n")
@@ -461,73 +672,72 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
     else:
         st.dataframe(format_dataframe_for_preview(preview_validated_df))
     st.checkbox("Show all rows", key=show_all_validated_key, value=show_all_validated)
+    st.markdown("---")
 
-    # Provide a detailed non-redundant list of invalid values per column
-    if len(invalid_entries) > 0:
-        header_text = (
-            "**Details of invalid values by column (i.e. not matching CDE controlled vocabularies):**"
-        )
+    ############
+    #### Provide details of missing columns and invalid values per column
+
+    #### Details of missing columns
+    if len(missing_required) + len(missing_optional) > 0:
+        header_text = "**Details of missing columns:**"
 
         # Log header for markdown QC report and show it once in the app.
         validation_report.entries.append(("markdown", header_text))
-        st.markdown(header_text)
+        st.markdown(f"#### {header_text}")
+
+        # Track per-column comments (shared with invalid-value comments).
+        column_comments = st.session_state.get("column_comments", {})
+        if table_name not in column_comments:
+            column_comments[table_name] = {}
+        table_comments = column_comments[table_name]
+
+        render_missing_columns(
+            validation_report=validation_report,
+            table_name=table_name,
+            specific_cde_df=specific_cde_df,
+            table_comments=table_comments,
+            missing_columns=missing_required,
+            total_columns=total_required,
+            column_type_label="Required",
+            widget_key_prefix="missing_comment",
+        )
+        render_missing_columns(
+            validation_report=validation_report,
+            table_name=table_name,
+            specific_cde_df=specific_cde_df,
+            table_comments=table_comments,
+            missing_columns=missing_optional,
+            total_columns=total_optional,
+            column_type_label="Optional",
+            widget_key_prefix="missing_comment",
+        )
+
+        column_comments[table_name] = table_comments
+        st.session_state["column_comments"] = column_comments
+
+    #### Details of invalid values per column
+    if len(invalid_entries) > 0:
+        header_text = "**Details of invalid values per column:**"
+
+        # Log header for markdown QC report and show it once in the app.
+        validation_report.entries.append(("markdown", header_text))
+        st.markdown(f"#### {header_text}")
 
         column_comments = st.session_state.get("column_comments", {})
         if table_name not in column_comments:
             column_comments[table_name] = {}
         table_comments = column_comments[table_name]
 
-        for entry_index, (opt_req_flag, column_name, n_invalid_vals, valid_descr, invalid_descr) in enumerate(
-            invalid_entries,
-        ):
-            column_type = opt_req_flag[0] + opt_req_flag[1:].lower()
-
-            # Hover tooltip: use column Description from CDE when available
-            description_text = ""
-            if "Description" in specific_cde_df.columns:
-                entry_idx = specific_cde_df["Field"] == column_name
-                try:
-                    description_value = specific_cde_df.loc[entry_idx, "Description"].iloc[0]
-                except (KeyError, IndexError):
-                    description_value = ""
-                if pd.notna(description_value):
-                    description_text = str(description_value)
-
-            hover_text = build_hover_text_from_description(description_text)
-            free_text_markdown = build_free_text_header_markdown(column_name, hover_text)
-            bullet_text = build_bullet_invalid_details_markdown(
-                column_name, hover_text,
-                column_type, n_invalid_vals,
-                invalid_descr, valid_descr
-            )
-
-            # Persist the detailed message for inclusion in the QC markdown log.
-            validation_report.entries.append(("markdown", bullet_text))
-
-            values_column, comments_column = st.columns(2)
-
-            with values_column:
-                st.markdown(bullet_text, unsafe_allow_html=True)
-            with comments_column:
-                existing_comment_text = table_comments.get(column_name, "")
-                comment_widget_key = (
-                    f"invalid_comment_{table_name}_{column_name}_{entry_index}"
-                )
-
-                if comment_widget_key not in st.session_state:
-                    st.session_state[comment_widget_key] = existing_comment_text
-
-                ### Free-text Add comment box
-                st.markdown(free_text_markdown, unsafe_allow_html=True)
-                comment_value = st.text_area(
-                    "Free text comment box",
-                    key=comment_widget_key,
-                    height=15,
-                    label_visibility="collapsed",
-                )
-
-                table_comments[column_name] = comment_value
+        render_invalid_values(
+            validation_report=validation_report,
+            table_name=table_name,
+            specific_cde_df=specific_cde_df,
+            table_comments=table_comments,
+            invalid_entries=invalid_entries,
+            widget_key_prefix="invalid_comment",
+        )
 
         column_comments[table_name] = table_comments
         st.session_state["column_comments"] = column_comments
+
     return df_after_fill, validation_report, errors_counter, warnings_counter

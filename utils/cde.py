@@ -3,12 +3,85 @@ CDE (Common Data Elements) loading utilities for ASAP CRN metadata QC app
 
 This module handles loading and processing of CDE definitions from either
 Google Sheets or local CSV files.
+
+Applies filtering of CDE rules based on selected species, sample source and assay type.
 """
 
 import pandas as pd
 import streamlit as st
+import json
 from pathlib import Path
 from typing import Tuple, Dict, List
+
+def parse_json_list_cell(cell_value: str) -> List[str]:
+    """Parse a JSON-encoded list stored in a CDE cell.
+
+    The CDE stores specificity columns (e.g., SpecificAssays) as strings like:
+      - '["amplicon_metagenomics"]'
+      - '["Brain","iPSC"]'
+    Empty / NaN-like values should be treated as an empty list.
+    """
+    if cell_value is None:
+        return []
+    normalized = str(cell_value).strip()
+    if normalized == "" or normalized.lower() in {"nan", "none"}:
+        return []
+    if normalized.startswith("["):
+        try:
+            parsed = json.loads(normalized)
+        except Exception:
+            return [normalized]
+        if isinstance(parsed, list):
+            return [str(item) for item in parsed if str(item).strip() != ""]
+        return [str(parsed)]
+    return [normalized]
+
+def filter_cde_rules_for_selection(
+    cde_dataframe: pd.DataFrame,
+    selected_species: str | None = None,
+    selected_sample_source: str | None = None,
+    selected_assay_type: str | None = None,
+) -> pd.DataFrame:
+    """Filter CDE rows based on SpecificSpecies / SpecificSampleSource / SpecificAssays.
+
+    Semantics:
+    - If a Specific* cell is empty, the row applies to all selections for that axis.
+    - If it is non-empty, the row applies only if the selection is present in the list.
+    - If a selection is None/empty, that axis is not used for filtering.
+
+    Notes:
+    - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
+    - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
+    """
+    if cde_dataframe.empty:
+        return cde_dataframe
+
+    def _axis_allows(cell_value: str, selected_value: str | None) -> bool:
+        if selected_value is None or str(selected_value).strip() == "":
+            return True
+        allowed_values = parse_json_list_cell(cell_value)
+        if len(allowed_values) == 0:
+            return True
+        return str(selected_value) in set(allowed_values)
+
+    filtered_df = cde_dataframe.copy()
+
+    if "SpecificAssays" in filtered_df.columns:
+        filtered_df = filtered_df[
+            filtered_df["SpecificAssays"].apply(lambda cell_value: _axis_allows(cell_value, selected_assay_type))
+        ]
+
+    if "SpecificSampleSource" in filtered_df.columns:
+        filtered_df = filtered_df[
+            filtered_df["SpecificSampleSource"].apply(lambda cell_value: _axis_allows(cell_value, selected_sample_source))
+        ]
+
+    if "SpecificSpecies" in filtered_df.columns:
+        filtered_df = filtered_df[
+            filtered_df["SpecificSpecies"].apply(lambda cell_value: _axis_allows(cell_value, selected_species))
+        ]
+
+    return filtered_df.reset_index(drop=True)
 
 @st.cache_data
 def read_CDE(
@@ -43,6 +116,7 @@ def read_CDE(
     """
     
     # Define column list based on CDE version
+    # Specificity column headers of Species-, Sample Source-, and Assay-specific values as: SpecificAssays, SpecificSampleSource, SpecificSpecies
     column_list = [
         "Table",
         "Field",
@@ -52,6 +126,9 @@ def read_CDE(
         "Required",
         "Validation",
         "FillNull",
+        "SpecificAssays",
+        "SpecificSampleSource",
+        "SpecificSpecies",
     ]
     
     # Configuration flags
@@ -69,7 +146,16 @@ def read_CDE(
         cde_google_sheet=cde_google_sheet,
         cde_version=cde_version,
     )
-    
+
+    # Validate that all required columns are present in CDE
+    missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(cde_dataframe.columns)].tolist()
+    if not missing_columns:
+        st.success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
+    else:
+        support_message = "If you think that this is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)"
+        st.error(f"❌ CDE {cde_version} is missing required columns: {missing_columns}.\n {support_message}")
+        st.stop()
+
     # Filter and clean the dataframe
     cde_dataframe = clean_cde_dataframe(
         cde_dataframe,
@@ -82,7 +168,6 @@ def read_CDE(
     # Validate completeness of critical CDE columns
     cde_dataframe = validate_cde_completeness(cde_dataframe)
 
-    
     # Create dtype dictionary
     dtype_dict = create_dtype_dict(cde_dataframe)
     
@@ -106,7 +191,7 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0"]:
+    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta", "v4.1"]:
         return f"ASAP_CDE_{cde_version}"
     elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
         return "ASAP_CDE_v3.0"
@@ -283,7 +368,13 @@ def create_dtype_dict(cde_dataframe: pd.DataFrame) -> Dict[str, str]:
     table_list = list(cde_dataframe["Table"].unique())
     return {table: "str" for table in table_list}
 
-def get_table_cde(cde_dataframe: pd.DataFrame, table_name: str) -> pd.DataFrame:
+def get_table_cde(
+    cde_dataframe: pd.DataFrame,
+    table_name: str,
+    selected_species: str | None = None,
+    selected_sample_source: str | None = None,
+    selected_assay_type: str | None = None,
+) -> pd.DataFrame:
     """
     Extract CDE rules for a specific table.
     
@@ -299,7 +390,13 @@ def get_table_cde(cde_dataframe: pd.DataFrame, table_name: str) -> pd.DataFrame:
     pd.DataFrame
         CDE rules for the specified table
     """
-    return cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)
+    table_cde_rules = cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)
+    return filter_cde_rules_for_selection(
+        table_cde_rules,
+        selected_species=selected_species,
+        selected_sample_source=selected_sample_source,
+        selected_assay_type=selected_assay_type,
+    )
 
 def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str, str]]:
     """Builds a lookup dictionary of CDE metadata by field name.
