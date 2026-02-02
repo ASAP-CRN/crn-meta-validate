@@ -14,7 +14,7 @@ Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
 Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
-Webapp v0.8 (CDE version v4.1, optional v3.4), 28 January 2026
+Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
 
 Version notes:
 Webapp v0.4:
