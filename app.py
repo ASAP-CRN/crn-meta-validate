@@ -522,7 +522,7 @@ def main():
         # Surface per-file warnings in the UI
         for filename, warnings_list in file_warnings.items():
             for warning_text in warnings_list:
-                st.warning(f"**{filename}** — {warning_text}")
+                st.warning(f"⚠️ File **{filename}** — {warning_text}")
 
         # Files ready for CDE validation
         for filename in file_warnings.keys():
@@ -573,10 +573,12 @@ def main():
             table_name = loader.sanitize_table_name(data_file.name)
             dfs_default_delimiter_dic[table_name]['action'] = action
             dfs_default_delimiter_dic[table_name]['delimiter'] = detected_delimiter
-            dfs_default_delimiter_dic[table_name]["dataframe"] = pd.read_csv(
-                StringIO(file_content.decode('utf-8')),
-                delimiter=default_delimiter
-                )
+            default_delimiter_df, used_encoding, _used_engine, _used_errors_mode = loader._read_with_fallbacks(
+                raw_bytes=file_content,
+                separator=default_delimiter,
+            )
+            dfs_default_delimiter_dic[table_name]["dataframe"] = default_delimiter_df
+            dfs_default_delimiter_dic[table_name]["encoding"] = used_encoding
 
         # Log invalid files (strikethrough)
         if len(invalid_files) > 0:
