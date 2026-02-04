@@ -1,0 +1,33 @@
+{
+  "app_version": "v0.9",
+  "cde_definition": {
+    "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
+    "cde_version": "v4.1",
+    "old_cde_version": "v3.4",
+    "allow_old_cde": true
+  },
+  "default_input_delimiter": ",",
+  "kebab_menu": {
+    "email": "support@dnastack.com",
+    "get_help_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/main?tab=readme-ov-file#how-to-use-the-web-app",
+    "page_header": "ASAP CRN metadata quality control (QC) app"
+  },
+  "table_names": {
+    "required": [
+      "ASSAY",
+      "CONDITION",
+      "DATA",
+      "PROTOCOL",
+      "SAMPLE",
+      "STUDY",
+      "SUBJECT"
+    ],
+    "human_specific": [
+      "CLINPATH"
+    ]
+  },
+  "example_input_files_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files",
+  "preview_max_rows": 5,
+  "preview_fillout_color": "#28a745",
+  "preview_invalid_cde_color": "#ff9800"
+}

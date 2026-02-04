@@ -13,8 +13,9 @@ Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
-Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
-Webapp v0.8 (CDE version v4.1, optional v3.4), 28 January 2026
+Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026 
+Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
+Webapp v0.9 (CDE version v4.1, optional v3.4), 15 March 2026
 
 Version notes:
 Webapp v0.4:
@@ -50,6 +51,9 @@ Webapp v0.8:
 * Slim down coloured logs and direct used to "see below" sections details on missing columns and invalid values
 * Add free-text box for "Other" entries in Step 1 dropdowns
 
+Webapp v0.9:
+* Remove table_categories from app_schema.JSON, now loaded from CDE Spreadsheet ValidCategories
+
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
@@ -76,7 +80,7 @@ import time
 from io import StringIO
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, validate_cde_vs_schema
-from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
+from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
@@ -90,7 +94,7 @@ from utils.help_menus import (
 )
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.8" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -115,8 +119,11 @@ cde_version = app_schema['cde_definition']['cde_version']
 old_cde_version = app_schema['cde_definition'].get('old_cde_version')
 allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
+
+# CDE Google Sheet URLs for configuration (including ValidCategories: Species, SampleSource, Assay)
 cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
 cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
+valid_categories_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet=ValidCategories" # ValidCategories tab.
 use_local = False  # Set to False to use Google Sheets
 default_delimiter = app_schema['default_input_delimiter']
 
@@ -125,12 +132,23 @@ if allow_old_cde and old_cde_version:
     old_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
-SPECIES = list(app_schema['table_categories']['species'])
-SAMPLE_SOURCE = list(app_schema['table_categories']['sample_source'])
-ASSAY_DICT = app_schema['table_categories']['assays']
+SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
+    valid_categories_sheet,
+    local=use_local,
+)
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
 ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
 ASSAY_KEYS = set(ASSAY_DICT.keys())
+
+# Ensure 'Other' is always available in Step 1 dropdowns (independent of app_schema)
+SPECIES, SAMPLE_SOURCE, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS = ensure_step1_other_options(
+    species_options=SPECIES,
+    sample_source_options=SAMPLE_SOURCE,
+    assay_type_options=ASSAY_TYPES,
+    assay_label_to_key=ASSAY_LABEL_TO_KEY,
+    assay_keys=ASSAY_KEYS,
+)
+
 REQUIRED_TABLES = app_schema['table_names']['required']
 
 # Version display for UI
@@ -522,7 +540,7 @@ def main():
         # Surface per-file warnings in the UI
         for filename, warnings_list in file_warnings.items():
             for warning_text in warnings_list:
-                st.warning(f"**{filename}** — {warning_text}")
+                st.warning(f"⚠️ File **{filename}** — {warning_text}")
 
         # Files ready for CDE validation
         for filename in file_warnings.keys():
@@ -573,10 +591,12 @@ def main():
             table_name = loader.sanitize_table_name(data_file.name)
             dfs_default_delimiter_dic[table_name]['action'] = action
             dfs_default_delimiter_dic[table_name]['delimiter'] = detected_delimiter
-            dfs_default_delimiter_dic[table_name]["dataframe"] = pd.read_csv(
-                StringIO(file_content.decode('utf-8')),
-                delimiter=default_delimiter
-                )
+            default_delimiter_df, used_encoding, _used_engine, _used_errors_mode = loader._read_with_fallbacks(
+                raw_bytes=file_content,
+                separator=default_delimiter,
+            )
+            dfs_default_delimiter_dic[table_name]["dataframe"] = default_delimiter_df
+            dfs_default_delimiter_dic[table_name]["encoding"] = used_encoding
 
         # Log invalid files (strikethrough)
         if len(invalid_files) > 0:

@@ -30,11 +30,26 @@ import streamlit as st
 LINES_TO_EVALUATE = 50  # Number of lines to read for delimiter detection
 SUPPORTED_DELIMITERS = [",", ";", "\t", "|"]  # Supported delimiters for detection
 
+# Keep encoding handling consistent across delimiter detection and full-file reads.
+# Order matters:
+# - utf-8-sig handles UTF-8 files that include a BOM (common with Excel exports)
+# - latin-1 can decode any byte sequence, so it should be last to avoid masking problems
+# - cp1252 is common on Windows for Western European languages
+# This helps to handle special characters in data contributor last names.
+DEFAULT_ENCODINGS_TO_TRY = (
+    "utf-8-sig",
+    "utf-8",
+    "cp1252",
+    "latin-1",
+)
+
 @dataclass
 class FileStatus:
     filename: str
     filesize: int
     is_invalid: bool = False
+
+
 def format_dataframe_for_preview(dataframe: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
     """
     Return a copy of *dataframe* suitable for Streamlit previews,
@@ -123,6 +138,33 @@ class DelimiterHandler:
         if 'invalid_files' not in st.session_state or not isinstance(st.session_state.invalid_files, (dict, set)):
             st.session_state.invalid_files = {}
 
+    @staticmethod
+    def decode_bytes_with_fallbacks(file_content: bytes) -> Tuple[str, str, str]:
+        """Decode *file_content* into text using a consistent set of candidate encodings.
+
+        Returns:
+            decoded_text: The decoded string.
+            used_encoding: The encoding name that succeeded.
+            used_errors_mode: "strict" if decoded without substitution, otherwise "ignore".
+
+        Note: We avoid "replace" here for delimiter detection/structure checks because it can
+        silently mutate separators. "ignore" is used only as a last resort.
+        """
+        if not isinstance(file_content, (bytes, bytearray)):
+            return str(file_content), "text", "strict"
+
+        for encoding_name in DEFAULT_ENCODINGS_TO_TRY:
+            try:
+                decoded_text = bytes(file_content).decode(encoding_name)
+                return decoded_text, encoding_name, "strict"
+            except UnicodeDecodeError:
+                continue
+            except Exception:
+                continue
+
+        decoded_text = bytes(file_content).decode("utf-8", errors="ignore")
+        return decoded_text, "utf-8", "ignore"
+
     # ---------- Helpers for session keys / labels ----------
 
     def get_file_key(self, filename: str, filesize: int) -> str:
@@ -153,25 +195,7 @@ class DelimiterHandler:
         if num_lines is None:
             num_lines = LINES_TO_EVALUATE
 
-        # Decode with a small set of common encodings
-        encodings_to_try = ("utf-8", "latin-1", "cp1252")
-        decoded: Optional[str] = None
-        for enc in encodings_to_try:
-            try:
-                decoded = (
-                    file_content.decode(enc)
-                    if isinstance(file_content, (bytes, bytearray))
-                    else str(file_content)
-                )
-                break
-            except Exception:
-                continue
-        if decoded is None:
-            decoded = (
-                file_content.decode("utf-8", errors="ignore")
-                if isinstance(file_content, (bytes, bytearray))
-                else str(file_content)
-            )
+        decoded, _used_encoding, _used_errors_mode = self.decode_bytes_with_fallbacks(file_content)
 
         # Keep only the first N non-empty lines for scoring
         lines = [line for line in decoded.splitlines() if line.strip()]
@@ -244,6 +268,7 @@ class DelimiterHandler:
             preview_df = None
 
         return best_delim, float(confidence), preview_df
+
     def get_row_count(self, file_content: bytes, delimiter: str) -> int:
         """
         Return the number of data rows in the file for the provided delimiter.
@@ -259,11 +284,7 @@ class DelimiterHandler:
         if not file_content:
             return 0
 
-        decoded = (
-            file_content.decode("utf-8", errors="ignore")
-            if isinstance(file_content, (bytes, bytearray))
-            else str(file_content)
-        )
+        decoded, _used_encoding, _used_errors_mode = self.decode_bytes_with_fallbacks(file_content)
 
         non_empty_lines = [line for line in decoded.splitlines() if line.strip()]
         if len(non_empty_lines) <= 1:
@@ -302,11 +323,7 @@ class DelimiterHandler:
             True  : structure appears consistent (or at least parseable)
             False : structure mismatch detected (first offending line reported)
         """
-        decoded = (
-            file_content.decode("utf-8", errors="ignore")
-            if isinstance(file_content, (bytes, bytearray))
-            else str(file_content)
-        )
+        decoded, _used_encoding, _used_errors_mode = self.decode_bytes_with_fallbacks(file_content)
 
         try:
             # Strict read: error on any malformed row.

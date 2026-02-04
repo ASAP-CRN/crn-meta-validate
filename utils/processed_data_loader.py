@@ -67,7 +67,7 @@ class ProcessedDataLoader:
             )
 
             if used_encoding not in ("utf-8", "utf-8-sig"):
-                warnings_for_file.append(f"Loaded with fallback encoding '{used_encoding}'.")
+                warnings_for_file.append(f"Loaded with fallback encoding '{used_encoding}'--consider resaving as UTF-8 to avoid character issues.")
 
             if used_engine == "python":
                 warnings_for_file.append("Used the Python CSV engine for a tricky delimiter/format.")
