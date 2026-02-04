@@ -351,6 +351,52 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
+def decide_cde_vs_schema_validation(
+        app_schema_version: str,
+        cde_dataframe: pd.DataFrame,
+        app_schema: dict,
+        ): 
+    """
+    Decide whether to validate app_schema categories against CDE Validation lists or not
+    
+    Parameters
+    ----------
+    app_schema_version: str
+        App schema version string, e.g. "v0.4", "v0.5", etc.
+    """
+    logger = logging.getLogger(__name__)
+
+    ### validate_cde_vs_schema function was defined for app_schema v0.8 but deprecated in v0.9 because we are reading directly from the CDE
+    ### Keeping this function for backward compatibility with v0.8 apps and CDE vs. JSON debugging purposes.
+    schemas_that_need_validation_vs_cde = ["v0.8"]
+
+    if app_schema_version in schemas_that_need_validation_vs_cde:
+
+        ## Input as: validate_cde_vs_schema(cde_dataframe, app_schema, CDE:(table, field), schema:(schema_section, schema_field))
+        species_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("SAMPLE", "organism"),
+            ("table_categories", "species")
+        )
+        sample_source_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("ASSAY", "sample_source"),
+            ("table_categories", "sample_source")
+        )
+        assays_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("ASSAY", "assay"),
+            ("table_categories", "assays")
+        )
+        if not species_match or not sample_source_match or not assays_match:
+            st.warning(
+                f"⚠️ Warning!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
+                f"Species:{'✅' if species_match else '⚠️'}, Sample Source:{'✅' if sample_source_match else '⚠️'}, Assay:{'✅' if assays_match else '⚠️'}."
+            )
+
 def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_cde, keys_json) -> bool:
     """
     Compare CDE Validation values vs JSON values/keys for a given pair definition.
@@ -394,11 +440,11 @@ def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_c
     label_right = f"schema:{json_parent}:{json_child}:keys"
     if only_in_cde or only_in_json:
         if only_in_cde:
-            logger.error("%s has values not in %s: %s", label_left, label_right, only_in_cde)
-            st.error(f"ERROR!!! {label_left} has values not in {label_right}: {only_in_cde}")
+            logger.warning("%s has values not in %s: %s", label_left, label_right, only_in_cde)
+            st.warning(f"⚠️ Warning!!! {label_left} has values not in {label_right}: {only_in_cde}")
         if only_in_json:
-            logger.error("%s has values not in %s: %s", label_right, label_left, only_in_json)
-            st.error(f"ERROR!!! {label_right} has values not in {label_left}: {only_in_json}")
+            logger.warning("%s has values not in %s: %s", label_right, label_left, only_in_json)
+            st.warning(f"⚠️ Warning!!! {label_right} has values not in {label_left}: {only_in_json}")
         return False
 
     logger.info("OK: %s matches %s", label_left, label_right)
