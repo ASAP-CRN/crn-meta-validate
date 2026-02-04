@@ -13,6 +13,122 @@ import json
 from pathlib import Path
 from typing import Tuple, Dict, List
 
+
+def read_ValidCategories(
+    valid_categories_sheet: str,
+    local: bool = False,
+) -> Tuple[List[str], List[str], Dict[str, str]]:
+    """
+    Load Step 1 category options from the ValidCategories (Google Sheets or local TSV)
+    and return a dataframe.
+
+    Replaces reading these values from app_schema.json:
+      - SPECIES (dataset species) from SAMPLE.organism
+      - SAMPLE_SOURCE (sample source) from ASSAY.sample_source
+      - ASSAY_DICT (assay key -> display label) from ASSAY.assay
+
+    Mandatory columns:
+      - Table
+      - Category
+      - ValidatorAppKey
+      - ValidatorAppDisplay
+      - Status
+
+    Parameters
+    ----------
+    valid_categories_sheet : str
+        URL to the Google Sheets document containing the ValidCategories tab.
+        Can be either a normal "edit" URL or a direct TSV export URL.
+    local : bool, optional
+        If True, load from local TSV file instead of Google Sheets.
+        
+    Returns
+    -------
+    Tuple[List[str], List[str], Dict[str, str]]
+        - species_options (display labels)
+        - sample_source_options (display labels)
+        - assay_dict (ValidatorAppKey -> ValidatorAppDisplay)
+
+    Raises
+    ------
+    - Streamlit error and stops execution if the sheet cannot be loaded or is malformed.
+    - Streamlit error and stops execution if required columns are missing.
+    - Streamlit error and stops execution if Status is not "Ok: found in CDE_current".
+
+    """
+
+    # Define mandatory column list to load from ValidateCategores
+    column_list = [
+        "Table",
+        "Category",
+        "ValidatorAppKey",
+        "ValidatorAppDisplay",
+        "Status",
+    ]
+    
+    valid_categories_name = "ValidCategories"
+    
+    # Load ValidCategories from either local file or Google Sheets
+    valid_categories_df = load_valid_categories_data(
+        local=local,
+        valid_categories_name=valid_categories_name,
+        valid_categories_sheet=valid_categories_sheet
+    )
+
+    st.dataframe(valid_categories_df.head(5))
+
+    # Validate that all Status values are "Ok: found in CDE_current"
+    invalid_status_rows = valid_categories_df[
+        valid_categories_df["Status"].str.strip() != "Ok: found in CDE_current"
+    ]
+    if not invalid_status_rows.empty:
+        st.error(
+            f"❌ ValidCategories {valid_categories_name} contains rows with invalid Status values (not 'Ok: found in CDE_current'). Please check the following rows:\n{invalid_status_rows}"
+        )
+        st.stop()
+
+    # Validate that all required columns are present in ValidCategories
+    missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(valid_categories_df.columns)].tolist()
+    if not missing_columns:
+        st.success(f"✅ Successfully loaded ValidCategories {valid_categories_name} with all required columns.")
+    else:
+        support_message = "If you think that this is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)"
+        st.error(f"❌ ValidCategories {valid_categories_name} is missing required columns: {missing_columns}.\n {support_message}")
+        st.stop()
+
+    # Dataset species options (from SAMPLE.organism)
+    species_options = valid_categories_df[
+        (valid_categories_df["Table"] == "SAMPLE")
+        & (valid_categories_df["Category"] == "organism")
+        ]["ValidatorAppDisplay"].tolist()
+
+    # Sample source options (from ASSAY.sample_source)
+    sample_source_options = valid_categories_df[
+        (valid_categories_df["Table"] == "ASSAY")
+        & (valid_categories_df["Category"] == "sample_source")
+        ]["ValidatorAppDisplay"].tolist()
+
+    # Assay options (from ASSAY.assay) - dict key -> display label
+    assay_options = valid_categories_df[
+        (valid_categories_df["Table"] == "ASSAY")
+        & (valid_categories_df["Category"]  == "assay")
+    ]
+    assay_keys = assay_options["ValidatorAppKey"].tolist()
+    assay_labels = assay_options["ValidatorAppDisplay"].tolist()
+    assay_dict: Dict[str, str] = {}
+    for assay_key, assay_label in zip(assay_keys, assay_labels):
+        normalized_key = str(assay_key or "").strip()
+        normalized_label = str(assay_label or "").strip()
+        if normalized_key == "" or normalized_label == "":
+            continue
+        # Preserve sheet ordering: first occurrence wins.
+        if normalized_key not in assay_dict:
+            assay_dict[normalized_key] = normalized_label
+
+    st.success(f"✅ Successfully loaded ValidCategories {valid_categories_name} with all required columns.")
+    return species_options, sample_source_options, assay_dict
+
+
 def parse_json_list_cell(cell_value: str) -> List[str]:
     """Parse a JSON-encoded list stored in a CDE cell.
 
@@ -425,3 +541,49 @@ def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str
             "FillNull": cde_row.get("FillNull", ""),
         }
     return cde_meta_by_field
+
+# @st.cache_data
+def load_valid_categories_data(
+    local: bool,
+    valid_categories_name: str,
+    valid_categories_sheet: str,
+) -> pd.DataFrame:
+    """
+    Load ValidCategories data from either local file or Google Sheets.
+    
+    Parameters
+    ----------
+    local : bool
+        If True, load from local file
+    valid_categories_name : str
+        Name of the local ValidCategories tab (or file if local)
+    valid_categories_sheet : str
+        URL to the Google Sheets ValidCategories document
+        
+    Returns
+    -------
+    pd.DataFrame
+        Raw ValidCategories dataframe
+        
+    Raises
+    ------
+    Streamlit error and stops execution if loading fails
+    """
+    if local:
+        root = Path(__file__).parent.parent
+        valid_categories_local = root / f"resource/{valid_categories_name}.csv"
+        st.info(f"Using ValidCategories from local resource/{valid_categories_local}")
+        try:
+            return pd.read_csv(valid_categories_local)
+        except Exception as try_exception:
+            st.error(f"ERROR!!! Could not read ValidCategories from local resource/{valid_categories_local}")
+            st.error(f"Error details: {str(try_exception)}")
+            st.stop()
+    else:
+        st.info(f"Using ValidCategories from Google doc")
+        try:
+            return pd.read_csv(valid_categories_sheet)
+        except Exception as try_exception:
+            st.error(f"ERROR!!! Could not read ValidCategories from Google doc:\n{valid_categories_sheet}")
+            st.error(f"Error details: {str(try_exception)}")
+            st.stop()
