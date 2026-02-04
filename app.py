@@ -15,7 +15,7 @@ Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
 Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026 
 Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
-Webapp v0.9 (CDE version v4.1, optional v3.4), 15 March 2026
+Webapp v0.9 (CDE version v4.1, optional v3.4), 04 February 2026
 
 Version notes:
 Webapp v0.4:
@@ -79,7 +79,7 @@ import re
 import time
 from io import StringIO
 from collections import defaultdict
-from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, validate_cde_vs_schema
+from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
@@ -108,7 +108,7 @@ def load_css(file_path):
 load_css("css/css.css")
 
 ################################
-#### Load app schema from JSON
+#### Load app schema from JSON and CDE Google Spreadsheet
 ################################
 app_schema_path = os.path.join(repo_root, "resource", f"app_schema_{webapp_version}.json")
 with open(app_schema_path, "r") as json_file:
@@ -119,13 +119,17 @@ cde_version = app_schema['cde_definition']['cde_version']
 old_cde_version = app_schema['cde_definition'].get('old_cde_version')
 allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
-
-# CDE Google Sheet URLs for configuration (including ValidCategories: Species, SampleSource, Assay)
-cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
-cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
-valid_categories_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet=ValidCategories" # ValidCategories tab.
-use_local = False  # Set to False to use Google Sheets
+cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
+
+# CDE Google Sheet URLs for configuration
+ValidCategories_name = "ValidCategories"
+cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
+valid_categories_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={ValidCategories_name}" # ValidCategories used for Step 1 menus.
+cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
+
+# Use local resources or Google Sheets. Set to False to use Google Sheets
+use_local = False
 
 old_cde_google_sheet = None
 if allow_old_cde and old_cde_version:
@@ -134,6 +138,7 @@ if allow_old_cde and old_cde_version:
 # Extract table categories
 SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
     valid_categories_sheet,
+    ValidCategories_name,
     local=use_local,
 )
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
@@ -348,33 +353,14 @@ def main():
     )
 
     ############
-    #### Validate app_schema categories against CDE Validation lists
+    #### Validate JSON provided app_schema vs. CDE
+    #### Only needed for app_schema v0.8, but kept for future compatibility and potential extensions
     ############
-    ## Input as: validate_cde_vs_schema(cde_dataframe, app_schema, CDE:(table, field), schema:(schema_section, schema_field))
-    species_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("SAMPLE", "organism"),
-        ("table_categories", "species")
+    decide_cde_vs_schema_validation(
+        app_schema_version=webapp_version,
+        cde_dataframe=cde_dataframe,
+        app_schema=app_schema,
     )
-    sample_source_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("ASSAY", "sample_source"),
-        ("table_categories", "sample_source")
-    )
-    assays_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("ASSAY", "assay"),
-        ("table_categories", "assays")
-    )
-    if not species_match or not sample_source_match or not assays_match:
-        st.error(
-            f"ERROR!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
-            f"Species:{'✅' if species_match else '❌'}, Sample Source:{'✅' if sample_source_match else '❌'}, Assay:{'✅' if assays_match else '❌'}. "
-        )
-        st.stop()
 
     ############
     ### Step 2: Provide template files
