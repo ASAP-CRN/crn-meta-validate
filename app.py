@@ -1052,7 +1052,9 @@ def main():
         step5_cde_dataframe, step5_dtype_dict_unused = read_CDE(
             cde_version=step5_cde_version,
             cde_google_sheet=step5_cde_google_sheet,
+            cde_mandatory_fields=cde_mandatory_fields,
             local=use_local,
+            local_filename=None,
         )
 
     validation_report_dic = setup_report_data(

@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Tuple, Dict, List
 from utils.help_menus import get_current_function_name, support_email_message
+from utils.validate import read_valid_categories_with_status_retry, get_invalid_status_rows
 
 # @st.cache_data
 def read_ValidCategories(
@@ -68,18 +69,6 @@ def read_ValidCategories(
         valid_categories_sheet=valid_categories_sheet,
         valid_categories_name=valid_categories_name,
     )
-    st.dataframe(valid_categories_df.head(5))
-
-    # Validate that all Status values are "Ok: found in CDE_current"
-    invalid_status_rows = valid_categories_df[
-        valid_categories_df["Status"].str.strip() != "Ok: found in CDE_current"
-    ]
-    if not invalid_status_rows.empty:
-        overall_valid_categories_status = "error"
-        error_message = support_email_message(get_current_function_name(), 
-                                              f"Rows with invalid Status:\n{invalid_status_rows}")
-        st.error(error_message)
-        st.stop()
 
     # Validate that all required columns are present in ValidCategories
     missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(valid_categories_df.columns)].tolist()
@@ -87,6 +76,39 @@ def read_ValidCategories(
         overall_valid_categories_status = "error"
         error_message = support_email_message(get_current_function_name(), 
                                               f"Missing required columns:\n{missing_columns}")
+        st.error(error_message)
+        st.stop()
+
+    # Validate that all rows have Status = expected_status
+    # Since this can be transiently loading, retry a few times.
+    expected_status = "Ok: found in CDE_current"
+    transient_statuses = ["Loading...", ""]
+
+    def _load_valid_categories_df_with_status() -> pd.DataFrame:
+        return load_valid_categories_data(
+            local=local,
+            valid_categories_sheet=valid_categories_sheet,
+            valid_categories_name=valid_categories_name,
+        )
+
+    valid_categories_df = read_valid_categories_with_status_retry(
+        load_df_with_status_fn=_load_valid_categories_df_with_status,
+        max_tries=5,
+        sleep_seconds=2,
+        expected_status=expected_status,
+        transient_statuses=transient_statuses,
+    )
+    invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(
+        valid_categories_df,
+        expected_status=expected_status,
+        transient_statuses=transient_statuses,
+    )
+    if not invalid_rows.empty:
+        overall_valid_categories_status = "error"
+        error_message = support_email_message(
+            get_current_function_name(),
+            f"Rows with invalid Status:\n{invalid_rows.to_string()}",
+        )
         st.error(error_message)
         st.stop()
 

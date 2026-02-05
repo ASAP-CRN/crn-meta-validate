@@ -18,6 +18,7 @@ import re
 import streamlit as st
 import logging
 from ast import literal_eval
+import time
 
 def build_bullet_invalid_details_markdown(
         column_name: str, 
@@ -787,3 +788,93 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
         st.session_state["column_comments"] = column_comments
 
     return df_after_fill, validation_report, errors_counter, warnings_counter
+
+def get_invalid_status_rows(
+        df_with_status: pd.DataFrame,
+        expected_status: str,
+        transient_statuses: list[str]):
+    """
+    Given a DataFrame with a "Status" column, return three DataFrames:
+    1) Rows where Status is not equal to expected_status
+    2) Rows where Status is in transient_statuses
+    3) Rows where Status is neither expected_status nor in transient_statuses
+
+    Parameters
+    ----------
+    df_with_status: pd.DataFrame
+        DataFrame containing a "Status" column.
+    expected_status: str
+        The expected valid status value (e.g., "Ok: found in CDE_current").
+    transient_statuses: list[str]
+        List of transient status values (e.g., ["Loading...", ""]).
+    
+    Returns
+    ------- 
+    invalid_rows: pd.DataFrame
+        Rows where Status is not equal to expected_status.
+    transient_rows: pd.DataFrame
+        Rows where Status is in transient_statuses.
+    hard_invalid_rows: pd.DataFrame
+        Rows where Status is neither expected_status nor in transient_statuses.
+    """
+    
+    status_series = (
+        df_with_status["Status"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    invalid_rows = df_with_status[status_series != expected_status]
+    transient_rows = df_with_status[status_series.isin(transient_statuses)]
+    hard_invalid_rows = df_with_status[
+        (status_series != expected_status) & (~status_series.isin(transient_statuses))
+    ]
+    return invalid_rows, transient_rows, hard_invalid_rows
+
+def read_valid_categories_with_status_retry(
+        load_df_with_status_fn: callable,
+        max_tries: int,
+        sleep_seconds: int,
+        expected_status: str,
+        transient_statuses: list[str],
+    ) -> pd.DataFrame:
+    """
+    Attempt to load the valid categories DataFrame multiple times, retrying if
+    there are any transient invalid statuses.
+
+    Parameters
+    ----------
+    load_df_with_status_fn: callable
+        Function that returns the DataFrame with column 'Status' when called.
+    max_tries: int
+        Maximum number of attempts to load the DataFrame.
+    sleep_seconds: int
+        Number of seconds to wait between attempts.
+    expected_status: str
+        The expected valid status value.
+    transient_statuses: list[str]
+        List of transient status values.
+
+    Returns
+    -------
+    pd.DataFrame
+        The DataFrame with column 'Status' after retries.
+    """
+
+    for attempt_index in range(1, max_tries + 1):
+        last_df = load_df_with_status_fn()
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, expected_status, transient_statuses)
+
+        # If everything is OK, proceed.
+        if invalid_rows.empty:
+            return last_df
+
+        # If we have any hard invalid values, fail immediately (not a transient timing issue).
+        if not hard_invalid_rows.empty:
+            return last_df  # caller will handle as error
+
+        # Only transient statuses remain -> retry after a short delay.
+        if attempt_index < max_tries:
+            time.sleep(sleep_seconds)
+
+    return last_df
