@@ -12,6 +12,7 @@ import streamlit as st
 import json
 from pathlib import Path
 from typing import Tuple, Dict, List
+from utils.help_menus import get_current_function_name, support_email_message
 
 def read_ValidCategories(
     valid_categories_sheet: str,
@@ -83,16 +84,18 @@ def read_ValidCategories(
     ]
     if not invalid_status_rows.empty:
         overall_valid_categories_status = "error"
-        support_message = f"❌ ValidCategories {valid_categories_name} contains rows with invalid Status. Please email us a screenshot with the information below to [support@dnastack.com](mailto:support@dnastack.com):\n{invalid_status_rows}"
-        st.error(f"{support_message}")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"Rows with invalid Status:\n{invalid_status_rows}")
+        st.error(error_message)
         st.stop()
 
     # Validate that all required columns are present in ValidCategories
     missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(valid_categories_df.columns)].tolist()
     if missing_columns:
         overall_valid_categories_status = "error"
-        support_message = f"❌ ValidCategories {valid_categories_name} is missing required columns. Please email us a screenshot with the information below to [support@dnastack.com](mailto:support@dnastack.com):\n{missing_columns}"
-        st.error(f"{support_message}")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"Missing required columns:\n{missing_columns}")
+        st.error(error_message)
         st.stop()
 
     # Dataset species options (from SAMPLE.organism)
@@ -127,7 +130,9 @@ def read_ValidCategories(
     if overall_valid_categories_status == "ok":
         return species_options, sample_source_options, assay_dict
     else:
-        st.error("❌ Error loading ValidCategories. Please report this bug to [support@dnastack.com](mailto:support@dnastack.com).")
+        error_message = support_email_message(get_current_function_name(),
+                                              "General internal error.")
+        st.error(error_message)
         st.stop()
 
 
@@ -234,7 +239,8 @@ def read_CDE(
     """
     
     # Define column list based on CDE version
-    # Specificity column headers of Species-, Sample Source-, and Assay-specific values as: SpecificAssays, SpecificSampleSource, SpecificSpecies
+    # Specificity column headers of Species-, Sample Source-, and Assay-specific values as: 
+    # SpecificAssays, SpecificSampleSource, SpecificSpecies
     column_list = [
         "Table",
         "Field",
@@ -270,8 +276,9 @@ def read_CDE(
     if not missing_columns:
         st.success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
     else:
-        support_message = "If you think that this is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)"
-        st.error(f"❌ CDE {cde_version} is missing required columns: {missing_columns}.\n {support_message}")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"CDE {cde_version} is missing required columns: {missing_columns}")
+        st.error(error_message)
         st.stop()
 
     # Filter and clean the dataframe
@@ -316,7 +323,9 @@ def get_cde_filename(cde_version: str) -> str:
     elif cde_version in ["v3.2-beta"]: # defaults to v3.2
         return "ASAP_CDE_v3.2"
     else:
-        st.error(f"❌ Unsupported cde_version: {cde_version}")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"Unsupported cde_version: {cde_version}")
+        st.error(error_message)
         st.stop()
 
 def load_cde_data(
@@ -355,16 +364,22 @@ def load_cde_data(
         try:
             return pd.read_csv(cde_local)
         except Exception as try_exception:
-            st.error(f"ERROR!!! Could not read CDE from local resource/{cde_local}")
-            st.error(f"Error details: {str(try_exception)}")
+            error_message = support_email_message(get_current_function_name(), 
+                                                  f"Could not read CDE from local resource/{cde_local}: "
+                                                  f"{str(try_exception)}"
+                                                  )
+            st.error(error_message)
             st.stop()
     else:
         st.info(f"Using CDE {cde_version} from Google doc")
         try:
             return pd.read_csv(cde_google_sheet)
         except Exception as try_exception:
-            st.error(f"ERROR!!! Could not read CDE from Google doc:\n{cde_google_sheet}")
-            st.error(f"Error details: {str(try_exception)}")
+            error_message = support_email_message(get_current_function_name(), 
+                                                  f"Could not read CDE from Google doc:\n{cde_google_sheet}\n"
+                                                  f"Error details: {str(try_exception)}"
+                                                  )
+            st.error(error_message)
             st.stop()
 
 def clean_cde_dataframe(
@@ -430,16 +445,17 @@ def validate_cde_completeness(cde_dataframe: pd.DataFrame) -> pd.DataFrame:
         "DataType",
         "Required",
         "FillNull",
+        "SpecificSpecies",
+        "SpecificSampleSource",
+        "SpecificAssays",
     ]
 
     # Ensure all required columns exist
     for required_column_name in required_columns:
         if required_column_name not in cde_dataframe.columns:
-            st.error(
-                "ERROR!!! CDE is missing required column '"
-                + required_column_name
-                + "'. Please fix the CDE spreadsheet and reload the app.",
-            )
+            error_message = support_email_message(get_current_function_name(), 
+                                                  f"CDE is missing required column '{required_column_name}'")
+            st.error(error_message)
             st.stop()
 
     # Ensure there are no NULL/empty values in the required columns
@@ -459,11 +475,11 @@ def validate_cde_completeness(cde_dataframe: pd.DataFrame) -> pd.DataFrame:
         if extra_count > 0:
             details = f"{details}, and {extra_count} more"
 
-        st.error(
-            "ERROR!!! The CDE spreadsheet has NULL values in required columns. "
-            f"{required_columns}. "
-            f"Examples: {details}. Please report this bug to [support@dnastack.com](mailto:support@dnastack.com)",
-        )
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"The CDE spreadsheet has NULL values in required columns. {required_columns}. "
+                                              f"Examples: {details}."
+                                              )
+        st.error(error_message)
         st.stop()
 
     return cde_dataframe
@@ -577,13 +593,19 @@ def load_valid_categories_data(
         try:
             return pd.read_csv(valid_categories_local)
         except Exception as try_exception:
-            st.error(f"❌ ERROR!!! Could not read ValidCategories from local resource/{valid_categories_local}")
-            st.error(f"❌ Error details: {str(try_exception)}")
+            error_message = support_email_message(get_current_function_name(), 
+                                                  f"Could not read ValidCategories from local resource/{valid_categories_local}. "
+                                                  f"Details: {str(try_exception)}."
+                                                  )
+            st.error(error_message)
             st.stop()
     else:
         try:
             return pd.read_csv(valid_categories_sheet)
         except Exception as try_exception:
-            st.error(f"❌ ERROR!!! Could not read ValidCategories from Google doc:\n{valid_categories_sheet}")
-            st.error(f"❌ Error details: {str(try_exception)}")
+            error_message = support_email_message(get_current_function_name(), 
+                                                  f"Could not read ValidCategories from Google doc:\n{valid_categories_sheet}. "
+                                                  f"Details: {str(try_exception)}."
+                                                  )
+            st.error(error_message)
             st.stop()

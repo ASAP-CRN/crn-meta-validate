@@ -5,7 +5,7 @@ import pandas as pd
 from typing import Dict, Tuple, List, Any
 import streamlit as st
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe
-
+from utils.help_menus import inline_warning, get_current_function_name
 
 class ProcessedDataLoader:
     """
@@ -163,11 +163,12 @@ class ProcessedDataLoader:
             )
             return table_df, "latin-1", "python", "replace"
         except Exception as final_error:
-            error_message = (
-                f"Failed to read bytes with multiple encodings. "
-                f"Last error was {type(last_exception).__name__}: {last_exception}"
-            )
-            raise RuntimeError(error_message) from final_error
+            warning_message = inline_warning(get_current_function_name(),
+                                           f"Failed to read bytes with multiple encodings. "
+                                           f"Last error was {type(last_exception).__name__}: {last_exception}"
+                                           )
+            st.warning(warning_message)
+            raise RuntimeError(warning_message) from final_error
 
     def sanitize_table_name(self, filename: str) -> str:
         base = os.path.splitext(os.path.basename(filename))[0]

@@ -83,7 +83,7 @@ from utils.validate import validate_table, ReportCollector, get_extra_columns_no
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
-from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
+from utils.find_missing_values import compute_missing_mask, tables_with_missing_values
 from utils.help_menus import (
     CustomMenu,
     build_step1_report_markdown,
@@ -91,6 +91,10 @@ from utils.help_menus import (
     render_missing_values_section,
     render_app_intro,
     render_step1_selectbox_with_other_text,
+    get_current_function_name,
+    inline_error,
+    support_email_message,
+    support_email_message_persistent,
 )
 from utils.template_files import build_templates_zip
 
@@ -121,19 +125,21 @@ allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
 cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
+REQUIRED_TABLES = app_schema['table_names']['required']
 
 # CDE Google Sheet URLs for configuration
 ValidCategories_name = "ValidCategories"
-cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
-valid_categories_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={ValidCategories_name}" # ValidCategories used for Step 1 menus.
-cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
+cde_url_base = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}"
+cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
+valid_categories_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={ValidCategories_name}" # ValidCategories used for Step 1 menus.
+cde_google_sheet_current = f"{cde_url_base}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
 
 # Use local resources or Google Sheets. Set to False to use Google Sheets
 use_local = False
 
 old_cde_google_sheet = None
 if allow_old_cde and old_cde_version:
-    old_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
+    old_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
 SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
@@ -153,8 +159,6 @@ SPECIES, SAMPLE_SOURCE, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS = ensure_ste
     assay_label_to_key=ASSAY_LABEL_TO_KEY,
     assay_keys=ASSAY_KEYS,
 )
-
-REQUIRED_TABLES = app_schema['table_names']['required']
 
 # Version display for UI
 version_display = f"Web app {webapp_version} - CDE {cde_version}"
@@ -341,7 +345,9 @@ def main():
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
-        st.error("ERROR!!! No expected tables found for the selected Dataset type. This is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"No expected tables found for the selected Dataset type.")
+        st.error(error_message)
         st.stop()
 
     ############
@@ -484,7 +490,9 @@ def main():
         invalid_files = [f for f in data_files if delimiter_handler.is_file_invalid(f.name, f.size)]
         
         if len(valid_files) == 0:
-            st.error("All uploaded files are invalid. Please upload valid CSV files with data rows.")
+            error_message = inline_error(get_current_function_name(), 
+                                         "All uploaded files are invalid. Please upload valid CSV files with data rows.")
+            st.error(error_message)
             st.stop()
         
         # Show file count with status
@@ -591,7 +599,10 @@ def main():
                 st.sidebar.markdown(f"~~{data_file.name}~~ ❌")
 
     else:
-        st.error("ERROR!!! couldn't complete file upload. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
+        error_message = support_email_message_persistent(get_current_function_name(), 
+                                                         "Couldn't complete file upload."
+                                                         )
+        st.error(error_message)
         st.stop()
         tables_loaded = False
 
@@ -804,7 +815,11 @@ def main():
         )
 
         if effective_raw_df is None:
-            st.error(f"ERROR!!! Could not load data for {selected_table_name}. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
+            error_message = support_email_message_persistent(get_current_function_name(), 
+                                                             f"Could not load data for {selected_table_name}."
+                                                             )
+            st.error(error_message)
+            st.stop()
         else:
             table_missing_choices = st.session_state.get("missing_value_choices", {}).get(
                 selected_table_name,
@@ -1028,7 +1043,7 @@ def main():
     else:
         step5_cde_google_sheet = old_cde_google_sheet
         if not step5_cde_google_sheet:
-            step5_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
+            step5_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
         step5_cde_dataframe, step5_dtype_dict_unused = read_CDE(
             cde_version=step5_cde_version,
             cde_google_sheet=step5_cde_google_sheet,
