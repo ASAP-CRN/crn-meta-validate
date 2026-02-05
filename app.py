@@ -126,6 +126,8 @@ cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
 cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
 REQUIRED_TABLES = app_schema['table_names']['required']
+cde_mandatory_fields = app_schema['cde_definition']['cde_madatory_fields']
+valid_categ_mandatory_fields = app_schema['cde_definition']['valid_categ_mandatory_fields']
 
 # CDE Google Sheet URLs for configuration
 ValidCategories_name = "ValidCategories"
@@ -145,6 +147,7 @@ if allow_old_cde and old_cde_version:
 SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
     valid_categories_sheet,
     ValidCategories_name,
+    valid_categ_mandatory_fields,
     local=use_local,
 )
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
@@ -355,7 +358,9 @@ def main():
     cde_dataframe, dtype_dict = read_CDE(
         cde_version=cde_version,
         cde_google_sheet=cde_google_sheet,
+        cde_mandatory_fields=cde_mandatory_fields,
         local=use_local,
+        local_filename=None,
     )
 
     ############

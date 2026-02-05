@@ -5,7 +5,27 @@
     "cde_current_sheet_id_for_help": "43504703",
     "cde_version": "v4.1",
     "old_cde_version": "v3.4",
-    "allow_old_cde": true
+    "allow_old_cde": true,
+    "cde_madatory_fields": [
+      "Table",
+      "Field",
+      "DisplayName",
+      "Description",
+      "DataType",
+      "Required",
+      "Validation",
+      "FillNull",
+      "SpecificSpecies",
+      "SpecificSampleSource",
+      "SpecificAssays"
+    ],
+    "valid_categ_mandatory_fields": [
+      "Table",
+      "Category",
+      "ValidatorAppKey",
+      "ValidatorAppDisplay",
+      "Status"
+    ]
   },
   "default_input_delimiter": ",",
   "kebab_menu": {
