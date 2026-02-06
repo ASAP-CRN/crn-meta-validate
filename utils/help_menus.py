@@ -3,6 +3,39 @@ import streamlit as st
 import ast
 import html
 from typing import Any, Callable, Dict, List, Tuple
+import sys
+
+def get_current_function_name() -> str:
+    """
+    Return the name of the calling function.
+    """
+    return sys._getframe(1).f_code.co_name
+
+def support_email_message(issue_source: str, issue_description: str) -> str:
+    """Return a standardized support email message for users to report issues."""
+    return (
+        f"💥🔧 Internal error!!! {issue_source}: {issue_description}. Please email us a screenshot of this error at "
+        "[support@dnastack.com](mailto:support@dnastack.com)."
+    )
+
+def support_email_message_persistent(issue_source: str, issue_description: str) -> str:
+    """Return a standardized support email message for users to report persistent issues."""
+    return (
+        f"💥🔧 Internal error!!! {issue_source}: {issue_description}. Please click 'Reset App' and try again. If the issue persists, please email us a screenshot of this error at "
+        "[support@dnastack.com](mailto:support@dnastack.com)."
+    )
+
+def inline_error(issue_source: str, issue_description: str) -> str:
+    """Return a standardized error without support details. Meant for authors to fix their inputs."""
+    return (
+        f"❌ Error in table!!! {issue_source}: {issue_description}."
+    )
+
+def inline_warning(issue_source: str, issue_description: str) -> str:
+    """Return a standardized warning without support details. Meant for authors to fix their inputs."""
+    return (
+        f"⚠️ Warning!!! {issue_source}: {issue_description}."
+    )
 
 def ensure_step1_other_options(
     species_options: List[str],
@@ -341,12 +374,13 @@ def render_missing_values_section(
             for fill_value in fillnull_values:
                 option_labels.append(f'Fill out with "{fill_value}"')
         else:
-            st.error(
-                "ERROR!!! No FillNull values were found for "
-                f"field '{field_name}' in table '{selected_table_name}' "
-                f"(section: {section_kind}). Please ensure the CDE FillNull "
-                "column is complete and reload the app.",
-            )
+            error_message = support_email_message(get_current_function_name(),
+                                                  f"No FillNull values were found for "
+                                                  f"field '{field_name}' in table '{selected_table_name}' "
+                                                  f"(section: {section_kind}). Please ensure the CDE FillNull "
+                                                  "column is complete and reload the app."
+                                                  )
+            st.error(error_message)
             st.stop()
 
         existing_choice = column_choices.get(field_name, option_labels[0])

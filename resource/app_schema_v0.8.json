@@ -2,6 +2,7 @@
   "app_version": "v0.8",
   "cde_definition": {
     "spreadsheet_id": "1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc",
+    "cde_current_sheet_id_for_help": "43504703",
     "cde_version": "v4.1",
     "old_cde_version": "v3.4",
     "allow_old_cde": true

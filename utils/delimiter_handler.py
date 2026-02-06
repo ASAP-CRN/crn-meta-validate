@@ -27,6 +27,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from utils.help_menus import get_current_function_name, inline_error
+
 LINES_TO_EVALUATE = 50  # Number of lines to read for delimiter detection
 SUPPORTED_DELIMITERS = [",", ";", "\t", "|"]  # Supported delimiters for detection
 
@@ -336,10 +338,11 @@ class DelimiterHandler:
                 expected_fields = int(match.group(1))
                 line_number = int(match.group(2))
                 saw_fields = int(match.group(3))
-                st.error(
-                    f"❌ File **{filename}** has {saw_fields} fields in row {line_number}, "
-                    f"but {expected_fields} fields in header"
-                )
+                error_message = inline_error(get_current_function_name(),
+                                             f"File **{filename}** has {saw_fields} fields in row {line_number}, "
+                                             f"but {expected_fields} fields in header."
+                                             )
+                st.error(error_message)
                 return False
 
             # Fallback: compute the first mismatch using the csv module for clearer reporting.
@@ -347,7 +350,9 @@ class DelimiterHandler:
             try:
                 header = next(reader)
             except StopIteration:
-                st.error(f"❌ File **{filename}** appears to be empty.")
+                error_message = inline_error(get_current_function_name(), 
+                                             f"File **{filename}** appears to be empty.")
+                st.error(error_message)
                 return False
 
             header_fields = len(header)
@@ -355,14 +360,17 @@ class DelimiterHandler:
                 if not row:
                     continue
                 if len(row) != header_fields:
-                    st.error(
-                        f"❌ File **{filename}** has {len(row)} fields in row {row_index_1based}, "
-                        f"but {header_fields} fields in header"
-                    )
+                    error_message = inline_error(get_current_function_name(),
+                                                 f"File **{filename}** has {len(row)} fields in row {row_index_1based}, "
+                                                 f"but {header_fields} fields in header."
+                                                 )
+                    st.error(error_message)
                     return False
 
             # If we cannot locate it, emit the original parser error to help debugging.
-            st.error(f"❌ File **{filename}** could not be parsed: {message}")
+            error_message = inline_error(get_current_function_name(),
+                                         f"File **{filename}** could not be parsed: {message}")
+            st.error(error_message)
             return False
 
     def is_file_invalid(self, filename: str, filesize: int) -> bool:
@@ -385,17 +393,21 @@ class DelimiterHandler:
         self, filename: str, row_count: int, preview_df: Optional[pd.DataFrame], delimiter_name: str
     ):
         if row_count == 0:
-            st.error(
-                f"❌ File **{filename}** contains only headers with no data rows (detected **{delimiter_name}** delimiter). "
-                "This file will be skipped during validation."
-            )
+            error_message = inline_error(get_current_function_name(),
+                                         f"File **{filename}** contains only headers with no data rows (detected **{delimiter_name}** delimiter). "
+                                         f"This file will be skipped during validation")
+            st.error(error_message)
         elif row_count < 0:
-            st.error(
-                f"❌ File **{filename}** appears to contain data rows, but one or more rows could not be parsed (detected **{delimiter_name}** delimiter). "
-                "This file will be skipped during validation."
-            )
+            error_message = inline_error(get_current_function_name(),
+                                         f"File **{filename}** appears to contain data rows, but one or more rows could not be parsed "
+                                         f"(detected **{delimiter_name}** delimiter). This file will be skipped during validation."
+                                         )
+            st.error(error_message)
         else:
-            st.error(f"❌ File **{filename}** — Could not parse file.")
+            error_message = inline_error(get_current_function_name(),
+                                         f"File **{filename}** — Could not parse file."
+                                         )
+            st.error(error_message)
 
     def show_conversion_prompt(
         self,

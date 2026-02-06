@@ -18,6 +18,7 @@ import re
 import streamlit as st
 import logging
 from ast import literal_eval
+import time
 
 def build_bullet_invalid_details_markdown(
         column_name: str, 
@@ -351,6 +352,52 @@ class ReportCollector:
     def print_log(self):
         print(self.get_log())
 
+def decide_cde_vs_schema_validation(
+        app_schema_version: str,
+        cde_dataframe: pd.DataFrame,
+        app_schema: dict,
+        ): 
+    """
+    Decide whether to validate app_schema categories against CDE Validation lists or not
+    
+    Parameters
+    ----------
+    app_schema_version: str
+        App schema version string, e.g. "v0.4", "v0.5", etc.
+    """
+    logger = logging.getLogger(__name__)
+
+    ### validate_cde_vs_schema function was defined for app_schema v0.8 but deprecated in v0.9 because we are reading directly from the CDE
+    ### Keeping this function for backward compatibility with v0.8 apps and CDE vs. JSON debugging purposes.
+    schemas_that_need_validation_vs_cde = ["v0.8"]
+
+    if app_schema_version in schemas_that_need_validation_vs_cde:
+
+        ## Input as: validate_cde_vs_schema(cde_dataframe, app_schema, CDE:(table, field), schema:(schema_section, schema_field))
+        species_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("SAMPLE", "organism"),
+            ("table_categories", "species")
+        )
+        sample_source_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("ASSAY", "sample_source"),
+            ("table_categories", "sample_source")
+        )
+        assays_match = validate_cde_vs_schema(
+            cde_dataframe,
+            app_schema,
+            ("ASSAY", "assay"),
+            ("table_categories", "assays")
+        )
+        if not species_match or not sample_source_match or not assays_match:
+            st.warning(
+                f"⚠️ Warning!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
+                f"Species:{'✅' if species_match else '⚠️'}, Sample Source:{'✅' if sample_source_match else '⚠️'}, Assay:{'✅' if assays_match else '⚠️'}."
+            )
+
 def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_cde, keys_json) -> bool:
     """
     Compare CDE Validation values vs JSON values/keys for a given pair definition.
@@ -394,11 +441,11 @@ def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_c
     label_right = f"schema:{json_parent}:{json_child}:keys"
     if only_in_cde or only_in_json:
         if only_in_cde:
-            logger.error("%s has values not in %s: %s", label_left, label_right, only_in_cde)
-            st.error(f"ERROR!!! {label_left} has values not in {label_right}: {only_in_cde}")
+            logger.warning("%s has values not in %s: %s", label_left, label_right, only_in_cde)
+            st.warning(f"⚠️ Warning!!! {label_left} has values not in {label_right}: {only_in_cde}")
         if only_in_json:
-            logger.error("%s has values not in %s: %s", label_right, label_left, only_in_json)
-            st.error(f"ERROR!!! {label_right} has values not in {label_left}: {only_in_json}")
+            logger.warning("%s has values not in %s: %s", label_right, label_left, only_in_json)
+            st.warning(f"⚠️ Warning!!! {label_right} has values not in {label_left}: {only_in_json}")
         return False
 
     logger.info("OK: %s matches %s", label_left, label_right)
@@ -741,3 +788,93 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
         st.session_state["column_comments"] = column_comments
 
     return df_after_fill, validation_report, errors_counter, warnings_counter
+
+def get_invalid_status_rows(
+        df_with_status: pd.DataFrame,
+        expected_status: str,
+        transient_statuses: list[str]):
+    """
+    Given a DataFrame with a "Status" column, return three DataFrames:
+    1) Rows where Status is not equal to expected_status
+    2) Rows where Status is in transient_statuses
+    3) Rows where Status is neither expected_status nor in transient_statuses
+
+    Parameters
+    ----------
+    df_with_status: pd.DataFrame
+        DataFrame containing a "Status" column.
+    expected_status: str
+        The expected valid status value (e.g., "Ok: found in CDE_current").
+    transient_statuses: list[str]
+        List of transient status values (e.g., ["Loading...", ""]).
+    
+    Returns
+    ------- 
+    invalid_rows: pd.DataFrame
+        Rows where Status is not equal to expected_status.
+    transient_rows: pd.DataFrame
+        Rows where Status is in transient_statuses.
+    hard_invalid_rows: pd.DataFrame
+        Rows where Status is neither expected_status nor in transient_statuses.
+    """
+    
+    status_series = (
+        df_with_status["Status"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    invalid_rows = df_with_status[status_series != expected_status]
+    transient_rows = df_with_status[status_series.isin(transient_statuses)]
+    hard_invalid_rows = df_with_status[
+        (status_series != expected_status) & (~status_series.isin(transient_statuses))
+    ]
+    return invalid_rows, transient_rows, hard_invalid_rows
+
+def read_valid_categories_with_status_retry(
+        load_df_with_status_fn: callable,
+        max_tries: int,
+        sleep_seconds: int,
+        expected_status: str,
+        transient_statuses: list[str],
+    ) -> pd.DataFrame:
+    """
+    Attempt to load the valid categories DataFrame multiple times, retrying if
+    there are any transient invalid statuses.
+
+    Parameters
+    ----------
+    load_df_with_status_fn: callable
+        Function that returns the DataFrame with column 'Status' when called.
+    max_tries: int
+        Maximum number of attempts to load the DataFrame.
+    sleep_seconds: int
+        Number of seconds to wait between attempts.
+    expected_status: str
+        The expected valid status value.
+    transient_statuses: list[str]
+        List of transient status values.
+
+    Returns
+    -------
+    pd.DataFrame
+        The DataFrame with column 'Status' after retries.
+    """
+
+    for attempt_index in range(1, max_tries + 1):
+        last_df = load_df_with_status_fn()
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, expected_status, transient_statuses)
+
+        # If everything is OK, proceed.
+        if invalid_rows.empty:
+            return last_df
+
+        # If we have any hard invalid values, fail immediately (not a transient timing issue).
+        if not hard_invalid_rows.empty:
+            return last_df  # caller will handle as error
+
+        # Only transient statuses remain -> retry after a short delay.
+        if attempt_index < max_tries:
+            time.sleep(sleep_seconds)
+
+    return last_df

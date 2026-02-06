@@ -13,8 +13,9 @@ Webapp v0.3 (CDE version v3), 01 April 2025
 Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
 Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
-Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
+Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026 
 Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
+Webapp v0.9 (CDE version v4.1, optional v3.4), 04 February 2026
 
 Version notes:
 Webapp v0.4:
@@ -50,6 +51,9 @@ Webapp v0.8:
 * Slim down coloured logs and direct used to "see below" sections details on missing columns and invalid values
 * Add free-text box for "Other" entries in Step 1 dropdowns
 
+Webapp v0.9:
+* Remove table_categories from app_schema.JSON, now loaded from CDE Spreadsheet ValidCategories
+
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
@@ -75,11 +79,11 @@ import re
 import time
 from io import StringIO
 from collections import defaultdict
-from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, validate_cde_vs_schema
-from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
+from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
+from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
-from utils.find_missing_values import compute_missing_mask, table_has_missing_values, tables_with_missing_values
+from utils.find_missing_values import compute_missing_mask, tables_with_missing_values
 from utils.help_menus import (
     CustomMenu,
     build_step1_report_markdown,
@@ -87,10 +91,14 @@ from utils.help_menus import (
     render_missing_values_section,
     render_app_intro,
     render_step1_selectbox_with_other_text,
+    get_current_function_name,
+    inline_error,
+    support_email_message,
+    support_email_message_persistent,
 )
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.8" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -104,7 +112,7 @@ def load_css(file_path):
 load_css("css/css.css")
 
 ################################
-#### Load app schema from JSON
+#### Load app schema from JSON and CDE Google Spreadsheet
 ################################
 app_schema_path = os.path.join(repo_root, "resource", f"app_schema_{webapp_version}.json")
 with open(app_schema_path, "r") as json_file:
@@ -115,23 +123,45 @@ cde_version = app_schema['cde_definition']['cde_version']
 old_cde_version = app_schema['cde_definition'].get('old_cde_version')
 allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
 cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
-cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
-cde_google_sheet_current = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/edit?gid=43504703#gid=43504703" # CDE_current tab. We need to use a gid, not a sheet name, in the URL to open the Google Sheet in a browser.
-use_local = False  # Set to False to use Google Sheets
+cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
+REQUIRED_TABLES = app_schema['table_names']['required']
+cde_mandatory_fields = app_schema['cde_definition']['cde_madatory_fields']
+valid_categ_mandatory_fields = app_schema['cde_definition']['valid_categ_mandatory_fields']
+
+# CDE Google Sheet URLs for configuration
+ValidCategories_name = "ValidCategories"
+cde_url_base = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}"
+cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
+valid_categories_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={ValidCategories_name}" # ValidCategories used for Step 1 menus.
+cde_google_sheet_current = f"{cde_url_base}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
+
+# Use local resources or Google Sheets. Set to False to use Google Sheets
+use_local = False
 
 old_cde_google_sheet = None
 if allow_old_cde and old_cde_version:
-    old_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
+    old_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
-SPECIES = list(app_schema['table_categories']['species'])
-SAMPLE_SOURCE = list(app_schema['table_categories']['sample_source'])
-ASSAY_DICT = app_schema['table_categories']['assays']
+SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
+    valid_categories_sheet,
+    ValidCategories_name,
+    valid_categ_mandatory_fields,
+    local=use_local,
+)
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
 ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
 ASSAY_KEYS = set(ASSAY_DICT.keys())
-REQUIRED_TABLES = app_schema['table_names']['required']
+
+# Ensure 'Other' is always available in Step 1 dropdowns (independent of app_schema)
+SPECIES, SAMPLE_SOURCE, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS = ensure_step1_other_options(
+    species_options=SPECIES,
+    sample_source_options=SAMPLE_SOURCE,
+    assay_type_options=ASSAY_TYPES,
+    assay_label_to_key=ASSAY_LABEL_TO_KEY,
+    assay_keys=ASSAY_KEYS,
+)
 
 # Version display for UI
 version_display = f"Web app {webapp_version} - CDE {cde_version}"
@@ -318,7 +348,9 @@ def main():
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
-        st.error("ERROR!!! No expected tables found for the selected Dataset type. This is a bug, please email us a screenshot of your Step 1 settings to [support@dnastack.com](mailto:support@dnastack.com)")
+        error_message = support_email_message(get_current_function_name(), 
+                                              f"No expected tables found for the selected Dataset type.")
+        st.error(error_message)
         st.stop()
 
     ############
@@ -326,37 +358,20 @@ def main():
     cde_dataframe, dtype_dict = read_CDE(
         cde_version=cde_version,
         cde_google_sheet=cde_google_sheet,
+        cde_mandatory_fields=cde_mandatory_fields,
         local=use_local,
+        local_filename=None,
     )
 
     ############
-    #### Validate app_schema categories against CDE Validation lists
+    #### Validate JSON provided app_schema vs. CDE
+    #### Only needed for app_schema v0.8, but kept for future compatibility and potential extensions
     ############
-    ## Input as: validate_cde_vs_schema(cde_dataframe, app_schema, CDE:(table, field), schema:(schema_section, schema_field))
-    species_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("SAMPLE", "organism"),
-        ("table_categories", "species")
+    decide_cde_vs_schema_validation(
+        app_schema_version=webapp_version,
+        cde_dataframe=cde_dataframe,
+        app_schema=app_schema,
     )
-    sample_source_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("ASSAY", "sample_source"),
-        ("table_categories", "sample_source")
-    )
-    assays_match = validate_cde_vs_schema(
-        cde_dataframe,
-        app_schema,
-        ("ASSAY", "assay"),
-        ("table_categories", "assays")
-    )
-    if not species_match or not sample_source_match or not assays_match:
-        st.error(
-            f"ERROR!!! App configuration: app_schema table categories do not match the CDE Validation lists: "
-            f"Species:{'✅' if species_match else '❌'}, Sample Source:{'✅' if sample_source_match else '❌'}, Assay:{'✅' if assays_match else '❌'}. "
-        )
-        st.stop()
 
     ############
     ### Step 2: Provide template files
@@ -480,7 +495,9 @@ def main():
         invalid_files = [f for f in data_files if delimiter_handler.is_file_invalid(f.name, f.size)]
         
         if len(valid_files) == 0:
-            st.error("All uploaded files are invalid. Please upload valid CSV files with data rows.")
+            error_message = inline_error(get_current_function_name(), 
+                                         "All uploaded files are invalid. Please upload valid CSV files with data rows.")
+            st.error(error_message)
             st.stop()
         
         # Show file count with status
@@ -587,7 +604,10 @@ def main():
                 st.sidebar.markdown(f"~~{data_file.name}~~ ❌")
 
     else:
-        st.error("ERROR!!! couldn't complete file upload. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
+        error_message = support_email_message_persistent(get_current_function_name(), 
+                                                         "Couldn't complete file upload."
+                                                         )
+        st.error(error_message)
         st.stop()
         tables_loaded = False
 
@@ -800,7 +820,11 @@ def main():
         )
 
         if effective_raw_df is None:
-            st.error(f"ERROR!!! Could not load data for {selected_table_name}. Please click 'Reset App' and try again. If the issue persists email us this error at [support@dnastack.com](mailto:support@dnastack.com)")
+            error_message = support_email_message_persistent(get_current_function_name(), 
+                                                             f"Could not load data for {selected_table_name}."
+                                                             )
+            st.error(error_message)
+            st.stop()
         else:
             table_missing_choices = st.session_state.get("missing_value_choices", {}).get(
                 selected_table_name,
@@ -1024,11 +1048,13 @@ def main():
     else:
         step5_cde_google_sheet = old_cde_google_sheet
         if not step5_cde_google_sheet:
-            step5_cde_google_sheet = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
+            step5_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
         step5_cde_dataframe, step5_dtype_dict_unused = read_CDE(
             cde_version=step5_cde_version,
             cde_google_sheet=step5_cde_google_sheet,
+            cde_mandatory_fields=cde_mandatory_fields,
             local=use_local,
+            local_filename=None,
         )
 
     validation_report_dic = setup_report_data(
