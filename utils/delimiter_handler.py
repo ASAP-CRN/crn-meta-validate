@@ -340,7 +340,7 @@ class DelimiterHandler:
                 saw_fields = int(match.group(3))
                 error_message = inline_error(get_current_function_name(),
                                              f"File **{filename}** has {saw_fields} fields in row {line_number}, "
-                                             f"but {expected_fields} fields in header."
+                                             f"but {expected_fields} fields in header"
                                              )
                 st.error(error_message)
                 return False
@@ -351,7 +351,7 @@ class DelimiterHandler:
                 header = next(reader)
             except StopIteration:
                 error_message = inline_error(get_current_function_name(), 
-                                             f"File **{filename}** appears to be empty.")
+                                             f"File **{filename}** appears to be empty")
                 st.error(error_message)
                 return False
 
@@ -362,7 +362,7 @@ class DelimiterHandler:
                 if len(row) != header_fields:
                     error_message = inline_error(get_current_function_name(),
                                                  f"File **{filename}** has {len(row)} fields in row {row_index_1based}, "
-                                                 f"but {header_fields} fields in header."
+                                                 f"but {header_fields} fields in header"
                                                  )
                     st.error(error_message)
                     return False
@@ -400,12 +400,12 @@ class DelimiterHandler:
         elif row_count < 0:
             error_message = inline_error(get_current_function_name(),
                                          f"File **{filename}** appears to contain data rows, but one or more rows could not be parsed "
-                                         f"(detected **{delimiter_name}** delimiter). This file will be skipped during validation."
+                                         f"(detected **{delimiter_name}** delimiter). This file will be skipped during validation"
                                          )
             st.error(error_message)
         else:
             error_message = inline_error(get_current_function_name(),
-                                         f"File **{filename}** — Could not parse file."
+                                         f"File **{filename}** — Could not parse file"
                                          )
             st.error(error_message)
 

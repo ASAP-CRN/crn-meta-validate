@@ -98,7 +98,7 @@ from utils.help_menus import (
 )
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.9" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.1" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -126,7 +126,7 @@ cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
 cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
 REQUIRED_TABLES = app_schema['table_names']['required']
-cde_mandatory_fields = app_schema['cde_definition']['cde_madatory_fields']
+cde_mandatory_fields = app_schema['cde_definition']['cde_mandatory_fields']
 valid_categ_mandatory_fields = app_schema['cde_definition']['valid_categ_mandatory_fields']
 
 # CDE Google Sheet URLs for configuration

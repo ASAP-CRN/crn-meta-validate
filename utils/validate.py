@@ -587,16 +587,76 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
 
                 # Merge Valid + FillNull
                 valid_and_fillnull_values = list(set(list(valid_values + fillnull_values)))
+                valid_values_set = set(valid_values)
+                fillnull_values_set = set(fillnull_values)
+
+                # Check whether this field allows multiple values separated by ";"
+                # NOTE: "AllowMultiEnum" must be present in specific_cde_df.  This requires
+                # it to be listed in cde_madatory_fields inside the app_schema JSON so that
+                # clean_cde_dataframe retains the column.  If it is absent (e.g. an older
+                # schema JSON that was not updated) we fall back to False so normal Enum
+                # validation still works, but a warning is emitted to make the omission visible.
+                if "AllowMultiEnum" not in specific_cde_df.columns:
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "AllowMultiEnum column is missing from the CDE dataframe for table being "
+                        "validated. Ensure 'AllowMultiEnum' is listed in cde_madatory_fields in "
+                        "the app_schema JSON so it is not dropped by clean_cde_dataframe. "
+                        "Falling back to single-value Enum validation for all Enum fields."
+                    )
+                    allow_multi_raw = None
+                else:
+                    allow_multi_raw = specific_cde_df.loc[entry_idx, "AllowMultiEnum"].item()
+                allow_multi = (
+                    str(allow_multi_raw).strip().lower() in ("true", "1", "yes")
+                    if allow_multi_raw is not None and str(allow_multi_raw).strip().lower() not in ("nan", "none", "")
+                    else False
+                )
 
                 entries = df_after_fill[column]
-                valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+
+                if allow_multi:
+                    def is_valid_multi_enum_entry(cell_value):
+                        """
+                        Validate a cell that may contain multiple ';'-separated Enum tokens.
+
+                        Rules:
+                        - A cell that is a FillNull token is valid as-is (no splitting).
+                        - A cell that is the NULL sentinel is valid (treated as missing).
+                        - Otherwise the cell is split on ';', each token is stripped, and
+                          every token must belong to the Validation list.  FillNull tokens
+                          are NOT allowed as part of a multi-value combination (e.g. you
+                          cannot write "Brain;NA") — they are only valid when used alone.
+                        """
+                        if cell_value in fillnull_values_set:
+                            return True
+                        if cell_value == NULL_SENTINEL:
+                            return True
+                        tokens = [t.strip() for t in str(cell_value).split(";") if t.strip()]
+
+                        if not tokens:
+                            return False
+                        return all(t in valid_values_set for t in tokens)
+
+                    valid_entries = entries.apply(is_valid_multi_enum_entry)
+                else:
+                    valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+
                 invalid_mask = ~valid_entries
                 invalid_cell_mask.loc[invalid_mask, column] = True
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_and_fillnull_values))
-                    invalstr = ', '.join(map(my_str,invalid_values))
+                    if allow_multi:
+                        valstr = (
+                            f"one or more values from the Validation list separated by ';' "
+                            f"(e.g. 'val1;val2'), or a single FillNull value "
+                            f"({', '.join(map(my_str, fillnull_values))}). "
+                            f"Valid tokens: {', '.join(map(my_str, sorted(valid_values_set)))}"
+                        )
+                    else:
+                        valstr = ', '.join(map(my_str, valid_and_fillnull_values))
+                    invalstr = ', '.join(map(my_str, invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
 
