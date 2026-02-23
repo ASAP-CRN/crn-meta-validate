@@ -18,6 +18,7 @@ import re
 import streamlit as st
 import logging
 from ast import literal_eval
+import time
 
 def build_bullet_invalid_details_markdown(
         column_name: str, 
@@ -586,16 +587,76 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
 
                 # Merge Valid + FillNull
                 valid_and_fillnull_values = list(set(list(valid_values + fillnull_values)))
+                valid_values_set = set(valid_values)
+                fillnull_values_set = set(fillnull_values)
+
+                # Check whether this field allows multiple values separated by ";"
+                # NOTE: "AllowMultiEnum" must be present in specific_cde_df.  This requires
+                # it to be listed in cde_madatory_fields inside the app_schema JSON so that
+                # clean_cde_dataframe retains the column.  If it is absent (e.g. an older
+                # schema JSON that was not updated) we fall back to False so normal Enum
+                # validation still works, but a warning is emitted to make the omission visible.
+                if "AllowMultiEnum" not in specific_cde_df.columns:
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "AllowMultiEnum column is missing from the CDE dataframe for table being "
+                        "validated. Ensure 'AllowMultiEnum' is listed in cde_madatory_fields in "
+                        "the app_schema JSON so it is not dropped by clean_cde_dataframe. "
+                        "Falling back to single-value Enum validation for all Enum fields."
+                    )
+                    allow_multi_raw = None
+                else:
+                    allow_multi_raw = specific_cde_df.loc[entry_idx, "AllowMultiEnum"].item()
+                allow_multi = (
+                    str(allow_multi_raw).strip().lower() in ("true", "1", "yes")
+                    if allow_multi_raw is not None and str(allow_multi_raw).strip().lower() not in ("nan", "none", "")
+                    else False
+                )
 
                 entries = df_after_fill[column]
-                valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+
+                if allow_multi:
+                    def is_valid_multi_enum_entry(cell_value):
+                        """
+                        Validate a cell that may contain multiple ';'-separated Enum tokens.
+
+                        Rules:
+                        - A cell that is a FillNull token is valid as-is (no splitting).
+                        - A cell that is the NULL sentinel is valid (treated as missing).
+                        - Otherwise the cell is split on ';', each token is stripped, and
+                          every token must belong to the Validation list.  FillNull tokens
+                          are NOT allowed as part of a multi-value combination (e.g. you
+                          cannot write "Brain;NA") — they are only valid when used alone.
+                        """
+                        if cell_value in fillnull_values_set:
+                            return True
+                        if cell_value == NULL_SENTINEL:
+                            return True
+                        tokens = [t.strip() for t in str(cell_value).split(";") if t.strip()]
+
+                        if not tokens:
+                            return False
+                        return all(t in valid_values_set for t in tokens)
+
+                    valid_entries = entries.apply(is_valid_multi_enum_entry)
+                else:
+                    valid_entries = entries.apply(lambda x: x in valid_and_fillnull_values)
+
                 invalid_mask = ~valid_entries
                 invalid_cell_mask.loc[invalid_mask, column] = True
                 invalid_values = entries[~valid_entries].unique()
                 n_invalid = invalid_values.shape[0]
                 if n_invalid > 0:
-                    valstr = ', '.join(map(my_str, valid_and_fillnull_values))
-                    invalstr = ', '.join(map(my_str,invalid_values))
+                    if allow_multi:
+                        valstr = (
+                            f"one or more values from the Validation list separated by ';' "
+                            f"(e.g. 'val1;val2'), or a single FillNull value "
+                            f"({', '.join(map(my_str, fillnull_values))}). "
+                            f"Valid tokens: {', '.join(map(my_str, sorted(valid_values_set)))}"
+                        )
+                    else:
+                        valstr = ', '.join(map(my_str, valid_and_fillnull_values))
+                    invalstr = ', '.join(map(my_str, invalid_values))
                     invalid_entries.append((opt_req, column, n_invalid, valstr, invalstr))
                     invalid_required.append(column) if opt_req=="REQUIRED" else invalid_optional.append(column)
 
@@ -787,3 +848,93 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
         st.session_state["column_comments"] = column_comments
 
     return df_after_fill, validation_report, errors_counter, warnings_counter
+
+def get_invalid_status_rows(
+        df_with_status: pd.DataFrame,
+        expected_status: str,
+        transient_statuses: list[str]):
+    """
+    Given a DataFrame with a "Status" column, return three DataFrames:
+    1) Rows where Status is not equal to expected_status
+    2) Rows where Status is in transient_statuses
+    3) Rows where Status is neither expected_status nor in transient_statuses
+
+    Parameters
+    ----------
+    df_with_status: pd.DataFrame
+        DataFrame containing a "Status" column.
+    expected_status: str
+        The expected valid status value (e.g., "Ok: found in CDE_current").
+    transient_statuses: list[str]
+        List of transient status values (e.g., ["Loading...", ""]).
+    
+    Returns
+    ------- 
+    invalid_rows: pd.DataFrame
+        Rows where Status is not equal to expected_status.
+    transient_rows: pd.DataFrame
+        Rows where Status is in transient_statuses.
+    hard_invalid_rows: pd.DataFrame
+        Rows where Status is neither expected_status nor in transient_statuses.
+    """
+    
+    status_series = (
+        df_with_status["Status"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    invalid_rows = df_with_status[status_series != expected_status]
+    transient_rows = df_with_status[status_series.isin(transient_statuses)]
+    hard_invalid_rows = df_with_status[
+        (status_series != expected_status) & (~status_series.isin(transient_statuses))
+    ]
+    return invalid_rows, transient_rows, hard_invalid_rows
+
+def read_valid_categories_with_status_retry(
+        load_df_with_status_fn: callable,
+        max_tries: int,
+        sleep_seconds: int,
+        expected_status: str,
+        transient_statuses: list[str],
+    ) -> pd.DataFrame:
+    """
+    Attempt to load the valid categories DataFrame multiple times, retrying if
+    there are any transient invalid statuses.
+
+    Parameters
+    ----------
+    load_df_with_status_fn: callable
+        Function that returns the DataFrame with column 'Status' when called.
+    max_tries: int
+        Maximum number of attempts to load the DataFrame.
+    sleep_seconds: int
+        Number of seconds to wait between attempts.
+    expected_status: str
+        The expected valid status value.
+    transient_statuses: list[str]
+        List of transient status values.
+
+    Returns
+    -------
+    pd.DataFrame
+        The DataFrame with column 'Status' after retries.
+    """
+
+    for attempt_index in range(1, max_tries + 1):
+        last_df = load_df_with_status_fn()
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, expected_status, transient_statuses)
+
+        # If everything is OK, proceed.
+        if invalid_rows.empty:
+            return last_df
+
+        # If we have any hard invalid values, fail immediately (not a transient timing issue).
+        if not hard_invalid_rows.empty:
+            return last_df  # caller will handle as error
+
+        # Only transient statuses remain -> retry after a short delay.
+        if attempt_index < max_tries:
+            time.sleep(sleep_seconds)
+
+    return last_df
