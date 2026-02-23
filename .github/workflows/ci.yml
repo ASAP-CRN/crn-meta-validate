@@ -1,0 +1,108 @@
+name: CI – feature → dev
+
+# Runs on every PR targeting dev (your feature-branch stage gate).
+# Keeps the bar low but catches the most common breakage: import errors,
+# syntax problems, and schema/readme drift.
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  # ── 1. Lint & syntax check ─────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff (errors only – no style nits)
+        run: ruff check . --select E,F --ignore E501
+
+  # ── 2. Import / smoke test ─────────────────────────────────────────────────
+  smoke:
+    name: Smoke-test imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify all utils modules import cleanly
+        run: |
+          python -c "
+          import sys, pathlib
+          sys.path.insert(0, str(pathlib.Path('.').resolve()))
+          from utils import validate, cde, delimiter_handler, find_missing_values
+          from utils import help_menus, processed_data_loader, template_files
+          print('All utils modules imported successfully.')
+          "
+
+  # ── 3. Schema integrity check ──────────────────────────────────────────────
+  schema:
+    name: Validate app_schema JSON files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check all app_schema JSON files parse without error
+        run: |
+          python -c "
+          import json, pathlib, sys
+          errors = []
+          for p in pathlib.Path('resource').glob('app_schema*.json'):
+              try:
+                  with open(p) as f:
+                      json.load(f)
+                  print(f'OK: {p.name}')
+              except Exception as e:
+                  errors.append(f'FAIL: {p.name}: {e}')
+          if errors:
+              print('\n'.join(errors), file=sys.stderr)
+              sys.exit(1)
+          "
+
+  # ── 4. README / help_menus sync check ─────────────────────────────────────
+  readme-sync:
+    name: Check README intro matches help_menus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Regenerate README intro and check for uncommitted diff
+        run: |
+          python utils/generate_readme.py -v v0.9.1
+          git diff --exit-code README.md || {
+            echo ""
+            echo "README.md is out of sync with help_menus.get_app_intro_markdown()."
+            echo "Run: python utils/generate_readme.py -v v0.9.1"
+            echo "then commit the result before merging."
+            exit 1
+          }
