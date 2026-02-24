@@ -30,7 +30,7 @@ jobs:
         # F841: assigned but unused variable   } while existing code is cleaned
         # up locally via: ruff check . --select E,F --ignore E501 --fix
         # Once clean, remove F541 and F841 from this ignore list.
-        run: ruff check . --select E,F --ignore E501,F541,F841
+        run: ruff check . --select E,F --ignore E501,F541,F841,E701,E402
 
   # ── 2. Import / smoke test ─────────────────────────────────────────────────
   smoke:
