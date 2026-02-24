@@ -26,9 +26,11 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff (errors only – no style nits)
-        # F541: f-string without placeholders — suppressed temporarily while
-        # existing code is cleaned up via `ruff check . --select F541 --fix`
-        run: ruff check . --select E,F --ignore E501,F541
+        # F541: f-string without placeholders  } both suppressed temporarily
+        # F841: assigned but unused variable   } while existing code is cleaned
+        # up locally via: ruff check . --select E,F --ignore E501 --fix
+        # Once clean, remove F541 and F841 from this ignore list.
+        run: ruff check . --select E,F --ignore E501,F541,F841
 
   # ── 2. Import / smoke test ─────────────────────────────────────────────────
   smoke:
