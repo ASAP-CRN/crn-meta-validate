@@ -69,15 +69,12 @@ Contributors:
 ################################
 import json
 import pandas as pd
-import html
 import streamlit as st
-from datetime import datetime
 import ast
 from pathlib import Path
-import os, sys
+import os
 import re
 import time
-from io import StringIO
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
@@ -349,7 +346,7 @@ def main():
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
         error_message = support_email_message(get_current_function_name(), 
-                                              f"No expected tables found for the selected Dataset type.")
+                                              "No expected tables found for the selected Dataset type.")
         st.error(error_message)
         st.stop()
 

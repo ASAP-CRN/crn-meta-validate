@@ -1,4 +1,3 @@
-import re
 import streamlit as st
 import ast
 import html
@@ -466,11 +465,6 @@ def render_missing_values_section(
 
                     if existing_enum_choice and existing_enum_choice not in full_options:
                         full_options.append(existing_enum_choice)
-
-                    if existing_enum_choice and existing_enum_choice in full_options:
-                        default_enum_index = full_options.index(existing_enum_choice)
-                    else:
-                        default_enum_index = 0
 
                     st.markdown(
                         f"""
