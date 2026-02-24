@@ -1,5 +1,5 @@
 # crn-meta-validate
-Metadata validator for ASAP CRN metadata (v0.9)
+Metadata validator for ASAP CRN metadata (v0.9.1)
 
 <!-- PROJECT SHIELDS -->
 <!--
@@ -140,17 +140,9 @@ git clone git@github.com:ASAP-CRN/crn-meta-validate.git
 
 2. Make sure that you have access to the CDE spreadsheet, link provided in `utils/cde.py`
 
-3. Build the docker container that contains the app
-```bash
-docker build -t <docker-container-name> .
-```
+3. Build a Python virtual environment including the requirements specified in `requirements.txt` 
 
-4. Run the docker container on a port
-```bash
-docker run -d -p 8080:8080 <docker-container-name>
-```
-
-5. Alternatively, you can also build virtual environment, then run the streamlit app locally
+4. Run the streamlit app locally
 ```bash
 streamlit run app.py
 ```
@@ -175,8 +167,8 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- AUTHORS -->
 ## Authors
-- [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
+- [Andy Henrie](https://github.com/ergonyc)
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 

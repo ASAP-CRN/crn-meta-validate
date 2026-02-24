@@ -1,14 +1,14 @@
-sample_id;content;adjustment;header;file_type;batch;annotation;configuration_file;file_name;file_description;file_MD5
-ASAPh_001;Reads;quality trimmed and human DNA removed;Header1;fastq;1;;;ASAPh_001_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;c867cb7e37a2c6a5da2cf0b1090d9588
-ASAPh_001;;quality trimmed and human DNA removed;Header2;fastq;2;;;ASAPh_001_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9379c449254b21e028f7b66c50a1a2c5
-ASAPh_001;Counts;Raw;Header3;fastq;1;;;ASAPh_001_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;3369198de149feb3bb5f99a2c4a739e2
-ASAPh_001;;Raw;;fastq;2;;;ASAPh_001_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;7734c0d26d79a7becf073999b7049ea5
-ASAPh_001;Counts;Processed;Header5;fastq;1;;;ASAPh_001_5.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;e650194222b2072f7c4f17c363910d43
-ASAPh_001;Reads;Processed;;fastq;2;;;ASAPh_001_6.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;5fc4469657d02818e5143c2d1a5c3a53
-ASAPh_001;Counts;Raw;;fastq;;;;ASAPh_001_7.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;0d573558e937a05e7a808ddbf7275c95
-ASAPh_001;Reads;Raw;;fastq;;;;ASAPh_001_8.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;411fc7cbd272be4462b24802838fe341
-ASAPh_001;Reads;Raw;;fastq;;;;ASAPh_001_9.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;444b1500667d1dbea95b26f714b65c58
-ASAPh_002;;Processed;;fastq;;;;ASAPh_002_1.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;325fcb458eb7c0cc583296b09c850374
-ASAPh_002;;Processed;;fastq;;;;ASAPh_002_2.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;419eeb2400f633d171e1b4252b101b12
-ASAPh_002;Reads;Processed;;fastq;;;;ASAPh_002_3.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;4efd3601d3bf6e2591674dead9b0b2d9
-ASAPh_002;Reads;Processed;;fastq;;;;ASAPh_002_4.clean.rmHost.fastq.gz;shotgun metagenomic fecal sample;9a831103b64c6c8fd71fa187dab598b7
+sample_id;content;adjustment;file_type;batch;gcp_bucket;file_description;file_MD5;file_name;replicate;configuration_file
+sample_1;Counts;Processed;csv;1;;;a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4;sample1_polygons.csv;TechRep1;file_ABC.csv
+sample_1;Image;corrected and normalized;rds;1;;;f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3;sample1_seuratObject.RDS;TechRep1;file_ABC.csv
+sample_1;;Processed;csv;1;;;b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5;sample1_metadata_file.csv;TechRep1;file_ABC.csv
+sample_1;Counts;Raw;csv;1;;;c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6;sample1_exprMat_file.csv;TechRep1;file_ABC.csv
+sample_1;;Raw;csv;1;;;d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1;sample1_tx_file.csv;TechRep1;file_ABC.csv
+sample_1;Counts;Processed;csv;1;;;e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2;sample1_fov_positions_file.csv;TechRep1;file_ABC.csv
+sample_2;Counts;Processed;csv;1;;;a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5;sample2_polygons.csv;TechRep2;file_ABC.csv
+sample_2;;Processed;csv;1;;;b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6;sample2_metadata_file.csv;TechRep2;file_ABC.csv
+sample_2;Counts;Raw;csv;1;;;c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7;sample2_exprMat_file.csv;TechRep2;file_ABC.csv
+sample_2;Image;Processed;rds;1;;;d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2;sample2_seuratObject.RDS;TechRep2;file_ABC.csv
+sample_3;Counts;Processed;csv;2;;;e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3;sample3_polygons.csv;TechRep1;file_ABC.csv
+sample_3;;Processed;csv;2;;;f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4;sample3_metadata_file.csv;TechRep1;file_ABC.csv
+sample_3;Reads;Processed;csv;2;;;a3b4c5d6e7f8a3b4c5d6e7f8a3b4c5d6;sample3_tx_file.csv;TechRep1;file_ABC.csv

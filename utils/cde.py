@@ -293,7 +293,7 @@ def read_CDE(
     )
 
     # Validate completeness of critical CDE columns
-    cde_columns_ok_na = ["Validation", "SpecificSpecies", "SpecificSampleSource", "SpecificAssays"]
+    cde_columns_ok_na = ["Validation", "SpecificSpecies", "SpecificSampleSource", "SpecificAssays", "AllowMultiEnum"]
     cde_dataframe = validate_cde_completeness(cde_dataframe, 
                                               cde_mandatory_fields, 
                                               cde_columns_ok_na
@@ -564,6 +564,7 @@ def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str
             "DataType": cde_row.get("DataType", ""),
             "Validation": cde_row.get("Validation", ""),
             "FillNull": cde_row.get("FillNull", ""),
+            "AllowMultiEnum": cde_row.get("AllowMultiEnum", ""),
         }
     return cde_meta_by_field
 
