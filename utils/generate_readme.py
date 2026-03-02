@@ -102,7 +102,7 @@ def replace_readme_header_version(readme_text: str, webapp_version: str) -> str:
         'Metadata validator for ASAP CRN metadata (vX.Y)'
     using the provided webapp_version.
     """
-    pattern = r"(Metadata validator for ASAP CRN metadata \(v[0-9]+\.[0-9]+\))"
+    pattern = r"(Metadata validator for ASAP CRN metadata \(v[0-9]+\.[0-9]+(\.[0-9]+)?\))"
     replacement = f"Metadata validator for ASAP CRN metadata ({webapp_version})"
     updated_text, num_subs = re.subn(pattern, replacement, readme_text, count=1)
 

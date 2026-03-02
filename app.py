@@ -58,6 +58,8 @@ Webapp v0.9:
 Webapp v0.9.1:
 * Update to CDE version v4.2 (including Fields for ATAC and Proteomics assays)
 * Add CDE column AllowMultiEnum and funcitonality to allow multiple Enum values for specific fields (e.g. multiple brain regions per sample)
+
+Webapp v0.9.2:
 * Add AssayIntrumentTechnology (AIT) tab to automate definition of intruments and technologies used in each assay, reducing manual work for users
 * Add CDE synchronization evaluation of CDE_current vs. AIT tabs
 
