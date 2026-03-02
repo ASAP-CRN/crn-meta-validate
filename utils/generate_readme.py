@@ -99,7 +99,7 @@ def find_heuristic_intro_block(readme_text: str) -> Tuple[int, int]:
 def replace_readme_header_version(readme_text: str, webapp_version: str) -> str:
     """
     Replace the version in the README header line:
-        'Metadata validator for ASAP CRN metadata (vX.Y)'
+        'Metadata validator for ASAP CRN metadata (vX.Y) or (vX.Y.Z)'
     using the provided webapp_version.
     """
     pattern = r"(Metadata validator for ASAP CRN metadata \(v[0-9]+\.[0-9]+(\.[0-9]+)?\))"
@@ -109,7 +109,8 @@ def replace_readme_header_version(readme_text: str, webapp_version: str) -> str:
     if num_subs == 0:
         raise RuntimeError(
             "Could not replace README header version. "
-            "Expected header like: 'Metadata validator for ASAP CRN metadata (v0.5)'."
+            "Expected header like: 'Metadata validator for ASAP CRN metadata (v0.5)' "
+            "or 'Metadata validator for ASAP CRN metadata (v0.5.1)'."
         )
 
     return updated_text
