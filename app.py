@@ -15,7 +15,8 @@ Webapp v0.5 (CDE version v3.4), 25 November 2025
 Webapp v0.6 (CDE version v4.0), 01 December 2025
 Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026 
 Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
-Webapp v0.9 (CDE version v4.1, optional v3.4), 04 February 2026
+Webapp v0.9 (CDE version v4.2, optional v3.4), 04 February 2026
+Webapp v0.9.1 (CDE version v4.2, optional v3.4), 27 February 2026
 
 Version notes:
 Webapp v0.4:
@@ -54,10 +55,15 @@ Webapp v0.8:
 Webapp v0.9:
 * Remove table_categories from app_schema.JSON, now loaded from CDE Spreadsheet ValidCategories
 
+Webapp v0.9.1:
+* Update to CDE version v4.2 (including Fields for ATAC and Proteomics assays)
+* Add CDE column AllowMultiEnum and funcitonality to allow multiple Enum values for specific fields (e.g. multiple brain regions per sample)
+* Add AssayIntrumentTechnology (AIT) tab to automate definition of intruments and technologies used in each assay, reducing manual work for users
+* Add CDE synchronization evaluation of CDE_current vs. AIT tabs
+
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
-
 
 Contributors:
 - [Alejandro Marinez](https://github.com/AMCalejandro)
@@ -95,7 +101,7 @@ from utils.help_menus import (
 )
 from utils.template_files import build_templates_zip
 
-webapp_version = "v0.9.1" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.2" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -124,27 +130,34 @@ cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
 default_delimiter = app_schema['default_input_delimiter']
 REQUIRED_TABLES = app_schema['table_names']['required']
 cde_mandatory_fields = app_schema['cde_definition']['cde_mandatory_fields']
-valid_categ_mandatory_fields = app_schema['cde_definition']['valid_categ_mandatory_fields']
+valid_categories_mandatory = app_schema['cde_definition']['valid_categ_mandatory_fields']
 
 # CDE Google Sheet URLs for configuration
-ValidCategories_name = "ValidCategories"
+valid_categories_name = "ValidCategories"
+
+AIT_name = "AssayInstrumentTechnology"
 cde_url_base = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}"
 cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
-valid_categories_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={ValidCategories_name}" # ValidCategories used for Step 1 menus.
+valid_categories_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={valid_categories_name}" # ValidCategories used for Step 1 menus.
 cde_google_sheet_current = f"{cde_url_base}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
 
 # Use local resources or Google Sheets. Set to False to use Google Sheets
 use_local = False
-
+status_CDE_sync = "Status" # Status_CDE_synchronized (v4.2)
+status_CDE_def = "Status_CDE_defined"
+status_AIT = "Status_AssayInstrumentTechnology"
 old_cde_google_sheet = None
 if allow_old_cde and old_cde_version:
     old_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
 
 # Extract table categories
 SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
-    valid_categories_sheet,
-    ValidCategories_name,
-    valid_categ_mandatory_fields,
+    valid_categories_sheet = valid_categories_sheet,
+    valid_categories_name = valid_categories_name,
+    valid_categories_mandatory = valid_categories_mandatory,
+    status_CDE_sync = status_CDE_sync,
+    status_CDE_def = status_CDE_def,
+    status_AIT = status_AIT,
     local=use_local,
 )
 ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI

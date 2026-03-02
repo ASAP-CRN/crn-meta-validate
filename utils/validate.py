@@ -848,43 +848,46 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
 
 def get_invalid_status_rows(
         df_with_status: pd.DataFrame,
+        column_with_status: str,
         expected_status: str,
         transient_statuses: list[str]):
     """
-    Given a DataFrame with a "Status" column, return three DataFrames:
-    1) Rows where Status is not equal to expected_status
-    2) Rows where Status is in transient_statuses
-    3) Rows where Status is neither expected_status nor in transient_statuses
+    Given a DataFrame with a column_with_status, return three DataFrames:
+    1) Rows where column_with_status does not start with expected_status
+    2) Rows where column_with_status is in transient_statuses
+    3) Rows where column_with_status is neither expected_status nor in transient_statuses
 
     Parameters
     ----------
     df_with_status: pd.DataFrame
-        DataFrame containing a "Status" column.
+        DataFrame containing a column_with_status with status values.
+    column_with_status: str
+        Name of the column containing status values.
     expected_status: str
-        The expected valid status value (e.g., "Ok: found in CDE_current").
+        The expected valid startwith(expected_status) (e.g., "Ok: ").
     transient_statuses: list[str]
         List of transient status values (e.g., ["Loading...", ""]).
     
     Returns
     ------- 
     invalid_rows: pd.DataFrame
-        Rows where Status is not equal to expected_status.
+        Rows where the value of column_with_status does not start with expected_status.
     transient_rows: pd.DataFrame
-        Rows where Status is in transient_statuses.
+        Rows where the value of column_with_status is in transient_statuses.
     hard_invalid_rows: pd.DataFrame
-        Rows where Status is neither expected_status nor in transient_statuses.
+        Rows where the value of column_with_status is neither expected_status nor in transient_statuses.
     """
     
     status_series = (
-        df_with_status["Status"]
+        df_with_status[column_with_status]
         .fillna("")
         .astype(str)
         .str.strip()
     )
-    invalid_rows = df_with_status[status_series != expected_status]
+    invalid_rows = df_with_status[~status_series.str.startswith(expected_status)]
     transient_rows = df_with_status[status_series.isin(transient_statuses)]
     hard_invalid_rows = df_with_status[
-        (status_series != expected_status) & (~status_series.isin(transient_statuses))
+        (~status_series.str.startswith(expected_status)) & (~status_series.isin(transient_statuses))
     ]
     return invalid_rows, transient_rows, hard_invalid_rows
 
@@ -893,6 +896,7 @@ def read_valid_categories_with_status_retry(
         max_tries: int,
         sleep_seconds: int,
         expected_status: str,
+        column_with_status: str,
         transient_statuses: list[str],
     ) -> pd.DataFrame:
     """
@@ -908,7 +912,7 @@ def read_valid_categories_with_status_retry(
     sleep_seconds: int
         Number of seconds to wait between attempts.
     expected_status: str
-        The expected valid status value.
+        The expected valid startwith(expected_status) value.
     transient_statuses: list[str]
         List of transient status values.
 
@@ -920,7 +924,7 @@ def read_valid_categories_with_status_retry(
 
     for attempt_index in range(1, max_tries + 1):
         last_df = load_df_with_status_fn()
-        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, expected_status, transient_statuses)
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, column_with_status, expected_status, transient_statuses)
 
         # If everything is OK, proceed.
         if invalid_rows.empty:
