@@ -6,7 +6,6 @@ Google Sheets or local CSV files.
 
 """
 
-from dataclasses import field
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
 from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
@@ -365,8 +364,6 @@ def decide_cde_vs_schema_validation(
     app_schema_version: str
         App schema version string, e.g. "v0.4", "v0.5", etc.
     """
-    logger = logging.getLogger(__name__)
-
     ### validate_cde_vs_schema function was defined for app_schema v0.8 but deprecated in v0.9 because we are reading directly from the CDE
     ### Keeping this function for backward compatibility with v0.8 apps and CDE vs. JSON debugging purposes.
     schemas_that_need_validation_vs_cde = ["v0.8"]
@@ -731,13 +728,13 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
         validation_report.add_error(f"❌ -- See details below: {len(invalid_required)} of {total_required} **required** columns have invalid values in {table_name}\n")
         errors_counter += len(invalid_required)
     else:
-        validation_report.add_success(f"✅ -- No invalid values were found in required columns\n")
+        validation_report.add_success("✅ -- No invalid values were found in required columns\n")
 
     if len(invalid_optional) > 0:
         validation_report.add_warning(f"⚠️ -- See details below: {len(invalid_optional)} of {total_optional} **optional** columns have invalid values in {table_name}\n")
         warnings_counter += len(invalid_optional)
     else:
-        validation_report.add_success(f"✅ -- No invalid values were found in optional columns\n")
+        validation_report.add_success("✅ -- No invalid values were found in optional columns\n")
 
     ############
     ### Preview of validated table
@@ -851,43 +848,46 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
 
 def get_invalid_status_rows(
         df_with_status: pd.DataFrame,
+        column_with_status: str,
         expected_status: str,
         transient_statuses: list[str]):
     """
-    Given a DataFrame with a "Status" column, return three DataFrames:
-    1) Rows where Status is not equal to expected_status
-    2) Rows where Status is in transient_statuses
-    3) Rows where Status is neither expected_status nor in transient_statuses
+    Given a DataFrame with a column_with_status, return three DataFrames:
+    1) Rows where column_with_status does not start with expected_status
+    2) Rows where column_with_status is in transient_statuses
+    3) Rows where column_with_status is neither expected_status nor in transient_statuses
 
     Parameters
     ----------
     df_with_status: pd.DataFrame
-        DataFrame containing a "Status" column.
+        DataFrame containing a column_with_status with status values.
+    column_with_status: str
+        Name of the column containing status values.
     expected_status: str
-        The expected valid status value (e.g., "Ok: found in CDE_current").
+        The expected valid startwith(expected_status) (e.g., "Ok: ").
     transient_statuses: list[str]
         List of transient status values (e.g., ["Loading...", ""]).
     
     Returns
     ------- 
     invalid_rows: pd.DataFrame
-        Rows where Status is not equal to expected_status.
+        Rows where the value of column_with_status does not start with expected_status.
     transient_rows: pd.DataFrame
-        Rows where Status is in transient_statuses.
+        Rows where the value of column_with_status is in transient_statuses.
     hard_invalid_rows: pd.DataFrame
-        Rows where Status is neither expected_status nor in transient_statuses.
+        Rows where the value of column_with_status is neither expected_status nor in transient_statuses.
     """
     
     status_series = (
-        df_with_status["Status"]
+        df_with_status[column_with_status]
         .fillna("")
         .astype(str)
         .str.strip()
     )
-    invalid_rows = df_with_status[status_series != expected_status]
+    invalid_rows = df_with_status[~status_series.str.startswith(expected_status)]
     transient_rows = df_with_status[status_series.isin(transient_statuses)]
     hard_invalid_rows = df_with_status[
-        (status_series != expected_status) & (~status_series.isin(transient_statuses))
+        (~status_series.str.startswith(expected_status)) & (~status_series.isin(transient_statuses))
     ]
     return invalid_rows, transient_rows, hard_invalid_rows
 
@@ -896,6 +896,7 @@ def read_valid_categories_with_status_retry(
         max_tries: int,
         sleep_seconds: int,
         expected_status: str,
+        column_with_status: str,
         transient_statuses: list[str],
     ) -> pd.DataFrame:
     """
@@ -911,7 +912,7 @@ def read_valid_categories_with_status_retry(
     sleep_seconds: int
         Number of seconds to wait between attempts.
     expected_status: str
-        The expected valid status value.
+        The expected valid startwith(expected_status) value.
     transient_statuses: list[str]
         List of transient status values.
 
@@ -923,7 +924,7 @@ def read_valid_categories_with_status_retry(
 
     for attempt_index in range(1, max_tries + 1):
         last_df = load_df_with_status_fn()
-        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, expected_status, transient_statuses)
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(last_df, column_with_status, expected_status, transient_statuses)
 
         # If everything is OK, proceed.
         if invalid_rows.empty:

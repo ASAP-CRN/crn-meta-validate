@@ -19,7 +19,10 @@ from utils.validate import read_valid_categories_with_status_retry, get_invalid_
 def read_ValidCategories(
     valid_categories_sheet: str,
     valid_categories_name: str,
-    valid_categ_mandatory_fields: List[str],
+    valid_categories_mandatory: List[str],
+    status_CDE_sync: str,
+    status_CDE_def: str,
+    status_AIT: str,
     local: bool = False,
 ) -> Tuple[List[str], List[str], Dict[str, str]]:
     """
@@ -38,8 +41,14 @@ def read_ValidCategories(
         Can be either a normal "edit" URL or a direct TSV export URL.
     valid_categories_name : str
         Name of the ValidCategories tab (or local file if local).
-    valid_categ_mandatory_fields : List[str]
+    valid_categories_mandatory : List[str]
         List of mandatory columns to validate in the ValidCategories sheet.
+    status_CDE_sync : str
+        Column name for CDE synchronization status.
+    status_CDE_def : str
+        Column name for CDE definition status.
+    status_AIT : str
+        Column name for Assay Instrument Technology status.
     local : bool, optional
         If True, load from local TSV file instead of Google Sheets.
         
@@ -61,7 +70,7 @@ def read_ValidCategories(
     overall_valid_categories_status = "ok"
 
     # Define mandatory column list to load from ValidCategories
-    column_list = valid_categ_mandatory_fields.copy()
+    column_list = valid_categories_mandatory.copy()
 
     # Load ValidCategories from either local file or Google Sheets
     valid_categories_df = load_valid_categories_data(
@@ -79,9 +88,14 @@ def read_ValidCategories(
         st.error(error_message)
         st.stop()
 
-    # Validate that all rows have Status = expected_status
+    # Validate that all rows in the list of columns_to_validate_status start with expected_status
     # Since this can be transiently loading, retry a few times.
-    expected_status = "Ok: found in CDE_current"
+    columns_to_validate_status = [
+        status_CDE_sync,
+        status_CDE_def,
+        status_AIT,
+    ]
+    expected_status = "Ok: "
     transient_statuses = ["Loading...", ""]
 
     def _load_valid_categories_df_with_status() -> pd.DataFrame:
@@ -91,26 +105,30 @@ def read_ValidCategories(
             valid_categories_name=valid_categories_name,
         )
 
-    valid_categories_df = read_valid_categories_with_status_retry(
-        load_df_with_status_fn=_load_valid_categories_df_with_status,
-        max_tries=5,
-        sleep_seconds=2,
-        expected_status=expected_status,
-        transient_statuses=transient_statuses,
-    )
-    invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(
-        valid_categories_df,
-        expected_status=expected_status,
-        transient_statuses=transient_statuses,
-    )
-    if not invalid_rows.empty:
-        overall_valid_categories_status = "error"
-        error_message = support_email_message(
-            get_current_function_name(),
-            f"Rows with invalid Status:\n{invalid_rows.to_string()}",
+    for column_to_validate in columns_to_validate_status:
+        valid_categories_df = read_valid_categories_with_status_retry(
+            load_df_with_status_fn=_load_valid_categories_df_with_status,
+            max_tries=5,
+            sleep_seconds=2,
+            expected_status=expected_status,
+            transient_statuses=transient_statuses,
+            column_with_status=column_to_validate,
         )
-        st.error(error_message)
-        st.stop()
+
+        invalid_rows, transient_rows, hard_invalid_rows = get_invalid_status_rows(
+            valid_categories_df,
+            column_with_status=column_to_validate,
+            expected_status=expected_status,
+            transient_statuses=transient_statuses,
+        )
+        if not invalid_rows.empty:
+            overall_valid_categories_status = "error"
+            error_message = support_email_message(
+                get_current_function_name(),
+                f"Rows with invalid Status:\n{invalid_rows.to_string()}",
+            )
+            st.error(error_message)
+            st.stop()
 
     # Dataset species options (from SAMPLE.organism)
     species_options = valid_categories_df[
@@ -322,12 +340,8 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v1", "v2", "v2.1", "v3.0", "v3.0-beta", "v3.1", "v3.2", "v3.3", "v3.3-beta", "v3.4", "v4.0", "v4.0-beta", "v4.1"]:
+    if cde_version in ["v3.4", "v4.0", "v4.1", "v4.2"]:
         return f"ASAP_CDE_{cde_version}"
-    elif cde_version in ["v3", "v3.0.0"]: # defaults to v3.0
-        return "ASAP_CDE_v3.0"
-    elif cde_version in ["v3.2-beta"]: # defaults to v3.2
-        return "ASAP_CDE_v3.2"
     else:
         error_message = support_email_message(get_current_function_name(), 
                                               f"Unsupported cde_version: {cde_version}")
