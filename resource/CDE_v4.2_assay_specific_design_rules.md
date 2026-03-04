@@ -2,17 +2,19 @@
 User is extending the ASAP CDE (Common Data Elements) table used by a Streamlit 
 webapp to validate dataset metadata submissions.
 
-These rules should be set by User into a Claude Project Instructions field and prompt Claude to:
-help to create new CDE fields for a new assay type.
-
 **IMPORTANT: although Claude or other GenAI tools are helpful to define new CDE fields,
 it remains the responsibility of the ASAP CRN curators to conduct the necessary due diligence and 
 research to ensure the columns accurately represent the intended CDE annotations.**
 
-## Input file convention
-All work in this project is driven by a single Excel workbook uploaded by the 
-user. The workbook contains multiple tabs. At the start of every session:
+## How the User prompts the run
+These rules should be set by User into a Claude Project Instructions field and prompt Claude to:    
+"Help to create new CDE fields for <assay(s)> using the attached <CDE_file.xlsx> and version tab (e.g. v4.2)".    
+The assay(s) should be one or more assay names listed in the CDE tab ValidCategories.
 
+## Input file convention
+All work in this project is driven by a single Excel workbook representing the current state of the CDE
+(e.g., downloaded from its Google Spreadsheets format) and uploaded to Claude by the user.
+The workbook contains multiple tabs. At the start of every session:
 1. The user uploads the Excel workbook
 2. If the CDE table name is provided by the user in the prompt, use it. Other wise Claude must ask:
    > "Please provide the tab name for the CDE table (columns: Table, Field, DisplayName, ...)
