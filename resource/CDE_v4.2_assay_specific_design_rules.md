@@ -3,7 +3,11 @@ User is extending the ASAP CDE (Common Data Elements) table used by a Streamlit
 webapp to validate dataset metadata submissions.
 
 These rules should be set by User into a Claude Project Instructions field and prompt Claude to:
-help to create new CDE fields for a new assay type
+help to create new CDE fields for a new assay type.
+
+**IMPORTANT: although Claude or other GenAI tools are helpful to define new CDE fields,
+it remains the responsibility of the ASAP CRN curators to conduct the necessary due diligence and 
+research to ensure the columns accurately represent the intended CDE annotations.**
 
 ## Input file convention
 All work in this project is driven by a single Excel workbook uploaded by the 
