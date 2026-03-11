@@ -8,12 +8,20 @@ Applies filtering of CDE rules based on selected species, sample source and assa
 """
 
 import pandas as pd
-import streamlit as st
 import json
 from pathlib import Path
 from typing import Tuple, Dict, List
-from utils.help_menus import get_current_function_name, support_email_message
+from utils.help_menus import (
+    get_current_function_name,
+    support_email_message,
+    app_error,
+    app_stop,
+    app_info,
+    app_success,
+)
 from utils.validate import read_valid_categories_with_status_retry, get_invalid_status_rows
+
+
 
 # @st.cache_data
 def read_ValidCategories(
@@ -85,8 +93,8 @@ def read_ValidCategories(
         overall_valid_categories_status = "error"
         error_message = support_email_message(get_current_function_name(), 
                                               f"Missing required columns:\n{missing_columns}")
-        st.error(error_message)
-        st.stop()
+        app_error(error_message)
+        app_stop()
 
     # Validate that all rows in the list of columns_to_validate_status start with expected_status
     # Since this can be transiently loading, retry a few times.
@@ -127,8 +135,8 @@ def read_ValidCategories(
                 get_current_function_name(),
                 f"Rows with invalid Status:\n{invalid_rows.to_string()}",
             )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
 
     # Dataset species options (from SAMPLE.organism)
     species_options = valid_categories_df[
@@ -164,8 +172,8 @@ def read_ValidCategories(
     else:
         error_message = support_email_message(get_current_function_name(),
                                               "General internal error.")
-        st.error(error_message)
-        st.stop()
+        app_error(error_message)
+        app_stop()
 
 
 def parse_json_list_cell(cell_value: str) -> List[str]:
@@ -199,14 +207,20 @@ def filter_cde_rules_for_selection(
 ) -> pd.DataFrame:
     """Filter CDE rows based on SpecificSpecies / SpecificSampleSource / SpecificAssays.
 
+    Required fields:
+        - cde_dataframe: Pandas dataframe with the CDE
+        - selected_species: organism type of the dataset (e.g., "Human", "Mouse")
+        - selected_sample_source: source type of the dataset (e.g., "Brain", "Fecal", "Cell lines", "iPSC")
+        - selected_assay_type: assay type of the dataset (e.g., "bulk_rna_seq", "single_nucleus_rna_seq")
+
     Semantics:
-    - If a Specific* cell is empty, the row applies to all selections for that axis.
-    - If it is non-empty, the row applies only if the selection is present in the list.
-    - If a selection is None/empty, that axis is not used for filtering.
+        - If a Specific* cell is empty, the row applies to all selections for that axis.
+        - If it is non-empty, the row applies only if the selection is present in the list.
+        - If a selection is None/empty, that axis is not used for filtering.
 
     Notes:
-    - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
-    - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
+        - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
+        - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
     """
     if cde_dataframe.empty:
         return cde_dataframe
@@ -295,12 +309,12 @@ def read_CDE(
     # Validate that all required columns are present in CDE
     missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(cde_dataframe.columns)].tolist()
     if not missing_columns:
-        st.success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
+        app_success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
     else:
         error_message = support_email_message(get_current_function_name(), 
                                               f"CDE {cde_version} is missing required columns: {missing_columns}")
-        st.error(error_message)
-        st.stop()
+        app_error(error_message)
+        app_stop()
 
     # Filter and clean the dataframe
     cde_dataframe = clean_cde_dataframe(
@@ -345,8 +359,8 @@ def get_cde_filename(cde_version: str) -> str:
     else:
         error_message = support_email_message(get_current_function_name(), 
                                               f"Unsupported cde_version: {cde_version}")
-        st.error(error_message)
-        st.stop()
+        app_error(error_message)
+        app_stop()
 
 def load_cde_data(
     local: bool,
@@ -380,7 +394,7 @@ def load_cde_data(
     if local:
         root = Path(__file__).parent.parent
         cde_local = root / f"resource/{local_filename}.csv"
-        st.info(f"Using CDE {cde_version} from local resource/")
+        app_info(f"Using CDE {cde_version} from local resource/")
         try:
             return pd.read_csv(cde_local)
         except Exception as try_exception:
@@ -388,10 +402,10 @@ def load_cde_data(
                                                   f"Could not read CDE from local resource/{cde_local}: "
                                                   f"{str(try_exception)}"
                                                   )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
     else:
-        st.info(f"Using CDE {cde_version} from Google doc")
+        app_info(f"Using CDE {cde_version} from Google doc")
         try:
             return pd.read_csv(cde_google_sheet)
         except Exception as try_exception:
@@ -399,8 +413,8 @@ def load_cde_data(
                                                   f"Could not read CDE from Google doc:\n{cde_google_sheet}\n"
                                                   f"Error details: {str(try_exception)}"
                                                   )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
 
 def clean_cde_dataframe(
     cde_dataframe: pd.DataFrame,
@@ -471,8 +485,8 @@ def validate_cde_completeness(
         if required_column_name not in cde_dataframe.columns:
             error_message = support_email_message(get_current_function_name(), 
                                                   f"CDE is missing required column '{required_column_name}'")
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
     
     # Fillout columns allowed to contain NULL/empty values with None placeholder
     for allowed_na_column in cde_columns_ok_na:
@@ -500,8 +514,8 @@ def validate_cde_completeness(
                                               f"The CDE spreadsheet has NULL values in required columns. {cde_mandatory_fields}. "
                                               f"Examples: {details}."
                                               )
-        st.error(error_message)
-        st.stop()
+        app_error(error_message)
+        app_stop()
 
     return cde_dataframe
 
@@ -619,8 +633,8 @@ def load_valid_categories_data(
                                                   f"Could not read ValidCategories from local resource/{valid_categories_local}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
     else:
         try:
             return pd.read_csv(valid_categories_sheet)
@@ -629,5 +643,5 @@ def load_valid_categories_data(
                                                   f"Could not read ValidCategories from Google doc:\n{valid_categories_sheet}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
