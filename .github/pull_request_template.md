@@ -6,13 +6,11 @@
 [ClickUp Issue](click-up url)
 [GitHub PR](GitHub PR url)
 
-## Type of Change
-
+## Type of change
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Schema / CDE update
 - [ ] Documentation
 
 ## Task Checklist
-
 - [ ] Documentation updated
