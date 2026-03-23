@@ -971,8 +971,10 @@ def main():
 
             with compare_col:
                 compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
-            with spacer_col_1: st.write("")
-            with spacer_col_2: st.write("")
+            with spacer_col_1:
+                st.write("")
+            with spacer_col_2:
+                st.write("")
             with toggle_col:
                 def _on_step5_cde_toggle_change() -> None:
                     use_old_cde = bool(st.session_state.get("step5_use_old_cde", False))
