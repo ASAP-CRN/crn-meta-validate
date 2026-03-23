@@ -6,18 +6,19 @@ Google Sheets or local CSV files.
 
 """
 
+import logging
+import re
+import time
+from ast import literal_eval
+
+import pandas as pd
+import streamlit as st
+
 from utils.find_missing_values import NULL_SENTINEL, normalize_null_like_dataframe, compute_missing_mask
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
 from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
 
 NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitized.csv files
-
-import pandas as pd
-import re
-import streamlit as st
-import logging
-from ast import literal_eval
-import time
 
 def build_bullet_invalid_details_markdown(
         column_name: str, 

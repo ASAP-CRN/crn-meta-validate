@@ -1,0 +1,25 @@
+{
+  "_comment": "Declares the expected pandas parse outcome for each tester CSV. Add an entry here whenever a new tester file is added. 'expect_parse_ok' = true means pd.read_csv() must succeed; false means it must raise an exception (the file intentionally contains a structural error that the app is designed to surface).",
+  "files": {
+    "CLINPATH.csv": {
+      "expect_parse_ok": false,
+      "reason": "Row 4 has extra spurious fields (ExtraField, ExtraColumn) that cause a column-count mismatch – intentional example of a malformed input the app must reject."
+    },
+    "PROTOCOL.csv": {
+      "expect_parse_ok": true,
+      "reason": "Semicolon-delimited; well-formed; produces no CDE errors after filling missing values."
+    },
+    "DATA.csv": {
+      "expect_parse_ok": true,
+      "reason": "Semicolon-delimited; well-formed; produces a CDE error on 'adjustment' column (invalid value)."
+    },
+    "SAMPLE.csv": {
+      "expect_parse_ok": true,
+      "reason": "Comma-delimited; well-formed; produces a CDE error on 'condition_id' column (invalid value)."
+    },
+    "SUBJECT.csv": {
+      "expect_parse_ok": true,
+      "reason": "Headers only (0 data rows); well-formed; flagged by app to skip validation."
+    }
+  }
+}

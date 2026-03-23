@@ -25,9 +25,9 @@
       "Category",
       "ValidatorAppKey",
       "ValidatorAppDisplay",
-      "Status",
-      "Status_CDE_defined",
-      "Status_AssayInstrumentTechnology"
+      "Status_CDE_sync",
+      "Status_CDE_assay_defined",
+      "Status_AIT_sync"
     ]
   },
   "default_input_delimiter": ",",

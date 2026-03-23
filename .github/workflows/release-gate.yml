@@ -77,17 +77,29 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python utils/generate_readme.py -v v0.9.1
+      - name: Read webapp version from app.py
+        run: |
+          # Single source of truth: the webapp_version assignment in app.py.
+          # Update that line when switching versions; the workflow follows automatically.
+          SCHEMA_VERSION=$(grep -Po '(?<=webapp_version = ")[^"]+' app.py)
+          echo "SCHEMA_VERSION=$SCHEMA_VERSION" >> "$GITHUB_ENV"
+          echo "Detected webapp version: $SCHEMA_VERSION"
+      - run: python utils/generate_readme.py -v "$SCHEMA_VERSION"
       - name: Fail if README.md has uncommitted changes
         run: |
           git diff --exit-code README.md || {
-            echo "README.md is out of sync. Run: python utils/generate_readme.py -v v0.9.1"
+            echo "README.md is out of sync. Run: python utils/generate_readme.py -v $SCHEMA_VERSION"
             exit 1
           }
 
   # ── 2. Tester-files integrity ──────────────────────────────────────────────
+  # Each tester CSV has a documented purpose – some are intentionally malformed
+  # to demonstrate error cases the app must surface. The manifest
+  # (tester_manifest.json) declares whether each file is expected to parse
+  # cleanly or expected to raise an exception. This check validates both
+  # outcomes, so adding a broken-on-purpose file never breaks CI.
   tester-files:
-    name: Tester CSV files are valid
+    name: Tester CSV files match manifest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,19 +112,54 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pandas
 
-      - name: Load all tester CSVs with pandas
+      - name: Validate tester CSVs against manifest
         run: |
           python -c "
-          import pandas as pd, pathlib, sys
-          errors = []
-          for p in pathlib.Path('resource/tester_files').glob('*.csv'):
+          import json, pandas as pd, pathlib, sys
+
+          manifest_path = pathlib.Path('resource/tester_files/tester_manifest.json')
+          tester_dir    = pathlib.Path('resource/tester_files')
+
+          with open(manifest_path) as f:
+              manifest = json.load(f)['files']
+
+          csv_files = {p.name for p in tester_dir.glob('*.csv')}
+          declared  = set(manifest.keys())
+
+          failures = []
+
+          # Every CSV on disk must have a manifest entry
+          for name in sorted(csv_files - declared):
+              failures.append(f'MISSING FROM MANIFEST: {name} – add an entry to tester_manifest.json')
+
+          # Every manifest entry must have a file on disk
+          for name in sorted(declared - csv_files):
+              failures.append(f'MANIFEST ENTRY WITHOUT FILE: {name} – remove from tester_manifest.json or add the file')
+
+          # Validate each declared file against its expected outcome
+          for name in sorted(declared & csv_files):
+              entry      = manifest[name]
+              expect_ok  = entry['expect_parse_ok']
+              p          = tester_dir / name
               try:
                   df = pd.read_csv(p)
-                  print(f'OK: {p.name} ({len(df)} rows, {len(df.columns)} cols)')
+                  if expect_ok:
+                      print(f'OK (parsed):   {name} ({len(df)} rows, {len(df.columns)} cols)')
+                  else:
+                      failures.append(
+                          f'UNEXPECTED PARSE SUCCESS: {name} was expected to fail parsing '
+                          f'(reason: {entry[\"reason\"]}) – fix the manifest or the file'
+                      )
               except Exception as e:
-                  errors.append(f'FAIL: {p.name}: {e}')
-          if errors:
-              print('\n'.join(errors), file=sys.stderr)
+                  if not expect_ok:
+                      print(f'OK (expected error): {name}: {e}')
+                  else:
+                      failures.append(f'UNEXPECTED PARSE FAILURE: {name}: {e}')
+
+          if failures:
+              print()
+              for msg in failures:
+                  print(f'FAIL: {msg}', file=sys.stderr)
               sys.exit(1)
           "
 

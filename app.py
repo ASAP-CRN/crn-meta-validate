@@ -17,6 +17,7 @@ Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026
 Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
 Webapp v0.9 (CDE version v4.2, optional v3.4), 04 February 2026
 Webapp v0.9.1 (CDE version v4.2, optional v3.4), 27 February 2026
+Webapp v0.9.2 (CDE version v4.2, optional v3.4), 02 March 2026
 
 Version notes:
 Webapp v0.4:
@@ -58,8 +59,11 @@ Webapp v0.9:
 Webapp v0.9.1:
 * Update to CDE version v4.2 (including Fields for ATAC and Proteomics assays)
 * Add CDE column AllowMultiEnum and funcitonality to allow multiple Enum values for specific fields (e.g. multiple brain regions per sample)
+
+Webapp v0.9.2:
 * Add AssayIntrumentTechnology (AIT) tab to automate definition of intruments and technologies used in each assay, reducing manual work for users
 * Add CDE synchronization evaluation of CDE_current vs. AIT tabs
+* Add load_and_validate_schema function to encapsulate all app configuration from JSON and Google Sheets for public consumption
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)
@@ -73,7 +77,6 @@ Contributors:
 ################################
 #### Imports
 ################################
-import json
 import pandas as pd
 import streamlit as st
 import ast
@@ -83,14 +86,13 @@ import re
 import time
 from collections import defaultdict
 from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
-from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection, read_ValidCategories
+from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
 from utils.find_missing_values import compute_missing_mask, tables_with_missing_values
 from utils.help_menus import (
     CustomMenu,
     build_step1_report_markdown,
-    ensure_step1_other_options,
     render_missing_values_section,
     render_app_intro,
     render_step1_selectbox_with_other_text,
@@ -100,6 +102,7 @@ from utils.help_menus import (
     support_email_message_persistent,
 )
 from utils.template_files import build_templates_zip
+from utils.load_and_validate_schema import load_and_validate_schema
 
 webapp_version = "v0.9.2" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
@@ -117,77 +120,23 @@ load_css("css/css.css")
 ################################
 #### Load app schema from JSON and CDE Google Spreadsheet
 ################################
-app_schema_path = os.path.join(repo_root, "resource", f"app_schema_{webapp_version}.json")
-with open(app_schema_path, "r") as json_file:
-    app_schema = json.load(json_file)
-
-# Extract configuration from app_schema
-cde_version = app_schema['cde_definition']['cde_version']
-old_cde_version = app_schema['cde_definition'].get('old_cde_version')
-allow_old_cde = bool(app_schema['cde_definition'].get('allow_old_cde', False))
-cde_spreadsheet_id = app_schema['cde_definition']['spreadsheet_id']
-cde_current_id=app_schema['cde_definition']['cde_current_sheet_id_for_help']
-default_delimiter = app_schema['default_input_delimiter']
-REQUIRED_TABLES = app_schema['table_names']['required']
-cde_mandatory_fields = app_schema['cde_definition']['cde_mandatory_fields']
-valid_categories_mandatory = app_schema['cde_definition']['valid_categ_mandatory_fields']
-
-# CDE Google Sheet URLs for configuration
-valid_categories_name = "ValidCategories"
-
-AIT_name = "AssayInstrumentTechnology"
-cde_url_base = f"https://docs.google.com/spreadsheets/d/{cde_spreadsheet_id}"
-cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={cde_version}" # CDE version set in app_schema and used for validations.
-valid_categories_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={valid_categories_name}" # ValidCategories used for Step 1 menus.
-cde_google_sheet_current = f"{cde_url_base}/edit?gid={cde_current_id}#gid={cde_current_id}" # Link to CDE_current for help menu.
-
-# Use local resources or Google Sheets. Set to False to use Google Sheets
-use_local = False
-status_CDE_sync = "Status" # Status_CDE_synchronized (v4.2)
-status_CDE_def = "Status_CDE_defined"
-status_AIT = "Status_AssayInstrumentTechnology"
-old_cde_google_sheet = None
-if allow_old_cde and old_cde_version:
-    old_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={old_cde_version}"
-
-# Extract table categories
-SPECIES, SAMPLE_SOURCE, ASSAY_DICT = read_ValidCategories(
-    valid_categories_sheet = valid_categories_sheet,
-    valid_categories_name = valid_categories_name,
-    valid_categories_mandatory = valid_categories_mandatory,
-    status_CDE_sync = status_CDE_sync,
-    status_CDE_def = status_CDE_def,
-    status_AIT = status_AIT,
-    local=use_local,
+app_config = load_and_validate_schema(
+    repo_root=repo_root,
+    webapp_version=webapp_version,
 )
-ASSAY_TYPES = list(ASSAY_DICT.values())  # display labels for the UI
-ASSAY_LABEL_TO_KEY = {label: key for key, label in ASSAY_DICT.items()}
-ASSAY_KEYS = set(ASSAY_DICT.keys())
-
-# Ensure 'Other' is always available in Step 1 dropdowns (independent of app_schema)
-SPECIES, SAMPLE_SOURCE, ASSAY_TYPES, ASSAY_LABEL_TO_KEY, ASSAY_KEYS = ensure_step1_other_options(
-    species_options=SPECIES,
-    sample_source_options=SAMPLE_SOURCE,
-    assay_type_options=ASSAY_TYPES,
-    assay_label_to_key=ASSAY_LABEL_TO_KEY,
-    assay_keys=ASSAY_KEYS,
-)
-
-# Version display for UI
-version_display = f"Web app {webapp_version} - CDE {cde_version}"
 
 ################################
 #### App Setup
 ################################
 
 st.set_page_config(
-    page_title=f"{app_schema['kebab_menu']['page_header']}",
+    page_title=f"{app_config.app_schema['kebab_menu']['page_header']}",
     page_icon="✅",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        "Get help": f"{app_schema['kebab_menu']['get_help_url']}",
-        "About": f"ASAP CRN {version_display}",
+        "Get help": f"{app_config.app_schema['kebab_menu']['get_help_url']}",
+        "About": f"ASAP CRN {app_config.version_display}",
     },
 )
 
@@ -231,20 +180,20 @@ def main():
         st.session_state.file_uploader_key = 0
 
     # Initialize preview rows setting in session state
-    preview_max_rows = app_schema.get('preview_max_rows')
+    preview_max_rows = app_config.app_schema.get('preview_max_rows')
     if 'preview_max_rows' not in st.session_state:
         st.session_state['preview_max_rows'] = preview_max_rows
 
     # Main introduction text
     render_app_intro(
         webapp_version=webapp_version,
-        cde_version=cde_version,
-        cde_google_sheet_url=cde_google_sheet_current,
+        cde_version=app_config.cde_version,
+        cde_google_sheet_url=app_config.cde_google_sheet_current,
     )
 
     # Step 5 can optionally compare against an older CDE version (if enabled in app_schema)
     if "step5_cde_version" not in st.session_state:
-        st.session_state["step5_cde_version"] = cde_version
+        st.session_state["step5_cde_version"] = app_config.cde_version
 
     ############
     ### Step 1: Indicate your Dataset type
@@ -258,7 +207,7 @@ def main():
     
     ############
     ### Render custom menu (replaces hamburger menu)
-    custom_menu = CustomMenu(help_url=app_schema['kebab_menu']['get_help_url'])
+    custom_menu = CustomMenu(help_url=app_config.app_schema['kebab_menu']['get_help_url'])
     custom_menu.render()
 
     ############
@@ -270,7 +219,7 @@ def main():
         species, other_species_value = render_step1_selectbox_with_other_text(
             heading_html='<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
             selectbox_label="Dataset species",
-            selectbox_options=SPECIES,
+            selectbox_options=app_config.SPECIES,
             selectbox_key="step1_species_select",
             selectbox_placeholder="Type to search species…",
             other_text_label="Specify other dataset species",
@@ -281,7 +230,7 @@ def main():
         sample_source, other_sample_source_value = render_step1_selectbox_with_other_text(
             heading_html='<h3 style="font-size: 25px;">Choose sample source <span style="color: red;">*</span></h3>',
             selectbox_label="Sample source",
-            selectbox_options=SAMPLE_SOURCE,
+            selectbox_options=app_config.SAMPLE_SOURCE,
             selectbox_key="step1_sample_source_select",
             selectbox_placeholder="Type to search sample sources…",
             other_text_label="Specify other sample source",
@@ -292,13 +241,13 @@ def main():
         assay_label, other_assay_label_value = render_step1_selectbox_with_other_text(
             heading_html='<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
             selectbox_label="Assay type",
-            selectbox_options=ASSAY_TYPES,
+            selectbox_options=app_config.ASSAY_TYPES,
             selectbox_key="step1_assay_type_select",
             selectbox_placeholder="Type to search assay types…",
             other_text_label="Specify other assay type",
             other_text_key="step1_other_assay_type_text",
         )
-        assay_type = ASSAY_LABEL_TO_KEY.get(assay_label)
+        assay_type = app_config.ASSAY_LABEL_TO_KEY.get(assay_label)
 
     # Collect Step 1 free-text "Other" entries for a step1_report.md file
     if "step1_report_fields" not in st.session_state:
@@ -330,21 +279,21 @@ def main():
     sample_source_success = False
     assay_success = False
 
-    table_list = REQUIRED_TABLES.copy()
+    table_list = app_config.REQUIRED_TABLES.copy()
 
-    if species in SPECIES:
+    if species in app_config.SPECIES:
         species_success = True
         species_specific_table_key = re.sub(r'\s+', '_', f"{species.lower()}_specific")
         # For species without a {species}_specific table_names in the JSON, treat as having no additional tables.
-        species_specific_tables_ls = app_schema["table_names"].get(species_specific_table_key) or []
+        species_specific_tables_ls = app_config.app_schema["table_names"].get(species_specific_table_key) or []
         if not isinstance(species_specific_tables_ls, list):
             species_specific_tables_ls = [species_specific_tables_ls]
         species_specific_tables_ls = [item for item in species_specific_tables_ls if item]
         table_list.extend(species_specific_tables_ls)
 
-        if sample_source in SAMPLE_SOURCE:
+        if sample_source in app_config.SAMPLE_SOURCE:
             sample_source_success = True
-            if assay_type in ASSAY_KEYS:
+            if assay_type in app_config.ASSAY_KEYS:
                 assay_success = True
 
     ############
@@ -358,7 +307,7 @@ def main():
     if len(table_list) > 0:
         table_list_formatted = ", ".join([f"{t}.csv" for t in table_list])
     else:
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               "No expected tables found for the selected Dataset type.")
         st.error(error_message)
         st.stop()
@@ -366,10 +315,10 @@ def main():
     ############
     #### Load CDE
     cde_dataframe, dtype_dict = read_CDE(
-        cde_version=cde_version,
-        cde_google_sheet=cde_google_sheet,
-        cde_mandatory_fields=cde_mandatory_fields,
-        local=use_local,
+        cde_version=app_config.cde_version,
+        cde_google_sheet=app_config.cde_google_sheet,
+        cde_mandatory_fields=app_config.cde_mandatory_fields,
+        local=app_config.use_local,
         local_filename=None,
     )
 
@@ -380,7 +329,7 @@ def main():
     decide_cde_vs_schema_validation(
         app_schema_version=webapp_version,
         cde_dataframe=cde_dataframe,
-        app_schema=app_schema,
+        app_schema=app_config.app_schema,
     )
 
     ############
@@ -602,7 +551,7 @@ def main():
             dfs_default_delimiter_dic[table_name]['delimiter'] = detected_delimiter
             default_delimiter_df, used_encoding, _used_engine, _used_errors_mode = loader._read_with_fallbacks(
                 raw_bytes=file_content,
-                separator=default_delimiter,
+                separator=app_config.default_delimiter,
             )
             dfs_default_delimiter_dic[table_name]["dataframe"] = default_delimiter_df
             dfs_default_delimiter_dic[table_name]["encoding"] = used_encoding
@@ -688,7 +637,7 @@ def main():
     action_ = dfs_default_delimiter_dic[selected_table_name]['action']
     detected_delimiter_ = dfs_default_delimiter_dic[selected_table_name]['delimiter']
     df_default_delimiter_ = dfs_default_delimiter_dic[selected_table_name]["dataframe"]
-    if action_ == 'keep' and detected_delimiter_ != default_delimiter:
+    if action_ == 'keep' and detected_delimiter_ != app_config.default_delimiter:
         selected_raw_df = df_default_delimiter_
         input_dataframes_dic[selected_table_name] = selected_raw_df
         raw_tables_before_fill[selected_table_name] = selected_raw_df
@@ -763,7 +712,7 @@ def main():
         if extra_fields:
             message = (
             f"⚠️ Warning: the following {len(extra_fields)} columns from {selected_table_name} "
-            f"couldn't be found in the CDE {cde_version} and will not be evaluated:  {', '.join(extra_fields)}"
+            f"couldn't be found in the CDE {app_config.cde_version} and will not be evaluated:  {', '.join(extra_fields)}"
             )
             st.warning(message)
 
@@ -967,19 +916,19 @@ def main():
     ############
     ### Step 5: CDE validation
     ############
-    step5_cde_version = st.session_state.get("step5_cde_version", cde_version)
+    step5_cde_version = st.session_state.get("step5_cde_version", app_config.cde_version)
 
-    if allow_old_cde and old_cde_version:
+    if app_config.allow_old_cde and app_config.old_cde_version:
         toggle_key = "step5_use_old_cde"
         if toggle_key not in st.session_state:
-            st.session_state[toggle_key] = (step5_cde_version == old_cde_version)
+            st.session_state[toggle_key] = (step5_cde_version == app_config.old_cde_version)
 
         if st.session_state.get(toggle_key, False):
-            st.session_state["step5_cde_version"] = old_cde_version
-            step5_cde_version = old_cde_version
+            st.session_state["step5_cde_version"] = app_config.old_cde_version
+            step5_cde_version = app_config.old_cde_version
         else:
-            st.session_state["step5_cde_version"] = cde_version
-            step5_cde_version = cde_version
+            st.session_state["step5_cde_version"] = app_config.cde_version
+            step5_cde_version = app_config.cde_version
 
     compare_label = f"📝🆚📝 Compare _{selected_table_name}_ vs. CDE {step5_cde_version}"
     if prepared_df is not None:
@@ -1017,21 +966,23 @@ def main():
         if compare_state_key not in st.session_state:
             st.session_state[compare_state_key] = False
 
-        if allow_old_cde and old_cde_version:
+        if app_config.allow_old_cde and app_config.old_cde_version:
             compare_col, spacer_col_1, spacer_col_2, toggle_col = st.columns([6, 1, 1, 2])
 
             with compare_col:
                 compare_clicked = st.button(compare_label, key=f"compare_{selected_table_name}")
-            with spacer_col_1: st.write("")
-            with spacer_col_2: st.write("")
+            with spacer_col_1:
+                st.write("")
+            with spacer_col_2:
+                st.write("")
             with toggle_col:
                 def _on_step5_cde_toggle_change() -> None:
                     use_old_cde = bool(st.session_state.get("step5_use_old_cde", False))
-                    st.session_state["step5_cde_version"] = old_cde_version if use_old_cde else cde_version
+                    st.session_state["step5_cde_version"] = app_config.old_cde_version if use_old_cde else app_config.cde_version
                     st.session_state[compare_state_key] = False
 
                 st.toggle(
-                    f"Use CDE {old_cde_version}",
+                    f"Use CDE {app_config.old_cde_version}",
                     key="step5_use_old_cde",
                     on_change=_on_step5_cde_toggle_change,
                 )
@@ -1053,17 +1004,17 @@ def main():
 
     ############
     #### Collect results via ReportCollector and run validation
-    if step5_cde_version == cde_version:
+    if step5_cde_version == app_config.cde_version:
         step5_cde_dataframe = cde_dataframe
     else:
-        step5_cde_google_sheet = old_cde_google_sheet
+        step5_cde_google_sheet = app_config.old_cde_google_sheet
         if not step5_cde_google_sheet:
-            step5_cde_google_sheet = f"{cde_url_base}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
+            step5_cde_google_sheet = f"{app_config.cde_url_base}/gviz/tq?tqx=out:csv&sheet={step5_cde_version}"
         step5_cde_dataframe, step5_dtype_dict_unused = read_CDE(
             cde_version=step5_cde_version,
             cde_google_sheet=step5_cde_google_sheet,
-            cde_mandatory_fields=cde_mandatory_fields,
-            local=use_local,
+            cde_mandatory_fields=app_config.cde_mandatory_fields,
+            local=app_config.use_local,
             local_filename=None,
         )
 
@@ -1082,13 +1033,17 @@ def main():
 
     # Perform the validation
     st.info(
-        f"Validating **{selected_table_name}** ({len(selected_table)} rows × {len(selected_table.columns)} columns) vs. CDE {step5_cde_version}"
+        f"Validating **{selected_table_name}** "
+        f"({len(selected_table)} rows × {len(selected_table.columns)} columns) "
+        f"vs. CDE {step5_cde_version}"
     )
 
     # Perform CDE validation. Includes preview of validated table.
-    validated_output_df, validation_report, errors_counter, warnings_counter = validate_table(selected_table, selected_table_name, 
-                                                                                              cde_rules, report, not_filled_table, 
-                                                                                              preview_max_rows, app_schema)
+    validated_output_df, _, errors_counter, _ = validate_table(
+        selected_table, selected_table_name, 
+        cde_rules, report, not_filled_table, 
+        preview_max_rows, app_config.app_schema
+    )
 
     ############
     #### Display validation results and download buttons
@@ -1174,9 +1129,13 @@ def main():
                     <style>.disabled-btn {pointer-events: none; opacity: 0.5;}</style>
                     """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-                    <button class="disabled-btn">{label_for_sanitized_html}<br><span style="font-size: 0.8em;">(File unavailable. Errors must be fixed to download this file)</span>
-                    """, unsafe_allow_html=True,)
+        st.markdown(
+            f'<button class="disabled-btn">{label_for_sanitized_html}<br>'
+            f'<span style="font-size: 0.8em;">'
+            f"(File unavailable. Errors must be fixed to download this file)"
+            f"</span>",
+            unsafe_allow_html=True,
+        )
         
 if __name__ == "__main__":
 

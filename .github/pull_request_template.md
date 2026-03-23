@@ -1,9 +1,10 @@
 ## Description
-<!-- What does this PR do? One or two sentences. -->
+* *why* changes were made
+* *what* changes were made
 
-## Linked issue / ticket
-- [ClickUp](<url>)
-- [GitHub issue](<url>)
+## Dependencies (Issues/PRs)
+[ClickUp Issue](click-up url)
+[GitHub PR](GitHub PR url)
 
 ## Type of change
 - [ ] Bug fix
@@ -13,5 +14,3 @@
 
 ## Task Checklist
 - [ ] Documentation updated
-- [ ] All CI checks pass (lint, smoke-test, schema, readme-sync)
-- [ ] PR description explains *why*, not just *what*
