@@ -77,11 +77,18 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python utils/generate_readme.py -v v0.9.1
+      - name: Read webapp version from app.py
+        run: |
+          # Single source of truth: the webapp_version assignment in app.py.
+          # Update that line when switching versions; the workflow follows automatically.
+          SCHEMA_VERSION=$(grep -Po '(?<=webapp_version = ")[^"]+' app.py)
+          echo "SCHEMA_VERSION=$SCHEMA_VERSION" >> "$GITHUB_ENV"
+          echo "Detected webapp version: $SCHEMA_VERSION"
+      - run: python utils/generate_readme.py -v "$SCHEMA_VERSION"
       - name: Fail if README.md has uncommitted changes
         run: |
           git diff --exit-code README.md || {
-            echo "README.md is out of sync. Run: python utils/generate_readme.py -v v0.9.1"
+            echo "README.md is out of sync. Run: python utils/generate_readme.py -v $SCHEMA_VERSION"
             exit 1
           }
 
