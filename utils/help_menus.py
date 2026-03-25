@@ -1,8 +1,75 @@
-import streamlit as st
 import ast
 import html
+import logging
 from typing import Any, Callable, Dict, List, Tuple
 import sys
+
+try:
+    import streamlit as st
+except ImportError:
+    st = None  # type: ignore[assignment]
+
+_log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Streamlit-aware display helpers
+# ---------------------------------------------------------------------------
+
+def _is_streamlit_running() -> bool:
+    """Return True when executing inside an active Streamlit script context."""
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        return get_script_run_ctx() is not None
+    except Exception:
+        return False
+
+
+def app_error(message: str) -> None:
+    """Display an error message.
+
+    Uses ``st.error`` inside a Streamlit session, ``logging.error`` otherwise.
+    """
+    if _is_streamlit_running():
+        st.error(message)
+    else:
+        _log.error(message)
+
+
+def app_stop() -> None:
+    """Halt execution.
+
+    Uses ``st.stop`` inside a Streamlit session, raises ``SystemExit`` otherwise
+    so that CLI callers receive a clean termination signal rather than continuing
+    silently past an error.
+    """
+    if _is_streamlit_running():
+        st.stop()
+    else:
+        raise SystemExit(1)
+
+
+def app_info(message: str) -> None:
+    """Display an informational message.
+
+    Uses ``st.info`` inside a Streamlit session, ``logging.info`` otherwise.
+    """
+    if _is_streamlit_running():
+        st.info(message)
+    else:
+        _log.info(message)
+
+
+def app_success(message: str) -> None:
+    """Display a success message.
+
+    Uses ``st.success`` inside a Streamlit session, ``logging.info`` otherwise.
+    """
+    if _is_streamlit_running():
+        st.success(message)
+    else:
+        _log.info(message)
+
 
 def get_current_function_name() -> str:
     """
@@ -379,8 +446,8 @@ def render_missing_values_section(
                                                   f"(section: {section_kind}). Please ensure the CDE FillNull "
                                                   "column is complete and reload the app."
                                                   )
-            st.error(error_message)
-            st.stop()
+            app_error(error_message)
+            app_stop()
 
         existing_choice = column_choices.get(field_name, option_labels[0])
         try:
