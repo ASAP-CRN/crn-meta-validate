@@ -35,7 +35,7 @@ nav:
   - Home: index.md
   - User Guide:
     - user-guide/step1-dataset-setup.md
-    - user-guide/step2-template-download.md
+    - user-guide/step2-templates.md
     - user-guide/step3-upload-files.md
     - user-guide/step4-fix-issues.md
     - user-guide/step5-cde-validation.md

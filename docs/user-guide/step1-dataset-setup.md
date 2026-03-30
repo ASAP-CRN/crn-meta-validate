@@ -17,4 +17,4 @@ Use the three dropdown menus to describe your dataset:
 
 ## What happens next
 
-Once all three are selected, a sidebar will appear on the left with a download button for your template CSV files — proceed to [Step 2](step2-template-download.md).
+Once all three are selected, a sidebar will appear on the left with a download button for your template CSV files — proceed to [Step 2](step2-templates.md).
