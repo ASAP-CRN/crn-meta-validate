@@ -5,13 +5,14 @@
 ??? question "What is the CDE?"
     CDE stands for **Common Data Elements** — the ASAP CRN controlled vocabularies that define valid values for specific metadata columns. The current version is hosted as a [Google Sheet](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
 
-??? question "What is an Enum column?"
-    An `Enum` (enumeration) column only accepts values from a predefined list. The valid values are listed in row 5 of the template CSV and enforced during Step 5 validation.
+#### What is an Enum column?
+
+An `Enum` (enumeration) column only accepts values from a predefined list. The valid values are listed in row 5 of the template CSV and enforced during Step 5 validation.
+
+## Files and uploads
 
 ??? question "Do I need to validate all my tables before uploading?"
     Yes — run Steps 1–5 for each CSV file separately. The app handles one table at a time.
-
-## Files and uploads
 
 ??? question "Why can't I click the sanitized CSV download button?"
     The `.cde_compared.csv` download is disabled if your table has any ❌ errors. Fix all errors and re-run the CDE comparison — the button will enable once validation passes cleanly.
