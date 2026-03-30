@@ -38,6 +38,12 @@ Free text boxes allow users to record per-column comments to provide context to 
 
 👉 **[Open the QC App](https://asap-meta-qc.streamlit.app/)**
 
+## Full step-by-step documentation
+The documentation covers all five steps with screenshots, a [FAQ](http://127.0.0.1:8000/crn-meta-validate/faq/), and download instructions.
+Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
+
+📖 **[Full step-by-step documentation](https://asap-crn.github.io/crn-meta-validate/user-guide/step1-dataset-setup/)**
+
 ---
 
 For questions or to report a bug, email [support@dnastack.com](mailto:support@dnastack.com) or open a [GitHub issue](https://github.com/ASAP-CRN/crn-meta-validate/issues).
