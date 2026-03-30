@@ -1,19 +1,23 @@
 name: Deploy MkDocs to GitHub Pages
 
-# Deploys the MkDocs docs site to GitHub Pages on every push to main.
+# Deploys the MkDocs docs site to GitHub Pages on every push to dev or main.
+# - dev: for validation before merging to main. Remove 'dev' once validated.
+# - main: production deploys.
 # Requires GitHub Pages source to be set to "GitHub Actions" in repo settings:
 # https://github.com/ASAP-CRN/crn-meta-validate/settings/pages
+# Note: workflow_dispatch (manual trigger) only works on the default branch (main).
 
 on:
   push:
     branches:
+      - dev        # remove once docs are validated and merged to main
       - main
-      - dev
     paths:
       - "docs/**"
       - "mkdocs.yml"
       - "CHANGELOG.md"
-  workflow_dispatch:   # allow manual trigger from GitHub Actions UI
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:   # manual trigger — only available on default branch (main)
 
 permissions:
   contents: read
