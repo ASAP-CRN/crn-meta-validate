@@ -54,6 +54,7 @@ jobs:
           sys.path.insert(0, str(pathlib.Path('.').resolve()))
           from utils import validate, cde, delimiter_handler, find_missing_values
           from utils import help_menus, processed_data_loader, template_files
+          from utils import load_and_validate_schema
           print('All utils modules imported successfully.')
           "
 
@@ -85,8 +86,36 @@ jobs:
               sys.exit(1)
           "
 
-  # ── 4. README / help_menus sync check ─────────────────────────────────────
-  # Temporarily disabled while MkDocs docs are being set up.
-  # Re-enable once generate_readme.py is updated to target both
-  # README.md and docs/index.md.
-  # readme-sync: ...
+  # ── 4. README + docs/index.md sync check ─────────────────────────────────
+  readme-sync:
+    name: README and docs/index.md in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Read webapp version from app.py
+        run: |
+          SCHEMA_VERSION=$(grep -Po '(?<=webapp_version = ")[^"]+' app.py)
+          echo "SCHEMA_VERSION=$SCHEMA_VERSION" >> "$GITHUB_ENV"
+          echo "Detected webapp version: $SCHEMA_VERSION"
+
+      - name: Regenerate intro and check for uncommitted diff
+        run: python utils/generate_readme.py -v "$SCHEMA_VERSION"
+
+      - name: Fail if README.md or docs/index.md has uncommitted changes
+        run: |
+          git diff --exit-code README.md docs/index.md || {
+            echo ""
+            echo "README.md or docs/index.md is out of sync with help_menus.get_app_intro_markdown()."
+            echo "Run: python utils/generate_readme.py -v $SCHEMA_VERSION"
+            echo "then commit the result before merging."
+            exit 1
+          }

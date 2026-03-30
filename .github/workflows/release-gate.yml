@@ -39,6 +39,7 @@ jobs:
           sys.path.insert(0, str(pathlib.Path('.').resolve()))
           from utils import validate, cde, delimiter_handler, find_missing_values
           from utils import help_menus, processed_data_loader, template_files
+          from utils import load_and_validate_schema
           print('All utils modules imported successfully.')
           "
 
@@ -68,7 +69,7 @@ jobs:
           "
 
   readme-sync:
-    name: README in sync with help_menus
+    name: README and docs/index.md in sync
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,10 +86,10 @@ jobs:
           echo "SCHEMA_VERSION=$SCHEMA_VERSION" >> "$GITHUB_ENV"
           echo "Detected webapp version: $SCHEMA_VERSION"
       - run: python utils/generate_readme.py -v "$SCHEMA_VERSION"
-      - name: Fail if README.md has uncommitted changes
+      - name: Fail if README.md or docs/index.md has uncommitted changes
         run: |
-          git diff --exit-code README.md || {
-            echo "README.md is out of sync. Run: python utils/generate_readme.py -v $SCHEMA_VERSION"
+          git diff --exit-code README.md docs/index.md || {
+            echo "README.md or docs/index.md is out of sync. Run: python utils/generate_readme.py -v $SCHEMA_VERSION"
             exit 1
           }
 
@@ -174,12 +175,14 @@ jobs:
 
       - name: Check if app_schema changed without a new versioned file
         run: |
-          # Warn (not fail) if app_schema_v0.9.1.json was modified but no new
-          # app_schema_v*.json was added – a signal that a version bump may be needed.
+          # Read the current webapp version from app.py (single source of truth).
+          SCHEMA_VERSION=$(grep -Po '(?<=webapp_version = ")[^"]+' app.py)
+          echo "Detected webapp version: $SCHEMA_VERSION"
+
           CHANGED=$(git diff --name-only origin/main...HEAD -- 'resource/app_schema*.json')
           ADDED=$(git diff --name-only --diff-filter=A origin/main...HEAD -- 'resource/app_schema*.json')
           if [ -n "$CHANGED" ] && [ -z "$ADDED" ]; then
-            echo "::warning file=resource/app_schema_v0.9.1.json::app_schema JSON was modified but no new versioned file was added. Consider bumping the schema version."
+            echo "::warning file=resource/app_schema_${SCHEMA_VERSION}.json::app_schema JSON was modified but no new versioned file was added. Consider bumping the schema version."
           else
             echo "Schema versioning looks good."
           fi
