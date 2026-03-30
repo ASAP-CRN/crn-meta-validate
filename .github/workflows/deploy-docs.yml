@@ -10,7 +10,6 @@ name: Deploy MkDocs to GitHub Pages
 on:
   push:
     branches:
-      - dev        # remove once docs are validated and merged to main
       - main
     paths:
       - "docs/**"
