@@ -1,69 +1,12 @@
 """
 ASAP CRN metadata quality control (QC) app
 
-GitHub repository:
-https://github.com/ASAP-CRN/crn-meta-validate
-
+GitHub repository: https://github.com/ASAP-CRN/crn-meta-validate
 Web app production version: https://asap-meta-qc.streamlit.app/
-Web app staging version: https://asap-crn-crn-meta-validate-app-update-streamlit-newmodal-m1gdf4.streamlit.app/
+Web app staging version: https://dev-asap-meta-qc.streamlit.app/
+Help for users: https://asap-crn.github.io/crn-meta-validate/
 Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files
-
-Webapp v0.2 (CDE version v2), 20 August 2023
-Webapp v0.3 (CDE version v3), 01 April 2025
-Webapp v0.4 (CDE version v3.3-beta), 13 November 2025
-Webapp v0.5 (CDE version v3.4), 25 November 2025
-Webapp v0.6 (CDE version v4.0), 01 December 2025
-Webapp v0.7 (CDE version v4.0, optional v3.4), 20 January 2026 
-Webapp v0.8 (CDE version v4.1, optional v3.4), 02 February 2026
-Webapp v0.9 (CDE version v4.2, optional v3.4), 04 February 2026
-Webapp v0.9.1 (CDE version v4.2, optional v3.4), 27 February 2026
-Webapp v0.9.2 (CDE version v4.2, optional v3.4), 02 March 2026
-
-Version notes:
-Webapp v0.4:
-* CDE version is provided in resource/app_schema_{webapp_version}.json and loaded via utils/cde.py
-* Added supported species, assay and sample_source dropdowns to select expected tables
-* Added reset button to sidebar, reset cache and file uploader
-* Added app_schema to manage app configuration
-* Added Classes for DelimiterHandler and ProcessedDataLoader to utils/
-* Improved delimiter detection
-* Improved file upload handling and status display
-
-Webapp v0.5:
-* Assit users to fillout missing values on each column via radio buttons, free text or dropdown menus
-* Improved detection of missing values in utils/find_missing_values.py
-* Comparison of each column vs. CDE using both Validation and FillNull rules
-* Adds download button for pre-CDE-validated sanitized CSV
-
-Webapp v0.6:
-* Update to use CDE version v4.0
-* Using Assay Type for the dropdown menu instead of Modality
-* Provide template files as a zipped URL in Expected files section
-* Adds free-text box for user comments on each column (to be included in final report)
-* Makes dropdown menus searchable
-* Standardizes logs, documentation and aesthetics across the app
-* Adds colours to final table preview based on missing values and invalid vs. CDE status
-
-Webapp v0.7:
-* Fix bug accepting malformed Pandas dataframes
-* Allow switching between CDE versions for Step 5 validation (if enabled in app_schema)
-
-Webapp v0.8:
-* Fix bug not using Specific[Species|SampleSource|Assay] filters when building template files and validating tables
-* Slim down coloured logs and direct used to "see below" sections details on missing columns and invalid values
-* Add free-text box for "Other" entries in Step 1 dropdowns
-
-Webapp v0.9:
-* Remove table_categories from app_schema.JSON, now loaded from CDE Spreadsheet ValidCategories
-
-Webapp v0.9.1:
-* Update to CDE version v4.2 (including Fields for ATAC and Proteomics assays)
-* Add CDE column AllowMultiEnum and funcitonality to allow multiple Enum values for specific fields (e.g. multiple brain regions per sample)
-
-Webapp v0.9.2:
-* Add AssayIntrumentTechnology (AIT) tab to automate definition of intruments and technologies used in each assay, reducing manual work for users
-* Add CDE synchronization evaluation of CDE_current vs. AIT tabs
-* Add load_and_validate_schema function to encapsulate all app configuration from JSON and Google Sheets for public consumption
+Version history: https://github.com/ASAP-CRN/crn-meta-validate/blob/main/CHANGELOG.md
 
 Authors:
 - [Andy Henrie](https://github.com/ergonyc)

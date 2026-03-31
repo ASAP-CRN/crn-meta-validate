@@ -33,7 +33,7 @@
   "default_input_delimiter": ",",
   "kebab_menu": {
     "email": "support@dnastack.com",
-    "get_help_url": "https://github.com/ASAP-CRN/crn-meta-validate/tree/main?tab=readme-ov-file#how-to-use-the-web-app",
+    "get_help_url": "https://asap-crn.github.io/crn-meta-validate/",
     "page_header": "ASAP CRN metadata quality control (QC) app"
   },
   "table_names": {

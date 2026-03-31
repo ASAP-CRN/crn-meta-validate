@@ -62,7 +62,6 @@ Two types of issues will be reported:
 
 Free text boxes allow users to record per-column comments to provide context to data curators during review.
 
-
 <!-- APP_INTRO_END -->
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
@@ -70,57 +69,12 @@ Free text boxes allow users to record per-column comments to provide context to 
 <!-- GETTING STARTED / WEB APP -->
 ## How to use the web app
 
-#### Go to the [web app URL](https://asap-meta-qc.streamlit.app/)     
-#### Step 1 -- Set up your run:   
-  * In the dropdown menus, specify the following properties for your Dataset:    
-    * `Species`    
-    * `Tissue/Cell origin`   
-    * `Assay type`    
-#### Step 2 -- A left-side menu will appear, including:
-  * A button to download a *zip file with `template CSV files` for your Dataset
-  * Each CSV file will have six rows:      
-    1. Column headers      
-    2. Column descriptions      
-    3. Column data types. One of four types:      
-          - Integer (numeric, e.g. 0, 1, 2, 3, etc.)      
-          - Float (numeric, e.g. 0.1, 1.2, 10.1, etc.)      
-          - String (free form text)      
-          - Enum (controlled vocabularies, see Validation vs. the CDE below)      
-    4. Column required status      
-          - Required (mandatory columns)      
-          - Optional (optional columns)      
-    5. Column validation rules      
-          - For Enum data type, provides a list of valid values      
-          - For non-Enum data types, validation only requires to match data type
-    6. Values to fill out Column
-          - Valid values to fill out missing values
-#### Step 3 -- Upload your Dataset CSV files
-  * We encourage users to fill out the CSV templates programatically to avoid typos and Excel issues handling date-like strings, etc.
-  * If you used the template files from Step 2, remove the helper rows 2 to 6 (i.e. keep only the Column headers and your actual Dataset metadata).
-  * Once filled out, upload your CSV files via the `Drag & drop box` or the `Browse button`.
-  * Each of your CSV files will become a `TABLE` in the app memory.
-#### Step 4 -- Fix common issues
-  * Follow the app instructions to `fix common issues`, (e.g non-comma delimiters and missing values).     
-  * For each colum with missing values, a free text box is provided to `Record comments` for ASAP curators.    
-#### Step 5 -- Validate vs. the CDE
-  * Compare each `TABLE` vs. the [ASAP CRN controlled vocabularies (CDE)](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing).
-  * The app will report missing columns and value mismatches vs. the CDE.
-  * A log for each `TABLE column` will be provided, including:
-    * ✅ **Successful** steps.    
-    * ❌ **Errors** to be fixed by _data contributors_ before uploading the CSV file to ASAP Google Cloud buckets.   
-    * ⚠️ **Warnings** which the authors may opt to fix or not, depending on the dataset experiment configuration.   
-  * For each colum with CDE validation issues, a free text box is provided to `Record comments` for ASAP curators.    
-  * At the end, three files can be downloaded:
-    * A `TABLE.md` markup file with each `TABLE` run report.   
-    * A `TABLE_comments.md` markup file with user column-level comments that can be provided to ASAP curators.   
-    * A sanitized `TABLE.cde_compared.csv` file. Note: button will be enabled only if no errors were found. You can upload this file to its Google bucket (see [Notes](#notes)).
+👉 **[Open the app](https://asap-meta-qc.streamlit.app/)**
 
-### Notes:
-* If you have multiple datasets to validate, complete steps 1 to 5 for each Dataset separately.     
-* Upload your final files to the Google bucket following [these instructions](https://docs.google.com/document/d/1Bicp20M0Zi_dc2-4nQJZwOCy5E20LJte0wT9pgKeVag/edit?usp=sharing).     
-* Once you've completed uploading your metadata, raw data, and artifacts to the Google bucket, inform our [data manager](matthieu.darracq@dnastack.com). We will notify you if any issues are found.     
-* We are here to help. [Contact us](#contact-report-bugs-and-request-features) if you have questions.    
-* Example CSV files to test the app can be downloaded from [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
+📖 **[Full step-by-step documentation](https://asap-crn.github.io/crn-meta-validate/)**
+
+The documentation covers all five steps with screenshots, a FAQ, and download instructions.     
+Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 
@@ -147,6 +101,11 @@ git clone git@github.com:ASAP-CRN/crn-meta-validate.git
 streamlit run app.py
 ```
 
+5. Run the MkDocs locally
+```bash
+mkdocs serve
+```
+
 ### Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have a suggestion that would make this better, please do this and thanks again!
 1. Fork the Project
@@ -167,6 +126,7 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- AUTHORS -->
 ## Authors
+- [DNAstack Bioinformatics](https://github.com/orgs/ASAP-CRN/teams/dnastack-asap-bioinformatics-team)
 - [Javier Diaz](https://github.com/jdime)
 - [Andy Henrie](https://github.com/ergonyc)
 

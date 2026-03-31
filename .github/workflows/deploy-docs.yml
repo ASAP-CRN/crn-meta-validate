@@ -1,0 +1,57 @@
+name: Deploy MkDocs to GitHub Pages
+
+# Deploys the MkDocs docs site to GitHub Pages on every push to dev or main.
+# - dev: for validation before merging to main. Remove 'dev' once validated.
+# - main: production deploys.
+# Requires GitHub Pages source to be set to "GitHub Actions" in repo settings:
+# https://github.com/ASAP-CRN/crn-meta-validate/settings/pages
+# Note: workflow_dispatch (manual trigger) only works on the default branch (main).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "CHANGELOG.md"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:   # manual trigger — only available on default branch (main)
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build and deploy MkDocs
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install MkDocs Material
+        run: pip install -r requirements-dev.txt
+
+      - name: Build MkDocs site
+        run: mkdocs build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

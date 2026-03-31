@@ -1,0 +1,63 @@
+site_name: ASAP CRN Metadata QC App
+site_url: https://asap-crn.github.io/crn-meta-validate/
+site_description: Step-by-step guide for validating ASAP CRN metadata before uploading to Google buckets
+site_author: DNAstack Bioinformatics
+
+repo_name: ASAP-CRN/crn-meta-validate
+repo_url: https://github.com/ASAP-CRN/crn-meta-validate
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs          # top-level sections as tabs
+    - navigation.tabs.sticky   # sticky top-menu tabs on scroll
+    - navigation.sections      # expand sections in sidebar
+    - navigation.expand        # User Guide open by default
+    - navigation.top           # back-to-top button
+    - content.action.edit      # "edit this page" button
+    - search.highlight
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - User Guide:
+    - user-guide/step1-dataset-setup.md
+    - user-guide/step2-templates.md
+    - user-guide/step3-upload-files.md
+    - user-guide/step4-fix-issues.md
+    - user-guide/step5-cde-validation.md
+  - Changelog: changelog.md
+  - FAQ: faq.md
+  - About: about.md
+
+markdown_extensions:
+  - admonition          # !!! tip / warning / note blocks
+  - pymdownx.details    # collapsible admonitions
+  - pymdownx.superfences
+  - pymdownx.snippets   # --8<-- file inclusion (e.g. docs/changelog.md → CHANGELOG.md)
+  - attr_list           # image sizing: { width="600" }
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra_css:
+  - assets/css/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ASAP-CRN/crn-meta-validate
