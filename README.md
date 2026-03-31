@@ -126,6 +126,7 @@ Contributions are what make the open source community such an amazing place to l
 
 <!-- AUTHORS -->
 ## Authors
+- [DNAstack Bioinformatics](https://github.com/orgs/ASAP-CRN/teams/dnastack-asap-bioinformatics-team)
 - [Javier Diaz](https://github.com/jdime)
 - [Andy Henrie](https://github.com/ergonyc)
 
