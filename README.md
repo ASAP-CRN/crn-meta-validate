@@ -101,6 +101,11 @@ git clone git@github.com:ASAP-CRN/crn-meta-validate.git
 streamlit run app.py
 ```
 
+5. Run the MkDocs locally
+```bash
+mkdocs serve
+```
+
 ### Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have a suggestion that would make this better, please do this and thanks again!
 1. Fork the Project
