@@ -1,7 +1,7 @@
 site_name: ASAP CRN Metadata QC App
 site_url: https://asap-crn.github.io/crn-meta-validate/
 site_description: Step-by-step guide for validating ASAP CRN metadata before uploading to Google buckets
-site_author: Javier Diaz, Andy Henrie
+site_author: Javier Diaz
 
 repo_name: ASAP-CRN/crn-meta-validate
 repo_url: https://github.com/ASAP-CRN/crn-meta-validate
@@ -24,6 +24,7 @@ theme:
         name: Switch to light mode
   features:
     - navigation.tabs          # top-level sections as tabs
+    - navigation.tabs.sticky   # sticky top-menu tabs on scroll
     - navigation.sections      # expand sections in sidebar
     - navigation.expand        # User Guide open by default
     - navigation.top           # back-to-top button
