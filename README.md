@@ -106,13 +106,32 @@ streamlit run app.py
 mkdocs serve
 ```
 
-### Contributing
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have a suggestion that would make this better, please do this and thanks again!
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
+
+### External Contributors
+
+If you don't have write access to this repository, use the fork-based workflow:
+
+1. Fork the repository
+2. Clone your fork (`git clone https://github.com/your-username/repo-name`)
+3. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
+
+### Internal Contributors
+
+If you have write access to this repository, you can skip the fork:
+
+1. Clone the repository (`git clone https://github.com/org/repo-name`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+When suggesting changes, use the PR model above — do not push directly to `main`.
 
 <p align="right">(<a href="#crn-meta-validate">back to top</a>)</p>
 

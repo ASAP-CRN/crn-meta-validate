@@ -118,9 +118,21 @@ Claude is used in this repo primarily for:
 
 ## Pull Requests
 
-Contributions follow the standard fork-and-PR model:
-1. Fork the repo and create a feature branch.
-2. Commit changes with a descriptive message.
-3. Open a Pull Request against `main`.
+External contributors wo don't have write access to this repository, should the fork-based workflow:
+
+1. Fork the repository
+2. Clone your fork (`git clone https://github.com/your-username/repo-name`)
+3. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
+
+Internal contributors (i.e. who have write access to this repository) can skip the fork:
+
+1. Clone the repository (`git clone https://github.com/org/repo-name`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 When suggesting changes, use the PR model above — do not push directly to `main`.
