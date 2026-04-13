@@ -118,7 +118,7 @@ Claude is used in this repo primarily for:
 
 ## Pull Requests
 
-External contributors wo don't have write access to this repository, should the fork-based workflow:
+External contributors wo don't have write access to this repository, use the fork-based workflow:
 
 1. Fork the repository
 2. Clone your fork (`git clone https://github.com/your-username/repo-name`)
