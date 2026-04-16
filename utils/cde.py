@@ -354,7 +354,9 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    if cde_version in ["v3.4", "v4.0", "v4.1", "v4.2"]:
+    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3"]
+
+    if cde_version in supported_cde_versions:
         return f"ASAP_CDE_{cde_version}"
     else:
         error_message = support_email_message(get_current_function_name(), 
