@@ -21,20 +21,20 @@ from utils.delimiter_handler import format_dataframe_for_preview, build_styled_p
 NULL = NULL_SENTINEL  ## Canonical token used for null-like values in *_sanitized.csv files
 
 def build_bullet_invalid_details_markdown(
-        column_name: str, 
-        hover_text: str, 
-        column_type: str, 
-        n_invalid_vals: int, 
-        invalid_descr: str, 
+        column_name: str,
+        hover_text: str,
+        column_type: str,
+        n_invalid_vals: int,
+        invalid_descr: str,
         valid_descr: str,
         table_name: str,
         ) -> None:
-    
+
     # HTML bullet with hover tooltip around column_name
     bullet_text = f"""
     <ul style="margin:0; padding-left:20px;">
     <li>
-        <b>{column_type}</b> column 
+        <b>{column_type}</b> column
         <span class="tooltip-wrapper">
             <span class="missing-hover">{column_name}</span>
             <span class="tooltip-text">{hover_text}</span>
@@ -100,7 +100,7 @@ def columnize( itemlist ):
         return f"- {itemlist[0]}{NEWLINE_DASH.join(itemlist[1:])}"
     else:
         return f"- {itemlist[0]}"
-    
+
 def read_meta_table(table_path):
     # read the whole table
     try:
@@ -111,7 +111,7 @@ def read_meta_table(table_path):
     # drop the first column if it is just the index
     if table_df.columns[0] == "Unnamed: 0":
         table_df = table_df.drop(columns=["Unnamed: 0"])
-        
+
     return table_df
 
 def parse_literal_list(raw):
@@ -307,26 +307,26 @@ class ReportCollector:
 
     def add_header(self, msg):
         self.entries.append(("header", msg))
-        if self.publish_to_streamlit:    
+        if self.publish_to_streamlit:
             st.header(msg)
 
     def add_subheader(self, msg):
         self.entries.append(("subheader", msg))
-        if self.publish_to_streamlit:    
+        if self.publish_to_streamlit:
             st.subheader(msg)
 
     def add_divider(self):
         self.entries.append(("divider", None))
-        if self.publish_to_streamlit:    
+        if self.publish_to_streamlit:
             st.divider()
 
-    
+
     def write_to_file(self, filename):
         self.filename = filename
         with open(filename, 'w') as f:
             report_content = self.get_log()
             f.write(report_content)
-    
+
 
     def get_log(self):
         """ grab logged information from the log file."""
@@ -342,7 +342,7 @@ class ReportCollector:
                 report_content += f"## {msg}\n"
             elif msg_type == "divider":
                 report_content += 60*'-' + '\n'
-        
+
         return "".join(report_content)
 
     def reset(self):
@@ -356,10 +356,10 @@ def decide_cde_vs_schema_validation(
         app_schema_version: str,
         cde_dataframe: pd.DataFrame,
         app_schema: dict,
-        ): 
+        ):
     """
     Decide whether to validate app_schema categories against CDE Validation lists or not
-    
+
     Parameters
     ----------
     app_schema_version: str
@@ -449,8 +449,8 @@ def validate_cde_vs_schema(cde_dataframe: pd.DataFrame, app_schema: dict, keys_c
     logger.info("OK: %s matches %s", label_left, label_right)
     return True
 
-def validate_table(df_after_fill: pd.DataFrame, table_name: str, 
-                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None, 
+def validate_table(df_after_fill: pd.DataFrame, table_name: str,
+                   specific_cde_df: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None,
                    preview_max_rows=None, app_schema=None):
     """
     Validate the table against the specific table entries from the CDE
@@ -499,6 +499,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
     total_required = 0
     total_optional = 0
     for column in specific_cde_df["Field"]:
+
         entry_idx = specific_cde_df["Field"]==column
 
         opt_req = "REQUIRED" if specific_cde_df.loc[entry_idx, "Required"].item()=="Required" else "OPTIONAL"
@@ -605,11 +606,9 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
                     allow_multi_raw = None
                 else:
                     allow_multi_raw = specific_cde_df.loc[entry_idx, "AllowMultiEnum"].item()
-                allow_multi = (
-                    str(allow_multi_raw).strip().lower() in ("true", "1", "yes")
-                    if allow_multi_raw is not None and str(allow_multi_raw).strip().lower() not in ("nan", "none", "")
-                    else False
-                )
+                # Excel stores 1 as np.float64(1.0); str(1.0) == "1.0", not "1".
+                _raw_str = str(allow_multi_raw).strip().lower() if allow_multi_raw is not None else ""
+                allow_multi = _raw_str in ("true", "1", "1.0", "yes")
 
                 entries = df_after_fill[column]
 
@@ -697,7 +696,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
             # Freeform dtype == String
             else:
                 pass
-            
+
             if column in df_for_missing_check.columns:
                 missing_mask_for_column = compute_missing_mask(df_for_missing_check[column])
                 n_null = int(missing_mask_for_column.sum())
@@ -868,9 +867,9 @@ def get_invalid_status_rows(
         The expected valid startwith(expected_status) (e.g., "Ok: ").
     transient_statuses: list[str]
         List of transient status values (e.g., ["Loading...", ""]).
-    
+
     Returns
-    ------- 
+    -------
     invalid_rows: pd.DataFrame
         Rows where the value of column_with_status does not start with expected_status.
     transient_rows: pd.DataFrame
@@ -878,7 +877,7 @@ def get_invalid_status_rows(
     hard_invalid_rows: pd.DataFrame
         Rows where the value of column_with_status is neither expected_status nor in transient_statuses.
     """
-    
+
     status_series = (
         df_with_status[column_with_status]
         .fillna("")
