@@ -174,7 +174,7 @@ span.st-emotion-cache-1sct1q3.e1d2qte94 {
 }
 
 /* ============================================
-   FIXED: Replace default "Drag and drop files here" text
+   FIXED: Replace default "Drag and drop files" text
    Generic approach: works across different Streamlit versions/deployments
    ============================================ */
 
@@ -187,6 +187,14 @@ section[data-testid="stFileUploaderDropzone"] * {
 section[data-testid="stFileUploaderDropzone"] button,
 section[data-testid="stFileUploaderDropzone"] button * {
     font-size: 16px !important;
+}
+
+/* Restore font-size for uploaded file name chips
+   (Streamlit moved the file list inside the dropzone in newer versions)
+   Correct testids confirmed from DOM: stFileChip / stFileChipName */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"],
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] * {
+    font-size: 14px !important;
 }
 
 /* Add custom text using ::before on the main dropzone container */
@@ -216,9 +224,13 @@ section[data-testid="stFileUploaderDropzone"] button {
     margin-bottom: 0 !important;
 }
 
-/* Hide the cloud upload icon */
+/* Hide the cloud upload icon (but not icons inside file chips) */
 section[data-testid="stFileUploaderDropzone"] svg {
     display: none !important;
+}
+/* Restore SVG icons inside file chips (file-type icon on left, delete × on right) */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] svg {
+    display: inline-block !important;
 }
 
 /* Optional: subtle border to match app buttons */
