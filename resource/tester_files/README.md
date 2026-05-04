@@ -1,13 +1,13 @@
 ## Metadata validator for ASAP CRN metadata test infiles
 
-These files are based on the structure of the CDE v4.1 tables.
+These files are based on the structure of the CDE v4.4 tables.
 
 ---
 
 #### DATA.csv
 * This file is **semicolon-delimited**. The app can handle comma-, semicolon-, and tab-delimited files.
 * A warning on column `gcp_bucket` not being part of the CDE and hence not being evaluated will be produced.
-* After filling out missing values and comparing vs. CDE v4.1, the log will produce the following **Error**:
+* After filling out missing values and comparing vs. CDE v4.4, the log will produce the following **Error**:
   * Required column `adjustment` has 1 invalid value
     * Invalid value: `'corrected and normalized'` (which is not one of the expected values for this column)
     * Expected: `'Raw'`, `'Processed'`
@@ -19,7 +19,7 @@ These files are based on the structure of the CDE v4.1 tables.
 
 #### PROTOCOL.csv
 * This file is **semicolon-delimited**. The app can handle comma-, semicolon-, and tab-delimited files.
-* After filling out missing values and comparing vs. CDE v4.1, the log will produce **no errors**.
+* After comparing vs. CDE v4.4, the log will produce **no errors**.
 * The user can download `PROTOCOL_after_cde_comparison.csv`, rename it to `PROTOCOL.csv`, and upload it to the dataset Google bucket.
 
 ---
@@ -27,7 +27,7 @@ These files are based on the structure of the CDE v4.1 tables.
 #### SAMPLE.csv
 * This is a **comma-delimited** CSV file.
 * All columns are filled out with 'NA' when data is not available
-* After filling out missing values and comparing vs. CDE v4.1, the log will produce the following **Error**:
+* After filling out missing values and comparing vs. CDE v4.4, the log will produce the following **Error**:
   * Required column `condition_id` has 2 invalid values
     * Invalid value: `'IBD'`
     * Expected: `'PD'`, `'Control'`, `'Prodromal'`, `'Other'`

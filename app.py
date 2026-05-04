@@ -47,7 +47,7 @@ from utils.help_menus import (
 from utils.template_files import build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
-webapp_version = "v0.9.2" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.3" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 

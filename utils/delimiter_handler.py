@@ -240,7 +240,9 @@ class DelimiterHandler:
                 delimiter_scores[delim] = -1.0
                 continue
 
-            # Weighted score: consistency dominates; higher median_count slightly preferred
+            # Weighted score: consistency (0–100) dominates; median_count adds a small
+            # tiebreaker bonus and intentionally pushes the raw score above 100 for
+            # high-column-count files. The clamp below caps confidence at 100.
             delimiter_scores[delim] = (consistency * 100.0) + float(median_count)
 
         # Choose best delimiter; fall back to comma
@@ -418,7 +420,7 @@ class DelimiterHandler:
         preview_df: Optional[pd.DataFrame],
         file_key: str,
     ):
-        st.info(f"**{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0%}).")
+        st.info(f"**{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0f}%).")
         if preview_df is not None:
             rows_to_show = st.session_state.get('preview_max_rows', 10)
             preview_df_formatted = format_dataframe_for_preview(preview_df)
