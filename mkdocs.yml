@@ -48,7 +48,7 @@ markdown_extensions:
   - admonition          # !!! tip / warning / note blocks
   - pymdownx.details    # collapsible admonitions
   - pymdownx.superfences
-  - pymdownx.snippets   # --8<-- file inclusion (e.g. docs/changelog.md → CHANGELOG.md)
+  - pymdownx.snippets: base_path: ["."]   # resolve --8<-- paths from repo root (e.g. CHANGELOG.md)
   - attr_list           # image sizing: { width="600" }
   - md_in_html
   - toc:
