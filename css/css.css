@@ -190,9 +190,10 @@ section[data-testid="stFileUploaderDropzone"] button * {
 }
 
 /* Restore font-size for uploaded file name chips
-   (Streamlit moved the file list inside the dropzone in newer versions) */
-section[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderFile"],
-section[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderFile"] * {
+   (Streamlit moved the file list inside the dropzone in newer versions)
+   Correct testids confirmed from DOM: stFileChip / stFileChipName */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"],
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] * {
     font-size: 14px !important;
 }
 
