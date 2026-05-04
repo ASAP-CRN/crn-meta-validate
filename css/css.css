@@ -174,7 +174,7 @@ span.st-emotion-cache-1sct1q3.e1d2qte94 {
 }
 
 /* ============================================
-   FIXED: Replace default "Drag and drop files here" text
+   FIXED: Replace default "Drag and drop files" text
    Generic approach: works across different Streamlit versions/deployments
    ============================================ */
 
@@ -187,6 +187,13 @@ section[data-testid="stFileUploaderDropzone"] * {
 section[data-testid="stFileUploaderDropzone"] button,
 section[data-testid="stFileUploaderDropzone"] button * {
     font-size: 16px !important;
+}
+
+/* Restore font-size for uploaded file name chips
+   (Streamlit moved the file list inside the dropzone in newer versions) */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderFile"],
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderFile"] * {
+    font-size: 14px !important;
 }
 
 /* Add custom text using ::before on the main dropzone container */
