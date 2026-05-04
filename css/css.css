@@ -224,9 +224,13 @@ section[data-testid="stFileUploaderDropzone"] button {
     margin-bottom: 0 !important;
 }
 
-/* Hide the cloud upload icon */
+/* Hide the cloud upload icon (but not icons inside file chips) */
 section[data-testid="stFileUploaderDropzone"] svg {
     display: none !important;
+}
+/* Restore SVG icons inside file chips (file-type icon on left, delete × on right) */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] svg {
+    display: inline-block !important;
 }
 
 /* Optional: subtle border to match app buttons */
