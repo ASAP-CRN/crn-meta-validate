@@ -14,10 +14,8 @@ import streamlit as st
 
 from utils.validate_core import (
     NULL,
-    NULL_SENTINEL,
     ReportCollector,
     compose_validation_report,
-    emoji_error,
     emoji_success,
     emoji_warning,
     normalize_null_like_dataframe,
@@ -369,7 +367,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
     -------
     tuple
         df_after_fill : pd.DataFrame
-            Table after filling out missing columns with `NULL_SENTINEL`.
+            Table after filling out missing columns with `NULL`.
         validation_report : ReportCollector
             Collector with all messages appended.
         errors_counter : int
