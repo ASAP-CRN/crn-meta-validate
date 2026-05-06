@@ -28,7 +28,9 @@ import os
 import re
 import time
 from collections import defaultdict
-from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
+from utils.validate_core import ReportCollector, get_extra_columns_not_in_cde
+from utils.validate_ui import validate_table, decide_cde_vs_schema_validation
+# from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader

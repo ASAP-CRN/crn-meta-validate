@@ -19,8 +19,10 @@ from utils.help_menus import (
     app_info,
     app_success,
 )
-from utils.validate import read_valid_categories_with_status_retry, get_invalid_status_rows
-
+from utils.validate_core import (
+    read_valid_categories_with_status_retry,
+    get_invalid_status_rows,
+)
 
 
 # @st.cache_data
