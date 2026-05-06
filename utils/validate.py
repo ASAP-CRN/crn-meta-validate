@@ -110,19 +110,6 @@ def columnize( itemlist ):
     else:
         return f"- {itemlist[0]}"
 
-def read_meta_table(table_path):
-    # read the whole table
-    try:
-        table_df = pd.read_csv(table_path,dtype=str)
-    except UnicodeDecodeError:
-        table_df = pd.read_csv(table_path, encoding='latin1',dtype=str)
-
-    # drop the first column if it is just the index
-    if table_df.columns[0] == "Unnamed: 0":
-        table_df = table_df.drop(columns=["Unnamed: 0"])
-
-    return table_df
-
 def parse_literal_list(raw):
     if raw is None:
         return []
