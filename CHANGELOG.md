@@ -8,11 +8,10 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 
 ## v0.9.3 — May 4th, 2026 · CDE v4.4 (optional CDE v3.4)
 
-- Add Streamlit-free `validate_table_core` and `compose_validation_report`
-  functions for external calls, like:
+- Add Streamlit-free `validate_core` function for external calls, like:
     ```
-    result = validate_table_core(metadata_df, cde_df)
-    errors_counter, warnings_counter = compose_validation_report(result, table_name, report)
+    from utils.validate_core import validate_table
+    report = validate_table(df, table_name, cde_table, report=global_report)
     ```
 
 ## v0.9.2 — 02 to 30th March 2026 · CDE v4.2 (optional CDE v3.4)
