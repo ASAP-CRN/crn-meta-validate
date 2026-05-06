@@ -468,8 +468,8 @@ def validate_table_core(
 
     Intentionally free of Streamlit imports so it can be used by other
     repositories that do not run inside a Streamlit context (e.g.
-    asap-crn-cloud-dataset-metadata qc_hooks). `validate_table` in this
-    module wraps this function with Streamlit preview rendering.
+    asap-crn-cloud-dataset-metadata/utils/qc_metadata_utils.py).
+    `validate_table` in this module wraps this function with Streamlit preview rendering.
 
     Parameters
     ----------
