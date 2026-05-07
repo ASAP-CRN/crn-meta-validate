@@ -20,7 +20,7 @@ from utils.validate_core import (
     emoji_warning,
     normalize_null_like_dataframe,
     parse_literal_list,
-    validate_table_core,
+    validate_table_eval,
 )
 from utils.delimiter_handler import format_dataframe_for_preview, build_styled_preview_with_differences
 from utils.help_menus import build_hover_text_from_description, build_free_text_header_markdown
@@ -340,7 +340,7 @@ def decide_cde_vs_schema_validation(
             )
 
 
-def validate_table(df_after_fill: pd.DataFrame, table_name: str,
+def validate_table_ui(df_after_fill: pd.DataFrame, table_name: str,
                    cde_rules: pd.DataFrame, validation_report: ReportCollector, df_raw_before_fill=None,
                    preview_max_rows=None, app_schema=None):
     """
@@ -382,7 +382,7 @@ def validate_table(df_after_fill: pd.DataFrame, table_name: str,
 
     df_after_fill = normalize_null_like_dataframe(df_after_fill, sentinel=NULL)
 
-    result = validate_table_core(df_after_fill, cde_rules)
+    result = validate_table_eval(df_after_fill, cde_rules)
 
     # Compose summary report; per-column details rendered below as Streamlit widgets.
     # Snapshot entries length first so we replay only the new entries to Streamlit.

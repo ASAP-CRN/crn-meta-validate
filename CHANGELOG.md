@@ -10,8 +10,8 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 
 - Add Streamlit-free `validate_core` function for external calls, like:
     ```
-    from utils.validate_core import validate_table
-    report = validate_table(df, table_name, cde_table, report=global_report)
+    from utils.validate_core import validate_table_core
+    report = validate_table_core(df, table_name, cde_table, report=global_report)
     ```
 
 ## v0.9.2 — 02 to 30th March 2026 · CDE v4.2 (optional CDE v3.4)

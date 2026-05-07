@@ -4,10 +4,10 @@ No Streamlit dependency — safe to import in any Python context.
 
 Public API
 ----------
-validate_table_core(df_normalised, cde_rules) -> dict
+validate_table_eval(df_normalised, cde_rules) -> dict
     Field-by-field CDE validation; returns raw result dict.
 compose_validation_report(result, table_name, report, include_details) -> (int, int)
-    Translates a validate_table_core result into ReportCollector entries.
+    Translates a validate_table_eval result into ReportCollector entries.
 ReportCollector
     Collects validation messages; can be serialised to a text file.
 """
@@ -140,7 +140,7 @@ class ReportCollector:
         print(self.get_log())
 
 
-def validate_table_core(
+def validate_table_eval(
     df_normalised: pd.DataFrame,
     cde_rules: pd.DataFrame,
 ) -> dict:
@@ -362,9 +362,9 @@ def compose_validation_report(
     include_details: bool = True,
 ) -> tuple[int, int]:
     """
-    Translate the output of `validate_table_core` into `ReportCollector` entries.
+    Translate the output of `validate_table_eval` into `ReportCollector` entries.
 
-    Callers that provide their own detailed column rendering (e.g. `validate_table`
+    Callers that provide their own detailed column rendering (e.g. `validate_table_core`
     in `utils.validate_ui`, which uses `render_missing_columns` /
     `render_invalid_values`) should pass `include_details=False` to suppress the
     plain-text detail bullets.
@@ -372,7 +372,7 @@ def compose_validation_report(
     Parameters
     ----------
     result : dict
-        Return value of `validate_table_core`.
+        Return value of `validate_table_eval`.
     table_name : str
         Table name used in log messages (e.g. ``"SUBJECT"``).
     report : ReportCollector
@@ -485,7 +485,7 @@ def compose_validation_report(
     return errors_counter, warnings_counter
 
 
-def validate_table(
+def validate_table_core(
     df: pd.DataFrame,
     table_name: str,
     cde_rules: pd.DataFrame,
@@ -495,7 +495,7 @@ def validate_table(
     """
     Validate a preprocessed table against CDE rules.
 
-    Combines `validate_table_core` and `compose_validation_report` into a
+    Combines `validate_table_eval` and `compose_validation_report` into a
     single call. Safe to use in any Python context — no Streamlit dependency.
 
     Parameters
@@ -525,7 +525,7 @@ def validate_table(
     if report is None:
         report = ReportCollector()
 
-    result = validate_table_core(df, cde_rules)
+    result = validate_table_eval(df, cde_rules)
     errors, warnings = compose_validation_report(result, table_name, report, include_details)
 
     return {"report": report, "errors": errors, "warnings": warnings}
