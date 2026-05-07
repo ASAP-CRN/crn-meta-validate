@@ -28,7 +28,8 @@ import os
 import re
 import time
 from collections import defaultdict
-from utils.validate import validate_table, ReportCollector, get_extra_columns_not_in_cde, decide_cde_vs_schema_validation
+from utils.validate_core import ReportCollector, get_extra_columns_not_in_cde
+from utils.validate_ui import validate_table_ui, decide_cde_vs_schema_validation
 from utils.cde import read_CDE, get_table_cde, build_cde_meta_by_field, filter_cde_rules_for_selection
 from utils.delimiter_handler import DelimiterHandler, format_dataframe_for_preview
 from utils.processed_data_loader import ProcessedDataLoader
@@ -47,7 +48,7 @@ from utils.help_menus import (
 from utils.template_files import build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
-webapp_version = "v0.9.2" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.3" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -147,7 +148,7 @@ def main():
     ############
     ### Load CSS (text size, colors, etc.)
     load_css(os.path.join(repo_root, "css", "css.css"))
-    
+
     ############
     ### Render custom menu (replaces hamburger menu)
     custom_menu = CustomMenu(help_url=app_config.app_schema['kebab_menu']['get_help_url'])
@@ -313,7 +314,7 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.markdown('<h3 style="font-size: 23px;">Step 3: Upload completed files <span style="color: red;">*</span></h3>',
                 unsafe_allow_html=True)
-    
+
     data_files = st.sidebar.file_uploader(
         "Upload CSV files",  # Non-empty label for accessibility
         type=["csv"],
@@ -369,7 +370,7 @@ def main():
         # Create a unique identifier for current uploaded files
         current_files_signature = tuple(sorted(f"{f.name}_{f.size}" for f in data_files))
         previous_signature = st.session_state.get("uploaded_files_signature")
-        
+
         if previous_signature != current_files_signature:
             # Files have changed, clear processed state and decisions
             st.session_state["uploaded_files_signature"] = current_files_signature
@@ -382,7 +383,7 @@ def main():
     if data_files is None or len(data_files) == 0:
         tables_loaded = False
     elif len(data_files) > 0:
-        
+
         # Dictionary to hold dataframes using default delimiter
         dfs_default_delimiter_dic = defaultdict(lambda : defaultdict(dict))
 
@@ -391,23 +392,23 @@ def main():
         if not delimiter_handler.check_delimiter_decisions(data_files):
             # Waiting for user to make delimiter decisions
             st.stop()
-        
+
         # Get valid files only (exclude invalid files)
         valid_files = [f for f in data_files if not delimiter_handler.is_file_invalid(f.name, f.size)]
         invalid_files = [f for f in data_files if delimiter_handler.is_file_invalid(f.name, f.size)]
-        
+
         if len(valid_files) == 0:
-            error_message = inline_error(get_current_function_name(), 
+            error_message = inline_error(get_current_function_name(),
                                          "All uploaded files are invalid. Please upload valid CSV files with data rows.")
             st.error(error_message)
             st.stop()
-        
+
         # Show file count with status
         if len(invalid_files) > 0:
             st.sidebar.warning(f"N={len(valid_files)} valid files | {len(invalid_files)} invalid files")
         else:
             st.sidebar.success(f"N={len(valid_files)} files loaded")
-        
+
         ############
         #### Button to Apply formatting decisions
         processed_files = st.session_state.get("files_ready_for_validation")
@@ -506,7 +507,7 @@ def main():
                 st.sidebar.markdown(f"~~{data_file.name}~~ ❌")
 
     else:
-        error_message = support_email_message_persistent(get_current_function_name(), 
+        error_message = support_email_message_persistent(get_current_function_name(),
                                                          "Couldn't complete file upload."
                                                          )
         st.error(error_message)
@@ -722,7 +723,7 @@ def main():
         )
 
         if effective_raw_df is None:
-            error_message = support_email_message_persistent(get_current_function_name(), 
+            error_message = support_email_message_persistent(get_current_function_name(),
                                                              f"Could not load data for {selected_table_name}."
                                                              )
             st.error(error_message)
@@ -982,9 +983,9 @@ def main():
     )
 
     # Perform CDE validation. Includes preview of validated table.
-    validated_output_df, _, errors_counter, _ = validate_table(
-        selected_table, selected_table_name, 
-        cde_rules, report, not_filled_table, 
+    validated_output_df, _, errors_counter, _ = validate_table_ui(
+        selected_table, selected_table_name,
+        cde_rules, report, not_filled_table,
         preview_max_rows, app_config.app_schema
     )
 
@@ -1079,7 +1080,7 @@ def main():
             f"</span>",
             unsafe_allow_html=True,
         )
-        
+
 if __name__ == "__main__":
 
     main()

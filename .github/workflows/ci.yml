@@ -52,7 +52,7 @@ jobs:
           python -c "
           import sys, pathlib
           sys.path.insert(0, str(pathlib.Path('.').resolve()))
-          from utils import validate, cde, delimiter_handler, find_missing_values
+          from utils import validate_core, validate_ui, cde, delimiter_handler, find_missing_values
           from utils import help_menus, processed_data_loader, template_files
           from utils import load_and_validate_schema
           print('All utils modules imported successfully.')

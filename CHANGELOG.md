@@ -6,6 +6,14 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 
 ---
 
+## v0.9.3 — May 4th, 2026 · CDE v4.4 (optional CDE v3.4)
+
+- Add Streamlit-free `validate_core` function for external calls, like:
+    ```
+    from utils.validate_core import validate_table_core
+    report = validate_table_core(df, table_name, cde_table, report=global_report)
+    ```
+
 ## v0.9.2 — 02 to 30th March 2026 · CDE v4.2 (optional CDE v3.4)
 
 - Add `AssayInstrumentTechnology` (AIT) tab to automate definition of instruments and technologies used in each assay, reducing manual work for users

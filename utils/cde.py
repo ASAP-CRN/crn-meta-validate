@@ -19,8 +19,10 @@ from utils.help_menus import (
     app_info,
     app_success,
 )
-from utils.validate import read_valid_categories_with_status_retry, get_invalid_status_rows
-
+from utils.validate_core import (
+    read_valid_categories_with_status_retry,
+    get_invalid_status_rows,
+)
 
 
 # @st.cache_data
@@ -354,7 +356,7 @@ def get_cde_filename(cde_version: str) -> str:
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3"]
+    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3", "v4.4"]
 
     if cde_version in supported_cde_versions:
         return f"ASAP_CDE_{cde_version}"

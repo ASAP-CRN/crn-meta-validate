@@ -7,15 +7,15 @@
     },
     "PROTOCOL.csv": {
       "expect_parse_ok": true,
-      "reason": "Semicolon-delimited; well-formed; produces no CDE errors after filling missing values."
+      "reason": "Semicolon-delimited; well-formed; produces no CDE errors."
     },
     "DATA.csv": {
       "expect_parse_ok": true,
-      "reason": "Semicolon-delimited; well-formed; produces a CDE error on 'adjustment' column (invalid value)."
+      "reason": "Semicolon-delimited; well-formed; produces a CDE error on 'adjustment' column (invalid value) and 'file_description' is empty (required field)."
     },
     "SAMPLE.csv": {
       "expect_parse_ok": true,
-      "reason": "Comma-delimited; well-formed; produces a CDE error on 'condition_id' column (invalid value)."
+      "reason": "Comma-delimited; well-formed; produces a CDE error on 'condition_id' column (invalid value) and five other columns are empty (required fields)."
     },
     "SUBJECT.csv": {
       "expect_parse_ok": true,
