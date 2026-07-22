@@ -95,6 +95,16 @@ class SchemaConfig:
     REQUIRED_TABLES : List[str]
         Metadata table names that must be uploaded by the user (e.g., SAMPLE, ASSAY).
 
+    # --- OSA field definitions ---
+    osa_fields : Dict[str, dict]
+        Mapping of OSA axis name to CDE table/field (from app_schema cde_definition).
+        Keys: "species", "sample_source", "assay".
+        Values: dicts with "table" and "field" keys.
+        Empty dict for schema versions that predate this field.
+    supported_organisms : Dict[str, str]
+        Mapping of organism display label to ontology term ID (e.g. "Human" -> "NCBITaxon:9606").
+        Empty dict for schema versions that predate this field.
+
     # --- Validated lists, which are shown in the App Step 1 dropdown menus ---
     SPECIES : List[str]
         Species display labels for Step 1 dropdowns (includes 'Other').
@@ -139,6 +149,10 @@ class SchemaConfig:
     status_AIT: str
     AIT_name: str
     REQUIRED_TABLES: List[str]
+
+    # --- OSA field definitions ---
+    osa_fields: Dict[str, dict]
+    supported_organisms: Dict[str, str]
 
     # --- Validated lists, which are shown in the App Step 1 dropdown menus ---
     SPECIES: List[str]
@@ -216,6 +230,9 @@ def load_and_validate_schema(
         raise ValueError(
             f"Required key missing from app_schema JSON ({app_schema_path}): {e}"
         ) from e
+
+    osa_fields: Dict[str, dict] = app_schema["cde_definition"].get("osa_fields", {})
+    supported_organisms: Dict[str, str] = app_schema["cde_definition"].get("supported_organisms", {})
 
     # ------------------------------------------------------------------
     # 3. Build CDE Google Sheets URLs
@@ -296,6 +313,9 @@ def load_and_validate_schema(
         status_AIT=status_AIT,
         AIT_name=AIT_name,
         REQUIRED_TABLES=REQUIRED_TABLES,
+        # --- OSA field definitions ---
+        osa_fields=osa_fields,
+        supported_organisms=supported_organisms,
         # --- Validated lists, which are shown in the App Step 1 dropdown menus ---
         SPECIES=SPECIES,
         SAMPLE_SOURCE=SAMPLE_SOURCE,
