@@ -295,6 +295,10 @@ def main():
         selected_sample_source=sample_source,
         in_vitro_exclusions=app_config.in_vitro_exclusions,
     )
+    # Recompute label from the filtered CDE so excluded tables (e.g. CLINPATH for in vitro) don't appear.
+    table_list_formatted = ", ".join(
+        f"{t}.csv" for t in sorted(filtered_cde_for_templates["Table"].dropna().unique())
+    )
     templates_zip_bytes, number_of_helper_rows = build_templates_zip(
         filtered_cde_for_templates,
         selected_species=species,
