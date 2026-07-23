@@ -31,6 +31,55 @@ import streamlit as st
 _ORGANISM_ONTOLOGY_FIELD: Tuple[str, str] = ("SAMPLE", "organism_ontology_term_id")
 
 
+def apply_in_vitro_exclusions(
+    cde_dataframe: pd.DataFrame,
+    selected_sample_source: str | None,
+    in_vitro_exclusions: Dict,
+) -> pd.DataFrame:
+    """
+    Drop tables or columns from the CDE dataframe when the sample source is in vitro.
+
+    Intended to be called in app.py before `build_templates_zip` so the filtered
+    dataframe — not the exclusion dict — is what crosses the cache boundary.
+
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        CDE dataframe to filter.
+    selected_sample_source : str or None
+        User's Step 1 sample-source selection.
+    in_vitro_exclusions : dict
+        Exclusion rules from app_schema["cde_definition"]["in_vitro_exclusions"].
+        Expected keys:
+        - "in_vitro_sample_sources": list of sample_source values that are in vitro.
+        - Any table name (e.g. "CLINPATH"): "ALL" to exclude the entire table, or
+          a list of field names to exclude from that table.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered dataframe, unchanged if `selected_sample_source` is not in vitro.
+    """
+    in_vitro_sources = in_vitro_exclusions.get("in_vitro_sample_sources", [])
+    if not selected_sample_source or selected_sample_source not in in_vitro_sources:
+        return cde_dataframe
+
+    table_exclusions = {
+        k: v for k, v in in_vitro_exclusions.items()
+        if k != "in_vitro_sample_sources"
+    }
+
+    keep_mask = pd.Series(True, index=cde_dataframe.index)
+    for table_name, exclusion in table_exclusions.items():
+        in_table = cde_dataframe["Table"] == table_name
+        if exclusion == "ALL":
+            keep_mask &= ~in_table
+        else:
+            keep_mask &= ~(in_table & cde_dataframe["Field"].isin(exclusion))
+
+    return cde_dataframe[keep_mask].reset_index(drop=True)
+
+
 def _is_osa_enum_field(table_name: str, field_name: str, osa_fields: Dict[str, dict]) -> bool:
     """Return True if this (table, field) is one of the OSA enum fields defined in osa_fields."""
     return any(
@@ -139,11 +188,16 @@ def build_templates_zip(
     """
     Build a TABLES.zip archive with one comma-delimited template per table.
 
+    In vitro exclusions must be applied to `cde_dataframe` by the caller
+    (via `apply_in_vitro_exclusions`) before passing it here, so that the
+    already-filtered dataframe is what crosses the cache boundary.
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
         Full CDE dataframe with at least columns:
         ["Table", "Field", "Description", "DataType", "Required", "Validation", "FillNull"]
+        Call `apply_in_vitro_exclusions` on this before passing if needed.
     selected_species : str or None
         User's Step 1 organism selection (e.g. "Human"). When not "Other", the
         Validation row for the OSA organism field and SAMPLE.organism_ontology_term_id

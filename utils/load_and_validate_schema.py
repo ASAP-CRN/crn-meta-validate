@@ -153,6 +153,7 @@ class SchemaConfig:
     # --- OSA field definitions ---
     osa_fields: Dict[str, dict]
     supported_organisms: Dict[str, str]
+    in_vitro_exclusions: Dict
 
     # --- Validated lists, which are shown in the App Step 1 dropdown menus ---
     SPECIES: List[str]
@@ -233,6 +234,7 @@ def load_and_validate_schema(
 
     osa_fields: Dict[str, dict] = app_schema["cde_definition"].get("osa_fields", {})
     supported_organisms: Dict[str, str] = app_schema["cde_definition"].get("supported_organisms", {})
+    in_vitro_exclusions: Dict = app_schema["cde_definition"].get("in_vitro_exclusions", {})
 
     # ------------------------------------------------------------------
     # 3. Build CDE Google Sheets URLs
@@ -316,6 +318,7 @@ def load_and_validate_schema(
         # --- OSA field definitions ---
         osa_fields=osa_fields,
         supported_organisms=supported_organisms,
+        in_vitro_exclusions=in_vitro_exclusions,
         # --- Validated lists, which are shown in the App Step 1 dropdown menus ---
         SPECIES=SPECIES,
         SAMPLE_SOURCE=SAMPLE_SOURCE,

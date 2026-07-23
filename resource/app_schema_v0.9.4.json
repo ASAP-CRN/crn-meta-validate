@@ -48,6 +48,28 @@
       "Mouse": "NCBITaxon:10090",
       "Cyno macaque": "NCBITaxon:9541",
       "Rhesus macaque": "NCBITaxon:9544"
+    },
+    "in_vitro_exclusions": {
+      "in_vitro_sample_sources": [
+        "Cell lines",
+        "EPSC",
+        "iPSC",
+        "hESC",
+        "hPSC",
+        "Embryonic fibroblast",
+        "MEFS"
+      ],
+      "CLINPATH": "ALL",
+      "SUBJECT": [
+        "biobank_name",
+        "gp2_phenotype",
+        "race",
+        "sex",
+        "education_level",
+        "ethnicity",
+        "smoking_status",
+        "smoking_years"
+      ]
     }
   },
   "default_input_delimiter": ",",
