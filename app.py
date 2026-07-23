@@ -45,10 +45,10 @@ from utils.help_menus import (
     support_email_message,
     support_email_message_persistent,
 )
-from utils.template_files import build_templates_zip
+from utils.template_files import apply_in_vitro_exclusions, build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
-webapp_version = "v0.9.3" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.4" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -290,7 +290,19 @@ def main():
         selected_sample_source=sample_source,
         selected_assay_type=assay_type,
     )
-    templates_zip_bytes, number_of_helper_rows = build_templates_zip(filtered_cde_for_templates)
+    filtered_cde_for_templates = apply_in_vitro_exclusions(
+        filtered_cde_for_templates,
+        selected_sample_source=sample_source,
+        in_vitro_exclusions=app_config.in_vitro_exclusions,
+    )
+    templates_zip_bytes, number_of_helper_rows = build_templates_zip(
+        filtered_cde_for_templates,
+        selected_species=species,
+        selected_sample_source=sample_source,
+        selected_assay_type=assay_type,
+        osa_fields=app_config.osa_fields,
+        supported_organisms=app_config.supported_organisms,
+    )
     st.sidebar.download_button(
         label=f"📥 Click to download: {table_list_formatted}",
         data=templates_zip_bytes,
