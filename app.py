@@ -48,7 +48,7 @@ from utils.help_menus import (
 from utils.template_files import apply_in_vitro_exclusions, build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
-webapp_version = "v0.9.4" # Update this to load corresponding resource/app_schema_{webapp_version}.json
+webapp_version = "v0.9.5" # Update this to load corresponding resource/app_schema_{webapp_version}.json
 
 repo_root = str(Path(__file__).resolve().parents[0]) ## repo root
 
@@ -293,7 +293,7 @@ def main():
     filtered_cde_for_templates = apply_in_vitro_exclusions(
         filtered_cde_for_templates,
         selected_sample_source=sample_source,
-        in_vitro_exclusions=app_config.in_vitro_exclusions,
+        in_vitro_sample_sources=app_config.in_vitro_sample_sources,
     )
     # Recompute label from the filtered CDE so excluded tables (e.g. CLINPATH for in vitro) don't appear.
     table_list_formatted = ", ".join(

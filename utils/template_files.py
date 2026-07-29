@@ -34,48 +34,52 @@ _ORGANISM_ONTOLOGY_FIELD: Tuple[str, str] = ("SAMPLE", "organism_ontology_term_i
 def apply_in_vitro_exclusions(
     cde_dataframe: pd.DataFrame,
     selected_sample_source: str | None,
-    in_vitro_exclusions: Dict,
+    in_vitro_sample_sources: List[str],
 ) -> pd.DataFrame:
     """
     Drop tables or columns from the CDE dataframe when the sample source is in vitro.
 
+    Exclusion rules are driven by the `ExcludeInVitro` column in the CDE dataframe
+    (loaded from the CDE spreadsheet). If all fields of a table are flagged, the
+    entire table is dropped; otherwise only the flagged fields are dropped.
+
     Intended to be called in app.py before `build_templates_zip` so the filtered
-    dataframe — not the exclusion dict — is what crosses the cache boundary.
+    dataframe — not the source list — is what crosses the cache boundary.
 
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
-        CDE dataframe to filter.
+        CDE dataframe to filter. Must contain a `Table` and `Field` column.
+        If an `ExcludeInVitro` column is present, rows with value "Exclude" are
+        candidates for removal when the sample source is in vitro.
     selected_sample_source : str or None
         User's Step 1 sample-source selection.
-    in_vitro_exclusions : dict
-        Exclusion rules from app_schema["cde_definition"]["in_vitro_exclusions"].
-        Expected keys:
-        - "in_vitro_sample_sources": list of sample_source values that are in vitro.
-        - Any table name (e.g. "CLINPATH"): "ALL" to exclude the entire table, or
-          a list of field names to exclude from that table.
+    in_vitro_sample_sources : List[str]
+        Display labels of sample sources that are considered in vitro
+        (loaded from ValidCategories where invitro_source == "Yes").
 
     Returns
     -------
     pd.DataFrame
-        Filtered dataframe, unchanged if `selected_sample_source` is not in vitro.
+        Filtered dataframe, unchanged if `selected_sample_source` is not in vitro
+        or if the `ExcludeInVitro` column is absent.
     """
-    in_vitro_sources = in_vitro_exclusions.get("in_vitro_sample_sources", [])
-    if not selected_sample_source or selected_sample_source not in in_vitro_sources:
+    if not selected_sample_source or selected_sample_source not in in_vitro_sample_sources:
+        return cde_dataframe
+    if "ExcludeInVitro" not in cde_dataframe.columns:
         return cde_dataframe
 
-    table_exclusions = {
-        k: v for k, v in in_vitro_exclusions.items()
-        if k != "in_vitro_sample_sources"
-    }
+    exclude_flag = cde_dataframe["ExcludeInVitro"].astype(str).str.strip().str.lower() == "exclude"
 
     keep_mask = pd.Series(True, index=cde_dataframe.index)
-    for table_name, exclusion in table_exclusions.items():
+    for table_name in cde_dataframe["Table"].dropna().unique():
         in_table = cde_dataframe["Table"] == table_name
-        if exclusion == "ALL":
-            keep_mask &= ~in_table
-        else:
-            keep_mask &= ~(in_table & cde_dataframe["Field"].isin(exclusion))
+        table_flagged = exclude_flag & in_table
+        if table_flagged.any():
+            if table_flagged.sum() == in_table.sum():
+                keep_mask &= ~in_table
+            else:
+                keep_mask &= ~table_flagged
 
     return cde_dataframe[keep_mask].reset_index(drop=True)
 

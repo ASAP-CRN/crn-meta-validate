@@ -34,7 +34,7 @@ def read_ValidCategories(
     status_CDE_def: str,
     status_AIT: str,
     local: bool = False,
-) -> Tuple[List[str], List[str], Dict[str, str]]:
+) -> Tuple[List[str], List[str], Dict[str, str], List[str]]:
     """
     Load Step 1 category options from the ValidCategories Google Sheets (default) or local TSV
     and return a dataframe.
@@ -61,13 +61,14 @@ def read_ValidCategories(
         Column name for Assay Instrument Technology status.
     local : bool, optional
         If True, load from local TSV file instead of Google Sheets.
-        
+
     Returns
     -------
-    Tuple[List[str], List[str], Dict[str, str]]
+    Tuple[List[str], List[str], Dict[str, str], List[str]]
         - species_options (display labels)
         - sample_source_options (display labels)
         - assay_dict (ValidatorAppKey -> ValidatorAppDisplay)
+        - in_vitro_sample_sources (display labels where invitro_source == "Yes")
 
     Raises
     ------
@@ -93,7 +94,7 @@ def read_ValidCategories(
     missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(valid_categories_df.columns)].tolist()
     if missing_columns:
         overall_valid_categories_status = "error"
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"Missing required columns:\n{missing_columns}")
         app_error(error_message)
         app_stop()
@@ -169,8 +170,19 @@ def read_ValidCategories(
         if normalized_key not in assay_dict:
             assay_dict[normalized_key] = normalized_label
 
+    # In vitro sample sources (from ASSAY.sample_source where invitro_source == "Yes").
+    # The invitro_source column is optional — handle gracefully if absent.
+    in_vitro_sample_sources: List[str] = []
+    if "invitro_source" in valid_categories_df.columns:
+        in_vitro_mask = (
+            (valid_categories_df["Table"] == "ASSAY")
+            & (valid_categories_df["Category"] == "sample_source")
+            & (valid_categories_df["invitro_source"].astype(str).str.strip().str.lower() == "yes")
+        )
+        in_vitro_sample_sources = valid_categories_df.loc[in_vitro_mask, "ValidatorAppDisplay"].tolist()
+
     if overall_valid_categories_status == "ok":
-        return species_options, sample_source_options, assay_dict
+        return species_options, sample_source_options, assay_dict, in_vitro_sample_sources
     else:
         error_message = support_email_message(get_current_function_name(),
                                               "General internal error.")
@@ -263,43 +275,43 @@ def read_CDE(
     local_filename: str = None,
 ) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
-    Load CDE (Common Data Elements) and return a dataframe and dictionary of dtypes.
-    
+    Load and clean the CDE dataframe from Google Sheets or a local file.
+
     Parameters
     ----------
     cde_version : str
-        Version of the CDE to load (e.g., 'v4.0', 'v3.4', etc.)
+        CDE version string (e.g., "v4.2")
     cde_google_sheet : str
         URL to the Google Sheets CDE document
     cde_mandatory_fields : List[str]
         List of mandatory columns to validate in the CDE sheet
     local : bool, optional
-        If True, load from local file instead of Google Sheets (default: False)
+        If True, load from local file instead of Google Sheets
     local_filename : str, optional
-        Name of the local CDE file (without path or extension)
-        
+        Local filename to use when local=True
+
     Returns
     -------
     Tuple[pd.DataFrame, Dict[str, str]]
         - CDE dataframe with columns: Table, Field, Description, DataType, Required, Validation, etc.
         - Dictionary mapping table names to their dtypes
-        
+
     Raises
     ------
     Streamlit error and stops execution if CDE cannot be loaded
     """
-    
+
     # Define column list based on CDE version
     column_list = cde_mandatory_fields.copy()
-    
+
     # Configuration flags
     include_asap_ids = False
     include_aliases = False
-    
+
     # Determine local filename if not provided
     if local_filename is None:
         local_filename = get_cde_filename(cde_version)
-    
+
     # Load CDE from either local file or Google Sheets
     cde_dataframe = load_cde_data(
         local=local,
@@ -313,10 +325,14 @@ def read_CDE(
     if not missing_columns:
         app_success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
     else:
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"CDE {cde_version} is missing required columns: {missing_columns}")
         app_error(error_message)
         app_stop()
+
+    # Use ExcludeInVitro as an optional pass-through column for template generation.
+    # clean_cde_dataframe fills absent columns with pd.NA, so older CDE versions are safe.
+    column_list = column_list + ["ExcludeInVitro"]
 
     # Filter and clean the dataframe
     cde_dataframe = clean_cde_dataframe(
@@ -328,40 +344,41 @@ def read_CDE(
 
     # Validate completeness of critical CDE columns
     cde_columns_ok_na = ["Validation", "SpecificSpecies", "SpecificSampleSource", "SpecificAssays", "AllowMultiEnum"]
-    cde_dataframe = validate_cde_completeness(cde_dataframe, 
-                                              cde_mandatory_fields, 
+    cde_dataframe = validate_cde_completeness(cde_dataframe,
+                                              cde_mandatory_fields,
                                               cde_columns_ok_na
                                               )
 
     # Create dtype dictionary
     dtype_dict = create_dtype_dict(cde_dataframe)
-    
+
     return cde_dataframe, dtype_dict
+
 
 def get_cde_filename(cde_version: str) -> str:
     """
     Get the appropriate CDE filename for the given version.
-    
+
     Parameters
     ----------
     cde_version : str
         Version of the CDE
-        
+
     Returns
     -------
     str
         Filename (without extension) for the CDE version
-        
+
     Raises
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3", "v4.4"]
+    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3", "v4.4", "v4.5"]
 
     if cde_version in supported_cde_versions:
         return f"ASAP_CDE_{cde_version}"
     else:
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"Unsupported cde_version: {cde_version}")
         app_error(error_message)
         app_stop()
@@ -374,7 +391,7 @@ def load_cde_data(
 ) -> pd.DataFrame:
     """
     Load CDE data from either local file or Google Sheets.
-    
+
     Parameters
     ----------
     local : bool
@@ -385,12 +402,12 @@ def load_cde_data(
         URL to the Google Sheets CDE document
     cde_version : str
         Version of the CDE
-        
+
     Returns
     -------
     pd.DataFrame
         Raw CDE dataframe
-        
+
     Raises
     ------
     Streamlit error and stops execution if loading fails
@@ -402,7 +419,7 @@ def load_cde_data(
         try:
             return pd.read_csv(cde_local)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read CDE from local resource/{cde_local}: "
                                                   f"{str(try_exception)}"
                                                   )
@@ -413,7 +430,7 @@ def load_cde_data(
         try:
             return pd.read_csv(cde_google_sheet)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read CDE from Google doc:\n{cde_google_sheet}\n"
                                                   f"Error details: {str(try_exception)}"
                                                   )
@@ -428,7 +445,7 @@ def clean_cde_dataframe(
 ) -> pd.DataFrame:
     """
     Clean and filter the CDE dataframe.
-    
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
@@ -439,7 +456,7 @@ def clean_cde_dataframe(
         Whether to include ASAP IDs
     include_aliases : bool
         Whether to include aliases
-        
+
     Returns
     -------
     pd.DataFrame
@@ -449,12 +466,12 @@ def clean_cde_dataframe(
     if not include_asap_ids:
         cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Assigned"]
         cde_dataframe = cde_dataframe.reset_index(drop=True)
-    
+
     # Drop Alias if not requested
     if not include_aliases:
         cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
         cde_dataframe = cde_dataframe.reset_index(drop=True)
-    
+
     # Ensure all requested columns in column_list exist, even if missing in raw CDE
     for required_column_name in column_list:
         if required_column_name not in cde_dataframe.columns:
@@ -465,7 +482,7 @@ def clean_cde_dataframe(
     cde_dataframe = cde_dataframe.dropna(subset=["Table"])
     cde_dataframe = cde_dataframe.reset_index(drop=True)
     cde_dataframe = cde_dataframe.drop_duplicates()
-    
+
     return cde_dataframe
 
 def validate_cde_completeness(
@@ -487,11 +504,11 @@ def validate_cde_completeness(
     # Ensure all required columns exist
     for required_column_name in cde_mandatory_fields:
         if required_column_name not in cde_dataframe.columns:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"CDE is missing required column '{required_column_name}'")
             app_error(error_message)
             app_stop()
-    
+
     # Fillout columns allowed to contain NULL/empty values with None placeholder
     for allowed_na_column in cde_columns_ok_na:
         if allowed_na_column in cde_dataframe.columns:
@@ -514,7 +531,7 @@ def validate_cde_completeness(
         if extra_count > 0:
             details = f"{details}, and {extra_count} more"
 
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"The CDE spreadsheet has NULL values in required columns. {cde_mandatory_fields}. "
                                               f"Examples: {details}."
                                               )
@@ -527,12 +544,12 @@ def validate_cde_completeness(
 def create_dtype_dict(cde_dataframe: pd.DataFrame) -> Dict[str, str]:
     """
     Create a dictionary mapping table names to their dtypes.
-    
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
         Cleaned CDE dataframe
-        
+
     Returns
     -------
     Dict[str, str]
@@ -550,14 +567,14 @@ def get_table_cde(
 ) -> pd.DataFrame:
     """
     Extract CDE rules for a specific table.
-    
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
         Full CDE dataframe
     table_name : str
         Name of the table to extract rules for
-        
+
     Returns
     -------
     pd.DataFrame
@@ -608,7 +625,7 @@ def load_valid_categories_data(
 ) -> pd.DataFrame:
     """
     Load ValidCategories data from either local file or Google Sheets.
-    
+
     Parameters
     ----------
     local : bool
@@ -617,12 +634,12 @@ def load_valid_categories_data(
         URL to the Google Sheets ValidCategories document
     valid_categories_name : str
         Name of the local ValidCategories tab (or file if local)
-        
+
     Returns
     -------
     pd.DataFrame
         Raw ValidCategories dataframe
-        
+
     Raises
     ------
     Streamlit error and stops execution if loading fails
@@ -633,7 +650,7 @@ def load_valid_categories_data(
         try:
             return pd.read_csv(valid_categories_local)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read ValidCategories from local resource/{valid_categories_local}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
@@ -643,7 +660,7 @@ def load_valid_categories_data(
         try:
             return pd.read_csv(valid_categories_sheet)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read ValidCategories from Google doc:\n{valid_categories_sheet}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
