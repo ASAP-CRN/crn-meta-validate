@@ -979,6 +979,12 @@ def main():
             local_filename=None,
         )
 
+    step5_cde_dataframe = apply_in_vitro_exclusions(
+        step5_cde_dataframe,
+        selected_sample_source=sample_source,
+        in_vitro_sample_sources=app_config.in_vitro_sample_sources,
+    )
+
     validation_report_dic = setup_report_data(
         validation_report_dic,
         selected_table_name,
