@@ -45,7 +45,8 @@ from utils.help_menus import (
     support_email_message,
     support_email_message_persistent,
 )
-from utils.template_files import apply_in_vitro_exclusions, build_templates_zip
+from utils.cde import apply_in_vitro_exclusions
+from utils.template_files import build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
 webapp_version = "v0.9.5" # Update this to load corresponding resource/app_schema_{webapp_version}.json
