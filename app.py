@@ -45,7 +45,6 @@ from utils.help_menus import (
     support_email_message,
     support_email_message_persistent,
 )
-from utils.cde import apply_in_vitro_exclusions
 from utils.template_files import build_templates_zip
 from utils.load_and_validate_schema import load_and_validate_schema
 
@@ -102,7 +101,31 @@ def setup_report_data(
     selected_species: str | None = None,
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
+    in_vitro_sample_sources: list = [],
 ):
+    """Populate `report_data_dict` with the (table_df, cde_rules) pair for one table.
+
+    Parameters
+    ----------
+    report_data_dict : dict
+        Accumulator mapping table name to (DataFrame, CDE rules) tuples.
+    selected_table : str
+        Name of the metadata table to process (e.g. "SUBJECT").
+    input_dataframes_dict : dict
+        Mapping of table name to the prepared user DataFrame.
+    cde_dataframe : pd.DataFrame
+        Full CDE dataframe (all tables).
+    selected_species : str or None, optional
+        Organism selection from Step 1 (e.g. "Human").
+    selected_sample_source : str or None, optional
+        Sample-source selection from Step 1 (e.g. "MEFS").
+    selected_assay_type : str or None, optional
+        Assay key from Step 1 (e.g. "shotgun_proteomics_lc_ms").
+    in_vitro_sample_sources : list, optional
+        Display labels of in vitro sample sources. Forwarded to `get_table_cde` so
+        that ExcludeInVitro fields are dropped before validation. Defaults to []
+        (no-op), preserving behaviour for non-in-vitro datasets.
+    """
     submit_table_df = input_dataframes_dict[selected_table]
     table_specific_cde = get_table_cde(
         cde_dataframe,
@@ -110,6 +133,7 @@ def setup_report_data(
         selected_species=selected_species,
         selected_sample_source=selected_sample_source,
         selected_assay_type=selected_assay_type,
+        in_vitro_sample_sources=in_vitro_sample_sources,
     )
     table_data = (submit_table_df, table_specific_cde)
     report_data_dict[selected_table] = table_data
@@ -284,16 +308,14 @@ def main():
     st.sidebar.markdown('<h3 style="font-size: 23px;">Step 2: Download template files</h3>',
                 unsafe_allow_html=True)
 
-    # Build templates ZIP filtered by Step 1 selection (SpecificSpecies / SpecificSampleSource / SpecificAssay).
+    # Build templates ZIP filtered by Step 1 selection (SpecificSpecies / SpecificSampleSource /
+    # SpecificAssay) and in vitro exclusions (ExcludeInVitro). All filtering is handled by
+    # filter_cde_rules_for_selection via in_vitro_sample_sources.
     filtered_cde_for_templates = filter_cde_rules_for_selection(
         cde_dataframe[cde_dataframe["Table"].isin(table_list)].reset_index(drop=True),
         selected_species=species,
         selected_sample_source=sample_source,
         selected_assay_type=assay_type,
-    )
-    filtered_cde_for_templates = apply_in_vitro_exclusions(
-        filtered_cde_for_templates,
-        selected_sample_source=sample_source,
         in_vitro_sample_sources=app_config.in_vitro_sample_sources,
     )
     # Recompute label from the filtered CDE so excluded tables (e.g. CLINPATH for in vitro) don't appear.
@@ -979,12 +1001,8 @@ def main():
             local_filename=None,
         )
 
-    step5_cde_dataframe = apply_in_vitro_exclusions(
-        step5_cde_dataframe,
-        selected_sample_source=sample_source,
-        in_vitro_sample_sources=app_config.in_vitro_sample_sources,
-    )
-
+    # In vitro exclusions are applied inside setup_report_data → get_table_cde →
+    # filter_cde_rules_for_selection, driven by in_vitro_sample_sources.
     validation_report_dic = setup_report_data(
         validation_report_dic,
         selected_table_name,
@@ -993,6 +1011,7 @@ def main():
         selected_species=species,
         selected_sample_source=sample_source,
         selected_assay_type=assay_type,
+        in_vitro_sample_sources=app_config.in_vitro_sample_sources,
     )
     report = ReportCollector()
 

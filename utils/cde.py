@@ -4,9 +4,10 @@ CDE (Common Data Elements) loading utilities for ASAP CRN metadata QC app
 This module handles loading and processing of CDE definitions from either
 Google Sheets (default) or local CSV files.
 
-Applies filtering of CDE rules based on selected species, sample source and assay type.
+Applies filtering of CDE rules based on selected species, sample source,  assay type and in vitro sample sources.
 """
 
+import logging
 import pandas as pd
 import json
 from pathlib import Path
@@ -25,7 +26,6 @@ from utils.validate_core import (
 )
 
 
-# @st.cache_data
 def read_ValidCategories(
     valid_categories_sheet: str,
     valid_categories_name: str,
@@ -190,59 +190,6 @@ def read_ValidCategories(
         app_stop()
 
 
-def apply_in_vitro_exclusions(
-    cde_dataframe: pd.DataFrame,
-    selected_sample_source: str | None,
-    in_vitro_sample_sources: List[str],
-) -> pd.DataFrame:
-    """
-    Drop tables or columns from a CDE dataframe when the sample source is in vitro.
-
-    Exclusion rules are driven by the `ExcludeInVitro` column in the CDE dataframe.
-    If all fields of a table are flagged, the entire table is dropped; otherwise only
-    the flagged fields are dropped.
-
-    Usable in both the Streamlit template pipeline (via template_files.py) and the
-    offline QC validation workflow (via qc_dataset_metadata.py) — no Streamlit dependency.
-
-    Parameters
-    ----------
-    cde_dataframe : pd.DataFrame
-        CDE dataframe to filter. Must contain `Table` and `Field` columns.
-        Rows with `ExcludeInVitro == "Exclude"` are candidates for removal when
-        the sample source is in vitro.
-    selected_sample_source : str or None
-        User's Step 1 sample-source selection (display label, e.g. "Cell lines").
-    in_vitro_sample_sources : List[str]
-        Display labels of sample sources considered in vitro
-        (loaded from ValidCategories where invitro_source == "Yes").
-
-    Returns
-    -------
-    pd.DataFrame
-        Filtered dataframe, unchanged if `selected_sample_source` is not in vitro
-        or if the `ExcludeInVitro` column is absent.
-    """
-    if not selected_sample_source or selected_sample_source not in in_vitro_sample_sources:
-        return cde_dataframe
-    if "ExcludeInVitro" not in cde_dataframe.columns:
-        return cde_dataframe
-
-    exclude_flag = cde_dataframe["ExcludeInVitro"].astype(str).str.strip().str.lower() == "exclude"
-
-    keep_mask = pd.Series(True, index=cde_dataframe.index)
-    for table_name in cde_dataframe["Table"].dropna().unique():
-        in_table = cde_dataframe["Table"] == table_name
-        table_flagged = exclude_flag & in_table
-        if table_flagged.any():
-            if table_flagged.sum() == in_table.sum():
-                keep_mask &= ~in_table
-            else:
-                keep_mask &= ~table_flagged
-
-    return cde_dataframe[keep_mask].reset_index(drop=True)
-
-
 def parse_json_list_cell(cell_value: str) -> List[str]:
     """Parse a JSON-encoded list stored in a CDE cell.
 
@@ -271,23 +218,47 @@ def filter_cde_rules_for_selection(
     selected_species: str | None = None,
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
+    in_vitro_sample_sources: List[str] = [],
 ) -> pd.DataFrame:
-    """Filter CDE rows based on SpecificSpecies / SpecificSampleSource / SpecificAssays.
+    """
+    Filter CDE rows for a given dataset selection.
 
-    Required fields:
-        - cde_dataframe: Pandas dataframe with the CDE
-        - selected_species: organism type of the dataset (e.g., "Human", "Mouse")
-        - selected_sample_source: source type of the dataset (e.g., "Brain", "Fecal", "Cell lines", "iPSC")
-        - selected_assay_type: assay type of the dataset (e.g., "bulk_rna_seq", "single_nucleus_rna_seq")
+    Applies the following row-level filtering:
 
-    Semantics:
-        - If a Specific* cell is empty, the row applies to all selections for that axis.
-        - If it is non-empty, the row applies only if the selection is present in the list.
-        - If a selection is None/empty, that axis is not used for filtering.
+    1. **SpecificAssays**: a row is kept when its cell is empty (applies to all)
+       or contains the selected assay key.
+    2. **SpecificSampleSource**: same semantics for sample source.
+    3. **SpecificSpecies**: same semantics for organism.
+    4. **ExcludeInVitro** (driven by `in_vitro_sample_sources`): when the selected
+       sample source is in vitro, fields with "ExcludeInVitro" = TRUE are dropped.
+       If every field in a table is TRUE, then the whole table is dropped.
+       No-op when `in_vitro_sample_sources` is empty (default).
 
-    Notes:
-        - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
-        - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        CDE dataframe to filter. Must contain "Table" and "Field" columns.
+    selected_species : str or None, optional
+        Organism type of the dataset (e.g. "Human", "Mouse").
+    selected_sample_source : str or None, optional
+        Sample-source type (e.g. "Brain", "Fecal", "Cell lines", "iPSC").
+    selected_assay_type : str or None, optional
+        Assay key for the dataset (e.g. "bulk_rna_seq", "single_nucleus_rna_seq").
+    in_vitro_sample_sources : List[str], optional
+        Display labels of sample sources considered in vitro (from ValidCategories
+        where "invitro_source" == "Yes"). Defaults to [] (no-op).
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered CDE dataframe with reset index.
+
+    Notes
+    -----
+    - "SpecificAssays" values are dictionary keys (e.g. "bulk_rna_seq").
+    - "SpecificSampleSource" and "SpecificSpecies" values are list elements
+      (e.g. "Brain", "Human").
+    - If a selection is None or empty, that axis is skipped entirely.
     """
     if cde_dataframe.empty:
         return cde_dataframe
@@ -317,9 +288,28 @@ def filter_cde_rules_for_selection(
             filtered_df["SpecificSpecies"].apply(lambda cell_value: _axis_allows(cell_value, selected_species))
         ]
 
+    if "ExcludeInVitro" in filtered_df.columns and in_vitro_sample_sources:
+        is_in_vitro = (
+            selected_sample_source is not None
+            and str(selected_sample_source).strip() != ""
+            and selected_sample_source in in_vitro_sample_sources
+        )
+        if is_in_vitro:
+            exclude_mask = (
+                filtered_df["ExcludeInVitro"].astype(str).str.strip().str.upper() == "TRUE"
+            )
+            # Log whole-table drops before filtering for observability.
+            # Example: CLINPATH is dropped completely for in vitro datasets.
+            for table_name in filtered_df["Table"].dropna().unique():
+                in_table = filtered_df["Table"] == table_name
+                if (exclude_mask & in_table).sum() == in_table.sum():
+                    logging.info(
+                        f"Table '{table_name}' is dropped completely by in vitro rules"
+                    )
+            filtered_df = filtered_df[~exclude_mask]
+
     return filtered_df.reset_index(drop=True)
 
-# @st.cache_data
 def read_CDE(
     cde_version: str,
     cde_google_sheet: str,
@@ -617,21 +607,32 @@ def get_table_cde(
     selected_species: str | None = None,
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
+    in_vitro_sample_sources: List[str] = [],
 ) -> pd.DataFrame:
     """
-    Extract CDE rules for a specific table.
+    Extract CDE rules for a specific table, filtered for the given dataset selection.
 
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
-        Full CDE dataframe
+        Full CDE dataframe.
     table_name : str
-        Name of the table to extract rules for
+        Name of the table to extract rules for.
+    selected_species : str or None, optional
+        Organism type of the dataset (e.g. "Human", "Mouse").
+    selected_sample_source : str or None, optional
+        Sample-source type (e.g. "Brain", "Fecal", "Cell lines", "iPSC").
+    selected_assay_type : str or None, optional
+        Assay key for the dataset (e.g. "bulk_rna_seq", "single_nucleus_rna_seq").
+    in_vitro_sample_sources : List[str], optional
+        Display labels of sample sources considered in vitro. Forwarded to
+        "filter_cde_rules_for_selection" for the ExcludeInVitro axis.
+        Defaults to [] (no-op).
 
     Returns
     -------
     pd.DataFrame
-        CDE rules for the specified table
+        CDE rules for the specified table and optional filters.
     """
     table_cde_rules = cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)
     return filter_cde_rules_for_selection(
@@ -639,6 +640,7 @@ def get_table_cde(
         selected_species=selected_species,
         selected_sample_source=selected_sample_source,
         selected_assay_type=selected_assay_type,
+        in_vitro_sample_sources=in_vitro_sample_sources,
     )
 
 def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str, str]]:
@@ -670,7 +672,6 @@ def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str
         }
     return cde_meta_by_field
 
-# @st.cache_data
 def load_valid_categories_data(
     local: bool,
     valid_categories_sheet: str,
