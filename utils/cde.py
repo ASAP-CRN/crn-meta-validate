@@ -219,6 +219,7 @@ def filter_cde_rules_for_selection(
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
     in_vitro_sample_sources: List[str] = [],
+    caller: str = "",
 ) -> pd.DataFrame:
     """
     Filter CDE rows for a given dataset selection.
@@ -247,6 +248,9 @@ def filter_cde_rules_for_selection(
     in_vitro_sample_sources : List[str], optional
         Display labels of sample sources considered in vitro (from ValidCategories
         where "invitro_source" == "Yes"). Defaults to [] (no-op).
+    caller : str, optional
+        Label identifying the calling context (e.g. "enforce_cde_fields"). When
+        provided, it is added the log message.
 
     Returns
     -------
@@ -298,16 +302,28 @@ def filter_cde_rules_for_selection(
             exclude_mask = (
                 filtered_df["ExcludeInVitro"].astype(str).str.strip().str.upper() == "TRUE"
             )
-            # Log whole-table drops before filtering for observability.
-            # Example: CLINPATH is dropped completely for in vitro datasets.
+            # Log drops per table before filtering for observability.
+            # Distinguishes whole-table drops (e.g. CLINPATH) from partial drops.
+            # "caller" is included to distinguish multiple calls to the same filtering functions
+            log_prefix = f"[{caller}] " if caller else ""
             for table_name in filtered_df["Table"].dropna().unique():
                 in_table = filtered_df["Table"] == table_name
-                if (exclude_mask & in_table).sum() == in_table.sum():
+                dropped_in_table = exclude_mask & in_table
+                n_dropped = int(dropped_in_table.sum())
+                if n_dropped == 0:
+                    continue
+                dropped_fields = filtered_df.loc[dropped_in_table, "Field"].tolist()
+                if n_dropped == int(in_table.sum()):
                     logging.info(
-                        f"Table '{table_name}' is dropped completely by in vitro rules"
+                        f"{log_prefix}Table '{table_name}' dropped completely for in vitro dataset "
+                        f"({n_dropped} fields): {dropped_fields}"
+                    )
+                else:
+                    logging.info(
+                        f"{log_prefix}Table '{table_name}': {n_dropped} field(s) dropped for in vitro dataset: "
+                        f"{dropped_fields}"
                     )
             filtered_df = filtered_df[~exclude_mask]
-
     return filtered_df.reset_index(drop=True)
 
 def read_CDE(
