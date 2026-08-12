@@ -4,9 +4,10 @@ CDE (Common Data Elements) loading utilities for ASAP CRN metadata QC app
 This module handles loading and processing of CDE definitions from either
 Google Sheets (default) or local CSV files.
 
-Applies filtering of CDE rules based on selected species, sample source and assay type.
+Applies filtering of CDE rules based on selected species, sample source,  assay type and in vitro sample sources.
 """
 
+import logging
 import pandas as pd
 import json
 from pathlib import Path
@@ -25,7 +26,6 @@ from utils.validate_core import (
 )
 
 
-# @st.cache_data
 def read_ValidCategories(
     valid_categories_sheet: str,
     valid_categories_name: str,
@@ -34,7 +34,7 @@ def read_ValidCategories(
     status_CDE_def: str,
     status_AIT: str,
     local: bool = False,
-) -> Tuple[List[str], List[str], Dict[str, str]]:
+) -> Tuple[List[str], List[str], Dict[str, str], List[str]]:
     """
     Load Step 1 category options from the ValidCategories Google Sheets (default) or local TSV
     and return a dataframe.
@@ -61,13 +61,14 @@ def read_ValidCategories(
         Column name for Assay Instrument Technology status.
     local : bool, optional
         If True, load from local TSV file instead of Google Sheets.
-        
+
     Returns
     -------
-    Tuple[List[str], List[str], Dict[str, str]]
+    Tuple[List[str], List[str], Dict[str, str], List[str]]
         - species_options (display labels)
         - sample_source_options (display labels)
         - assay_dict (ValidatorAppKey -> ValidatorAppDisplay)
+        - in_vitro_sample_sources (display labels where invitro_source == "Yes")
 
     Raises
     ------
@@ -93,7 +94,7 @@ def read_ValidCategories(
     missing_columns = pd.Index(column_list)[~pd.Index(column_list).isin(valid_categories_df.columns)].tolist()
     if missing_columns:
         overall_valid_categories_status = "error"
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"Missing required columns:\n{missing_columns}")
         app_error(error_message)
         app_stop()
@@ -169,8 +170,19 @@ def read_ValidCategories(
         if normalized_key not in assay_dict:
             assay_dict[normalized_key] = normalized_label
 
+    # In vitro sample sources (from ASSAY.sample_source where invitro_source == "Yes").
+    # The invitro_source column is optional — handle gracefully if absent.
+    in_vitro_sample_sources: List[str] = []
+    if "invitro_source" in valid_categories_df.columns:
+        in_vitro_mask = (
+            (valid_categories_df["Table"] == "ASSAY")
+            & (valid_categories_df["Category"] == "sample_source")
+            & (valid_categories_df["invitro_source"].astype(str).str.strip().str.lower() == "yes")
+        )
+        in_vitro_sample_sources = valid_categories_df.loc[in_vitro_mask, "ValidatorAppDisplay"].tolist()
+
     if overall_valid_categories_status == "ok":
-        return species_options, sample_source_options, assay_dict
+        return species_options, sample_source_options, assay_dict, in_vitro_sample_sources
     else:
         error_message = support_email_message(get_current_function_name(),
                                               "General internal error.")
@@ -206,23 +218,51 @@ def filter_cde_rules_for_selection(
     selected_species: str | None = None,
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
+    in_vitro_sample_sources: List[str] = [],
+    caller: str = "",
 ) -> pd.DataFrame:
-    """Filter CDE rows based on SpecificSpecies / SpecificSampleSource / SpecificAssays.
+    """
+    Filter CDE rows for a given dataset selection.
 
-    Required fields:
-        - cde_dataframe: Pandas dataframe with the CDE
-        - selected_species: organism type of the dataset (e.g., "Human", "Mouse")
-        - selected_sample_source: source type of the dataset (e.g., "Brain", "Fecal", "Cell lines", "iPSC")
-        - selected_assay_type: assay type of the dataset (e.g., "bulk_rna_seq", "single_nucleus_rna_seq")
+    Applies the following row-level filtering:
 
-    Semantics:
-        - If a Specific* cell is empty, the row applies to all selections for that axis.
-        - If it is non-empty, the row applies only if the selection is present in the list.
-        - If a selection is None/empty, that axis is not used for filtering.
+    1. **SpecificAssays**: a row is kept when its cell is empty (applies to all)
+       or contains the selected assay key.
+    2. **SpecificSampleSource**: same semantics for sample source.
+    3. **SpecificSpecies**: same semantics for organism.
+    4. **ExcludeInVitro** (driven by `in_vitro_sample_sources`): when the selected
+       sample source is in vitro, fields with "ExcludeInVitro" = TRUE are dropped.
+       If every field in a table is TRUE, then the whole table is dropped.
+       No-op when `in_vitro_sample_sources` is empty (default).
 
-    Notes:
-        - SpecificAssays values are dictionary keys (e.g., 'bulk_rna_seq').
-        - SpecificSampleSource and SpecificSpecies values are list elements (e.g., 'Brain', 'Human').
+    Parameters
+    ----------
+    cde_dataframe : pd.DataFrame
+        CDE dataframe to filter. Must contain "Table" and "Field" columns.
+    selected_species : str or None, optional
+        Organism type of the dataset (e.g. "Human", "Mouse").
+    selected_sample_source : str or None, optional
+        Sample-source type (e.g. "Brain", "Fecal", "Cell lines", "iPSC").
+    selected_assay_type : str or None, optional
+        Assay key for the dataset (e.g. "bulk_rna_seq", "single_nucleus_rna_seq").
+    in_vitro_sample_sources : List[str], optional
+        Display labels of sample sources considered in vitro (from ValidCategories
+        where "invitro_source" == "Yes"). Defaults to [] (no-op).
+    caller : str, optional
+        Label identifying the calling context (e.g. "enforce_cde_fields"). When
+        provided, it is added the log message.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered CDE dataframe with reset index.
+
+    Notes
+    -----
+    - "SpecificAssays" values are dictionary keys (e.g. "bulk_rna_seq").
+    - "SpecificSampleSource" and "SpecificSpecies" values are list elements
+      (e.g. "Brain", "Human").
+    - If a selection is None or empty, that axis is skipped entirely.
     """
     if cde_dataframe.empty:
         return cde_dataframe
@@ -252,9 +292,40 @@ def filter_cde_rules_for_selection(
             filtered_df["SpecificSpecies"].apply(lambda cell_value: _axis_allows(cell_value, selected_species))
         ]
 
+    if "ExcludeInVitro" in filtered_df.columns and in_vitro_sample_sources:
+        is_in_vitro = (
+            selected_sample_source is not None
+            and str(selected_sample_source).strip() != ""
+            and selected_sample_source in in_vitro_sample_sources
+        )
+        if is_in_vitro:
+            exclude_mask = (
+                filtered_df["ExcludeInVitro"].astype(str).str.strip().str.upper() == "TRUE"
+            )
+            # Log drops per table before filtering for observability.
+            # Distinguishes whole-table drops (e.g. CLINPATH) from partial drops.
+            # "caller" is included to distinguish multiple calls to the same filtering functions
+            log_prefix = f"[{caller}] " if caller else ""
+            for table_name in filtered_df["Table"].dropna().unique():
+                in_table = filtered_df["Table"] == table_name
+                dropped_in_table = exclude_mask & in_table
+                n_dropped = int(dropped_in_table.sum())
+                if n_dropped == 0:
+                    continue
+                dropped_fields = filtered_df.loc[dropped_in_table, "Field"].tolist()
+                if n_dropped == int(in_table.sum()):
+                    logging.info(
+                        f"{log_prefix}Table '{table_name}' dropped completely for in vitro dataset "
+                        f"({n_dropped} fields): {dropped_fields}"
+                    )
+                else:
+                    logging.info(
+                        f"{log_prefix}Table '{table_name}': {n_dropped} field(s) dropped for in vitro dataset: "
+                        f"{dropped_fields}"
+                    )
+            filtered_df = filtered_df[~exclude_mask]
     return filtered_df.reset_index(drop=True)
 
-# @st.cache_data
 def read_CDE(
     cde_version: str,
     cde_google_sheet: str,
@@ -263,43 +334,43 @@ def read_CDE(
     local_filename: str = None,
 ) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
-    Load CDE (Common Data Elements) and return a dataframe and dictionary of dtypes.
-    
+    Load and clean the CDE dataframe from Google Sheets or a local file.
+
     Parameters
     ----------
     cde_version : str
-        Version of the CDE to load (e.g., 'v4.0', 'v3.4', etc.)
+        CDE version string (e.g., "v4.2")
     cde_google_sheet : str
         URL to the Google Sheets CDE document
     cde_mandatory_fields : List[str]
         List of mandatory columns to validate in the CDE sheet
     local : bool, optional
-        If True, load from local file instead of Google Sheets (default: False)
+        If True, load from local file instead of Google Sheets
     local_filename : str, optional
-        Name of the local CDE file (without path or extension)
-        
+        Local filename to use when local=True
+
     Returns
     -------
     Tuple[pd.DataFrame, Dict[str, str]]
         - CDE dataframe with columns: Table, Field, Description, DataType, Required, Validation, etc.
         - Dictionary mapping table names to their dtypes
-        
+
     Raises
     ------
     Streamlit error and stops execution if CDE cannot be loaded
     """
-    
+
     # Define column list based on CDE version
     column_list = cde_mandatory_fields.copy()
-    
+
     # Configuration flags
     include_asap_ids = False
     include_aliases = False
-    
+
     # Determine local filename if not provided
     if local_filename is None:
         local_filename = get_cde_filename(cde_version)
-    
+
     # Load CDE from either local file or Google Sheets
     cde_dataframe = load_cde_data(
         local=local,
@@ -313,10 +384,14 @@ def read_CDE(
     if not missing_columns:
         app_success(f"✅ Successfully loaded CDE {cde_version} with all required columns.")
     else:
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"CDE {cde_version} is missing required columns: {missing_columns}")
         app_error(error_message)
         app_stop()
+
+    # Use ExcludeInVitro as an optional pass-through column for template generation.
+    # clean_cde_dataframe fills absent columns with pd.NA, so older CDE versions are safe.
+    column_list = column_list + ["ExcludeInVitro"]
 
     # Filter and clean the dataframe
     cde_dataframe = clean_cde_dataframe(
@@ -328,40 +403,41 @@ def read_CDE(
 
     # Validate completeness of critical CDE columns
     cde_columns_ok_na = ["Validation", "SpecificSpecies", "SpecificSampleSource", "SpecificAssays", "AllowMultiEnum"]
-    cde_dataframe = validate_cde_completeness(cde_dataframe, 
-                                              cde_mandatory_fields, 
+    cde_dataframe = validate_cde_completeness(cde_dataframe,
+                                              cde_mandatory_fields,
                                               cde_columns_ok_na
                                               )
 
     # Create dtype dictionary
     dtype_dict = create_dtype_dict(cde_dataframe)
-    
+
     return cde_dataframe, dtype_dict
+
 
 def get_cde_filename(cde_version: str) -> str:
     """
     Get the appropriate CDE filename for the given version.
-    
+
     Parameters
     ----------
     cde_version : str
         Version of the CDE
-        
+
     Returns
     -------
     str
         Filename (without extension) for the CDE version
-        
+
     Raises
     ------
     Streamlit error and stops execution if version is unsupported
     """
-    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3", "v4.4"]
+    supported_cde_versions = ["v3.4", "v4.0", "v4.1", "v4.2", "v4.3", "v4.4", "v4.5"]
 
     if cde_version in supported_cde_versions:
         return f"ASAP_CDE_{cde_version}"
     else:
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"Unsupported cde_version: {cde_version}")
         app_error(error_message)
         app_stop()
@@ -374,7 +450,7 @@ def load_cde_data(
 ) -> pd.DataFrame:
     """
     Load CDE data from either local file or Google Sheets.
-    
+
     Parameters
     ----------
     local : bool
@@ -385,12 +461,12 @@ def load_cde_data(
         URL to the Google Sheets CDE document
     cde_version : str
         Version of the CDE
-        
+
     Returns
     -------
     pd.DataFrame
         Raw CDE dataframe
-        
+
     Raises
     ------
     Streamlit error and stops execution if loading fails
@@ -402,7 +478,7 @@ def load_cde_data(
         try:
             return pd.read_csv(cde_local)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read CDE from local resource/{cde_local}: "
                                                   f"{str(try_exception)}"
                                                   )
@@ -413,7 +489,7 @@ def load_cde_data(
         try:
             return pd.read_csv(cde_google_sheet)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read CDE from Google doc:\n{cde_google_sheet}\n"
                                                   f"Error details: {str(try_exception)}"
                                                   )
@@ -428,7 +504,7 @@ def clean_cde_dataframe(
 ) -> pd.DataFrame:
     """
     Clean and filter the CDE dataframe.
-    
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
@@ -439,7 +515,7 @@ def clean_cde_dataframe(
         Whether to include ASAP IDs
     include_aliases : bool
         Whether to include aliases
-        
+
     Returns
     -------
     pd.DataFrame
@@ -449,12 +525,12 @@ def clean_cde_dataframe(
     if not include_asap_ids:
         cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Assigned"]
         cde_dataframe = cde_dataframe.reset_index(drop=True)
-    
+
     # Drop Alias if not requested
     if not include_aliases:
         cde_dataframe = cde_dataframe[cde_dataframe["Required"] != "Alias"]
         cde_dataframe = cde_dataframe.reset_index(drop=True)
-    
+
     # Ensure all requested columns in column_list exist, even if missing in raw CDE
     for required_column_name in column_list:
         if required_column_name not in cde_dataframe.columns:
@@ -465,7 +541,7 @@ def clean_cde_dataframe(
     cde_dataframe = cde_dataframe.dropna(subset=["Table"])
     cde_dataframe = cde_dataframe.reset_index(drop=True)
     cde_dataframe = cde_dataframe.drop_duplicates()
-    
+
     return cde_dataframe
 
 def validate_cde_completeness(
@@ -487,11 +563,11 @@ def validate_cde_completeness(
     # Ensure all required columns exist
     for required_column_name in cde_mandatory_fields:
         if required_column_name not in cde_dataframe.columns:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"CDE is missing required column '{required_column_name}'")
             app_error(error_message)
             app_stop()
-    
+
     # Fillout columns allowed to contain NULL/empty values with None placeholder
     for allowed_na_column in cde_columns_ok_na:
         if allowed_na_column in cde_dataframe.columns:
@@ -514,7 +590,7 @@ def validate_cde_completeness(
         if extra_count > 0:
             details = f"{details}, and {extra_count} more"
 
-        error_message = support_email_message(get_current_function_name(), 
+        error_message = support_email_message(get_current_function_name(),
                                               f"The CDE spreadsheet has NULL values in required columns. {cde_mandatory_fields}. "
                                               f"Examples: {details}."
                                               )
@@ -527,12 +603,12 @@ def validate_cde_completeness(
 def create_dtype_dict(cde_dataframe: pd.DataFrame) -> Dict[str, str]:
     """
     Create a dictionary mapping table names to their dtypes.
-    
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
         Cleaned CDE dataframe
-        
+
     Returns
     -------
     Dict[str, str]
@@ -547,21 +623,32 @@ def get_table_cde(
     selected_species: str | None = None,
     selected_sample_source: str | None = None,
     selected_assay_type: str | None = None,
+    in_vitro_sample_sources: List[str] = [],
 ) -> pd.DataFrame:
     """
-    Extract CDE rules for a specific table.
-    
+    Extract CDE rules for a specific table, filtered for the given dataset selection.
+
     Parameters
     ----------
     cde_dataframe : pd.DataFrame
-        Full CDE dataframe
+        Full CDE dataframe.
     table_name : str
-        Name of the table to extract rules for
-        
+        Name of the table to extract rules for.
+    selected_species : str or None, optional
+        Organism type of the dataset (e.g. "Human", "Mouse").
+    selected_sample_source : str or None, optional
+        Sample-source type (e.g. "Brain", "Fecal", "Cell lines", "iPSC").
+    selected_assay_type : str or None, optional
+        Assay key for the dataset (e.g. "bulk_rna_seq", "single_nucleus_rna_seq").
+    in_vitro_sample_sources : List[str], optional
+        Display labels of sample sources considered in vitro. Forwarded to
+        "filter_cde_rules_for_selection" for the ExcludeInVitro axis.
+        Defaults to [] (no-op).
+
     Returns
     -------
     pd.DataFrame
-        CDE rules for the specified table
+        CDE rules for the specified table and optional filters.
     """
     table_cde_rules = cde_dataframe[cde_dataframe["Table"] == table_name].reset_index(drop=True)
     return filter_cde_rules_for_selection(
@@ -569,6 +656,7 @@ def get_table_cde(
         selected_species=selected_species,
         selected_sample_source=selected_sample_source,
         selected_assay_type=selected_assay_type,
+        in_vitro_sample_sources=in_vitro_sample_sources,
     )
 
 def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str, str]]:
@@ -600,7 +688,6 @@ def build_cde_meta_by_field(table_cde_rules: pd.DataFrame) -> Dict[str, Dict[str
         }
     return cde_meta_by_field
 
-# @st.cache_data
 def load_valid_categories_data(
     local: bool,
     valid_categories_sheet: str,
@@ -608,7 +695,7 @@ def load_valid_categories_data(
 ) -> pd.DataFrame:
     """
     Load ValidCategories data from either local file or Google Sheets.
-    
+
     Parameters
     ----------
     local : bool
@@ -617,12 +704,12 @@ def load_valid_categories_data(
         URL to the Google Sheets ValidCategories document
     valid_categories_name : str
         Name of the local ValidCategories tab (or file if local)
-        
+
     Returns
     -------
     pd.DataFrame
         Raw ValidCategories dataframe
-        
+
     Raises
     ------
     Streamlit error and stops execution if loading fails
@@ -633,7 +720,7 @@ def load_valid_categories_data(
         try:
             return pd.read_csv(valid_categories_local)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read ValidCategories from local resource/{valid_categories_local}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
@@ -643,7 +730,7 @@ def load_valid_categories_data(
         try:
             return pd.read_csv(valid_categories_sheet)
         except Exception as try_exception:
-            error_message = support_email_message(get_current_function_name(), 
+            error_message = support_email_message(get_current_function_name(),
                                                   f"Could not read ValidCategories from Google doc:\n{valid_categories_sheet}. "
                                                   f"Details: {str(try_exception)}."
                                                   )
