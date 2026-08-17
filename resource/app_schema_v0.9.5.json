@@ -48,7 +48,7 @@
       "Mouse": "NCBITaxon:10090",
       "Cyno macaque": "NCBITaxon:9541",
       "Rhesus macaque": "NCBITaxon:9544",
-      "Spiny mouse": "NCBITaxon:60744"
+      "Acomys dimidiatus": "NCBITaxon:60744"
     }
   },
   "default_input_delimiter": ",",
