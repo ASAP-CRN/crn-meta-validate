@@ -47,7 +47,8 @@
       "Human": "NCBITaxon:9606",
       "Mouse": "NCBITaxon:10090",
       "Cyno macaque": "NCBITaxon:9541",
-      "Rhesus macaque": "NCBITaxon:9544"
+      "Rhesus macaque": "NCBITaxon:9544",
+      "Acomys dimidiatus": "NCBITaxon:60744"
     }
   },
   "default_input_delimiter": ",",
