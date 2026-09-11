@@ -1,3 +1,43 @@
+/* ============================================
+   ASAP brand font: Arial for body copy, Arial Bold for headings.
+   Requires theme.font: false in mkdocs.yml (otherwise Material
+   loads Roboto from Google Fonts and overrides this).
+   ============================================ */
+:root {
+    --md-text-font: Arial, sans-serif;
+    --md-code-font: "Courier New", Courier, monospace;
+}
+
+body,
+.md-typeset {
+    font-family: Arial, sans-serif;
+}
+
+.md-header__title,
+.md-nav__title,
+.md-nav__link,
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+    font-family: Arial, sans-serif;
+    /* Keep Material's own per-level font-weight (it uses size, not bold,
+       for heading hierarchy) — only the font-family changes here. */
+}
+
+/* Arial has no true Light weight, so Material's h2 (font-weight: 300 in
+   Roboto) renders as Arial Regular instead — visibly heavier/darker than
+   the Roboto original. Compensate with Material's own lighter text-color
+   variable (the same one Material already applies to h1) rather than a
+   font-weight that Arial can't actually render. */
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+    color: var(--md-default-fg-color--light);
+}
+
 .screenshot {
     border: 1px solid #d0d0d0;
     border-radius: 6px;

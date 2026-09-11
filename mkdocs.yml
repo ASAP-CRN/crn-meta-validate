@@ -9,6 +9,8 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  # ASAP brand font: Arial is applied via docs/assets/css/extra.css.
+  font: false
   palette:
     - scheme: default
       primary: teal

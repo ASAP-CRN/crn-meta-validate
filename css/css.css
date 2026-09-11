@@ -1,9 +1,53 @@
 /* ============================================
+   ASAP brand accent palette. Defined as custom properties to accommodate
+   both a light- and a dark-themed browsers.
+   ============================================ */
+:root {
+    --accent: #035C81;           /* wedge C, deep teal-blue: AA on white (7.36:1) */
+    --accent-secondary: #8C4E9F; /* wedge B, purple: AA on white (5.67:1); large-text/icons only on dark */
+    --accent-success: #34A270;   /* wedge F, green: large-text/icons only on white; AA on dark (5.89:1) */
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --accent: #0C8DC3;           /* wedge D, same family as --accent, lighter shade: AA on #0E1117 (5.05:1) */
+        --accent-secondary: #8C4E9F; /* unchanged; caller must restrict to large text/icons in dark mode */
+        --accent-success: #34A270;   /* unchanged; already AA on dark */
+    }
+}
+
+/* ============================================
    General font styles. Note: !important used to override Streamlit defaults
    ============================================ */
 
+/* ASAP brand font: Arial for body copy, Arial Bold for headings.
+   Applied broadly (app shell + sidebar) since Streamlit's default theme
+   does not expose an Arial option via .streamlit/config.toml. */
+[data-testid="stAppViewContainer"],
+[data-testid="stSidebar"],
+[data-testid="stHeader"] {
+    font-family: Arial, sans-serif !important;
+}
+
+/* Headings use Arial Bold, per ASAP brand guide */
+[data-testid="stAppViewContainer"] h1,
+[data-testid="stAppViewContainer"] h2,
+[data-testid="stAppViewContainer"] h3,
+[data-testid="stAppViewContainer"] h4,
+[data-testid="stAppViewContainer"] h5,
+[data-testid="stAppViewContainer"] h6,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,
+[data-testid="stSidebar"] h5,
+[data-testid="stSidebar"] h6 {
+    font-family: Arial, sans-serif !important;
+    font-weight: 700 !important;
+}
+
 .big-font {
-    font-family:Helvetica; color:#0f557a; font-size:48px !important;
+    font-family: Arial, sans-serif; font-weight: 700; color: var(--accent); font-size:48px !important;
 }
 .medium-font {
     font-family:Arial; color:000000; font-size:18px;
@@ -23,6 +67,7 @@ input {
    General button styles
    ============================================ */
 div.stButton > button:first-child {
+    font-family: Arial, sans-serif;
     background-color: #D3D3D3;
     height: auto;
     color: black;
@@ -241,6 +286,7 @@ section[data-testid="stFileUploaderDropzone"] {
 
 /* Style only the 'Browse files' button inside the dropzone so it matches app buttons */
 section[data-testid="stFileUploaderDropzone"] button {
+    font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
     height: auto !important;
     color: black !important;
@@ -250,7 +296,7 @@ section[data-testid="stFileUploaderDropzone"] button {
     padding-right: 16px !important;
     font-size: 16px !important;
     border-radius: 4px !important;
-    border: 2px solid #0F6EA1 !important;
+    border: 2px solid var(--accent) !important;
 }
 
 /* ============================================
