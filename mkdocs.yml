@@ -12,15 +12,19 @@ theme:
   # ASAP brand font: Arial is applied via docs/assets/css/extra.css.
   font: false
   palette:
+    # primary/accent: custom, not a named Material color (e.g. "teal") — Material's
+    # named palettes are fixed hex values with no ASAP-brand option. "custom" tells
+    # Material to expect the actual hex values from CSS variables instead, which are
+    # defined per color-scheme in docs/assets/css/extra.css.
     - scheme: default
-      primary: teal
-      accent: teal
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: teal
-      accent: teal
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -50,7 +54,7 @@ markdown_extensions:
   - admonition          # !!! tip / warning / note blocks
   - pymdownx.details    # collapsible admonitions
   - pymdownx.superfences
-  - pymdownx.snippets: 
+  - pymdownx.snippets:
       base_path: ["."]  # resolve --8<-- paths from repo root (e.g. CHANGELOG.md)
   - attr_list           # image sizing: { width="600" }
   - md_in_html

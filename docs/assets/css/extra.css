@@ -1,7 +1,7 @@
 /* ============================================
-   ASAP brand font: Arial for body copy, Arial Bold for headings.
-   Requires theme.font: false in mkdocs.yml (otherwise Material
-   loads Roboto from Google Fonts and overrides this).
+   ASAP brand font: Arial.
+   Requires theme.font: false in mkdocs.yml, otherwise Material
+   overrides with Roboto from Google Fonts.
    ============================================ */
 :root {
     --md-text-font: Arial, sans-serif;
@@ -28,14 +28,68 @@ body,
 }
 
 /* Arial has no true Light weight, so Material's h2 (font-weight: 300 in
-   Roboto) renders as Arial Regular instead — visibly heavier/darker than
-   the Roboto original. Compensate with Material's own lighter text-color
-   variable (the same one Material already applies to h1) rather than a
-   font-weight that Arial can't actually render. */
+   Roboto) renders as Arial Regular instead. Compensate with Material's own
+   lighter text-color.
+   Renders visibly heavier/darker than Roboto's Light otherwise — this reuses
+   h1's own lighter-color treatment rather than a font-weight Arial can't render. */
 .md-typeset h2,
 .md-typeset h3,
 .md-typeset h4 {
     color: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   ASAP brand solid colors
+    ┌───────┬─────────┬────────────────────┐
+    │ Label │   Hex   │    Description     │
+    ├───────┼─────────┼────────────────────┤
+    │ A     │ #E3E4E3 │ Light neutral grey │
+    ├───────┼─────────┼────────────────────┤
+    │ B     │ #8C4E9F │ Purple             │
+    ├───────┼─────────┼────────────────────┤
+    │ C     │ #035C81 │ Deep teal-blue     │
+    ├───────┼─────────┼────────────────────┤
+    │ D     │ #0C8DC3 │ Medium cyan-blue   │
+    ├───────┼─────────┼────────────────────┤
+    │ E     │ #00202C │ Near-black navy    │
+    ├───────┼─────────┼────────────────────┤
+    │ F     │ #34A270 │ Green              │
+    └───────┴─────────┴────────────────────┘
+   ============================================ */
+
+/* Header bar */
+:root,
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color:        #035C81; /* ASAP deep teal-blue */
+    --md-primary-fg-color--light: #0487BD; /* lightened for hover/border states */
+    --md-primary-fg-color--dark:  #02384F; /* darkened for hover/border states */
+    --md-primary-bg-color:        #fff;
+    --md-primary-bg-color--light: #ffffffb3;
+}
+
+/* Accent + body-text link color */
+[data-md-color-scheme="default"] {
+    --md-accent-fg-color:              #035C81; /* ASAP deep teal-blue for white-themed browser */
+    --md-accent-fg-color--transparent: #035C811a;
+    --md-accent-bg-color:              #fff;
+    --md-accent-bg-color--light:       #ffffffb3;
+    --md-typeset-a-color:              #035C81;
+}
+[data-md-color-scheme="slate"] {
+    --md-accent-fg-color:              #0C8DC3; /* ASAP medium cyan-blue for dark-themed browser */
+    --md-accent-fg-color--transparent: #0C8DC31a;
+    --md-accent-bg-color:              #fff;
+    --md-accent-bg-color--light:       #ffffffb3;
+    --md-typeset-a-color:              #0C8DC3;
+}
+
+/* Footer bar */
+:root,
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+    --md-footer-bg-color:       #035C81;
+    --md-footer-bg-color--dark: #035C81;
 }
 
 .screenshot {
