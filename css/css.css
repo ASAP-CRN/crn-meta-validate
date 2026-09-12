@@ -1,6 +1,6 @@
 /* ============================================
    ASAP brand accent palette. Defined as custom properties to accommodate
-   both a light- and a dark-themed browsers.
+   both light- and dark-themed browsers.
    ============================================ */
 :root {
     --accent: #035C81;           /* wedge C, deep teal-blue: AA on white (7.36:1) */
