@@ -72,4 +72,4 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 - No detailed notes recorded
 
 ## v0.2 — 20 August 2023 · CDE v2
-- Initial release
+- Initial release. Inspired on an similar tool developed for GP2 by Alejandro Martinez at Data Tecnica.

@@ -13,6 +13,26 @@ _log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Source of truth for sentences shared between the App and MkDocs intros,
+# interpolated below into get_app_intro_markdown() and get_docs_intro_markdown()
+# (get_app_intro_markdown() also has some wording of its own, not factored
+# out here).
+#
+# To change shared text, edit it in help_menus.py then run utils/generate_readme.py
+# to synchronize it into README.md and docs/index.md.
+# ---------------------------------------------------------------------------
+
+_APP_PURPOSE_SENTENCE = (
+    "This app assists data contributors to QC their metadata tables in "
+    "comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) "
+    "against the ASAP CRN controlled vocabularies (CDE) before uploading them to Google buckets."
+)
+_FREE_TEXT_BOXES_SENTENCE = (
+    "Free text boxes allow users to record per-column comments to provide "
+    "context to data curators during review."
+)
+
+# ---------------------------------------------------------------------------
 # Streamlit-aware display helpers
 # ---------------------------------------------------------------------------
 
@@ -228,29 +248,78 @@ def build_free_text_header_markdown(column_name: str, hover_text: str) -> None:
     """
     return free_text_header_markdown
 
+
+def get_steps_table_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
+    """
+    Return the "five steps at a glance" markdown table.
+
+    Shared between the App intro (`get_app_intro_markdown`) and the docs
+    home page (`docs/index.md`, synced via `generate_readme.py`), so both
+    present the exact same step-by-step summary in the same table format
+    instead of diverging into separate prose/table versions.
+
+    Parameters
+    ----------
+    cde_version : str
+        CDE version to link to from the Step 5 row (e.g. "v4.5").
+    cde_google_sheet_url : str
+        URL of the CDE Google Sheet to link to from the Step 5 row.
+
+    Returns
+    -------
+    str
+        Markdown table text (GFM pipe-table syntax).
+    """
+    return f"""| Step | What you do | What the app does |
+|------|-------------|-------------------|
+| **1. Dataset setup** | Select species, sample source, and assay type | Determines which CSV files and columns are expected |
+| **2. Download templates** | Download a zip of template CSV files | Provides column headers, descriptions, and valid values |
+| **3. Upload files** | Fill out templates offline, then upload | Loads your files into the app for checking |
+| **4. Fix common issues** | Follow app instructions | Helps to fix delimiter problems and missing values |
+| **5. CDE validation** | Click Compare vs. CDE | Reports errors and warnings against the [CDE {cde_version}]({cde_google_sheet_url}) |"""
+
 def get_app_intro_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
     """Return the main app introduction text shared between the UI and docs."""
-    return f"""This app assists data contributors to QC their metadata tables in comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) before uploading them to ASAP CRN Google buckets.
+    steps_table_markdown = get_steps_table_markdown(
+        cde_version=cde_version,
+        cde_google_sheet_url=cde_google_sheet_url,
+    )
+    return f"""{_APP_PURPOSE_SENTENCE}
 
-We do this in five steps:     
-**Step 1. Indicate your Dataset type:** the app will determine expected CSV files and columns.     
-**Step 2. Download template files:** a left-side bar will appear indicating expected files and providing file templates.     
-**Step 3. Fill out and upload files:** offline, fill out files with your metadata and upload them via the Drag & drop box or Browse button.     
-**Step 4. Fix common issues:** follow app instructions to fix common issues (e.g. non-comma delimiters and missing values).     
-**Step 5. CDE validation:** the app reports missing columns and value mismatches vs. the [ASAP CRN controlled vocabularies (CDE) {cde_version}]({cde_google_sheet_url}).
+We do this in five steps:
+
+{steps_table_markdown}
 
 Two types of issues will be reported:     
 **Errors (❌):**  must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
 **Warnings (⚠️):** recommended to be fixed before uploading, but not required.     
 
-Free text boxes allow users to record per-column comments to provide context to data curators during review.
+{_FREE_TEXT_BOXES_SENTENCE}
 """
 
-def render_app_intro(webapp_version: str, cde_version: str, cde_google_sheet_url: str) -> None:
+def get_docs_intro_markdown() -> str:
+    """
+    Return the MkDocs-specific intro text for docs/index.md.
+
+    A trimmed variant of `get_app_intro_markdown`. To avoid redundancy
+    between the repo README and the docs landing page re: 5 steps and
+    two types of issues.
+
+    Returns
+    -------
+    str
+        Markdown text for the docs/index.md intro block.
+    """
+    return f"""{_APP_PURPOSE_SENTENCE}
+
+{_FREE_TEXT_BOXES_SENTENCE}
+"""
+
+def render_app_intro(cde_version: str, cde_google_sheet_url: str) -> None:
     """Render the main app introduction at the top of the UI."""
     import streamlit as st  # local import to avoid cycles during tooling
     st.markdown(
-        f'<p class="big-font">ASAP CRN metadata quality control (QC) app {webapp_version}</p>',
+        '<p class="big-font">ASAP CRN metadata quality control (QC) app</p>',
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -264,21 +333,24 @@ def render_app_intro(webapp_version: str, cde_version: str, cde_google_sheet_url
 class CustomMenu:
     """
     A custom menu component that replaces Streamlit's default kebab menu.
-    Displays only a Help link in a modern, minimalist style.
+    Displays links inside the header bar, in the same style
+    as the utility-bar links on parkinsonsroadmap.org (e.g. "About | Funding").
 
     Also hides the sidebar collapse button (<<) to prevent users from hiding the sidebar.
     Because Streamlit does not provide direct API to customize the menu and hiding the sidebar was causing issues
     with not being able to bring the sidebar back easily.
     """
-    
-    def __init__(self, help_url: str):
+
+    def __init__(self, help_url: str, asap_url: str = "https://parkinsonsroadmap.org/"):
         """
         Initialize the CustomMenu.
-        
+
         Args:
             help_url: URL for the help/documentation page
+            asap_url: URL for the ASAP parent-org site (defaults to its homepage)
         """
         self.help_url = help_url
+        self.asap_url = asap_url
     
     def hide_default_menu(self):
         """Hide the default Streamlit kebab menu and customize sidebar."""
@@ -315,45 +387,54 @@ class CustomMenu:
         )
     
     def render(self):
-        """Render the custom menu in the top-right corner."""
+        """Render the custom menu inside the header bar, top-right."""
         # Hide the default menu
         self.hide_default_menu()
-        
-        # Inject custom Help link using Streamlit's markdown method
+
+        # Inject custom Help/ASAP links using Streamlit's markdown method
         st.markdown(
             f"""
             <style>
-            /* Position container in top-right, below header */
+            /* Position container inside the header bar's own vertical
+               space (stHeader is 60px tall), right-aligned, matching the
+               reference site's utility-bar link style. */
             .custom-menu-container {{
                 position: fixed;
-                top: 3.5rem;
+                top: 0;
                 right: 1rem;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
                 z-index: 999999;
             }}
-            
-            /* Help link styling - simple and modern */
-            .help-link {{
-                color: #31333F;
-                text-decoration: none;
-                font-size: 0.875rem;
-                font-weight: 400;
-                padding: 0.5rem 1rem;
-                border-radius: 0.375rem;
-                transition: background-color 0.2s ease;
-                background-color: white;
-                border: 1px solid #e6e6e6;
-                display: inline-block;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+            /* Plain white text links on the gradient header, not buttons.
+               !important needed: Streamlit applies its own blue/underlined
+               default styling to <a> tags rendered via st.markdown, which
+               otherwise wins over this plain class selector. */
+            .header-link {{
+                color: #fff !important;
+                text-decoration: none !important;
+                font-size: 1.1rem !important;
+                font-weight: 700 !important;
             }}
-            
-            .help-link:hover {{
-                background-color: #f0f2f6;
-                text-decoration: none;
+
+            .header-link:hover {{
+                color: #fff !important;
+                text-decoration: none !important;
+            }}
+
+            .header-link-divider {{
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 1.1rem;
             }}
             </style>
-            
+
             <div class="custom-menu-container">
-                <a href="{self.help_url}" target="_blank" class="help-link">Help</a>
+                <a href="{self.help_url}" target="_blank" class="header-link">Help</a>
+                <span class="header-link-divider">|</span>
+                <a href="{self.asap_url}" target="_blank" class="header-link">ASAP</a>
             </div>
             """,
             unsafe_allow_html=True

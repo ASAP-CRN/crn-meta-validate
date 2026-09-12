@@ -3,6 +3,9 @@ Utility script to sync the app-intro section across README.md and docs/index.md,
 using the shared intro text defined in utils.help_menus.get_app_intro_markdown()
 and the values from resource/app_schema_{webapp_version}.json.
 
+IMPORTANT: the source of truth of the app and its documentation is utils/help_menus.py.
+Change any content there and re-run utils/generate_readme.py to push changes into README.md and docs/index.md.
+
 Usage (run from the repo root):
     python3 utils/generate_readme.py -v v0.9.2
 
@@ -22,6 +25,13 @@ This script updates:
   3) The intro block between markers:
        <!-- DOCS_INTRO_START -->
        <!-- DOCS_INTRO_END -->
+     using utils.help_menus.get_docs_intro_markdown() — trimmed variant
+     of "five steps"/"two types of issues" intro.
+  4) The steps-table block between markers:
+       <!-- DOCS_STEPS_TABLE_START -->
+       <!-- DOCS_STEPS_TABLE_END -->
+     using utils.help_menus.get_steps_table_markdown() — the same table
+     shown in the App intro, so both stay in sync.
 
 If any marker or header cannot be located, the script raises RuntimeError
 and leaves both files unchanged.
@@ -160,6 +170,34 @@ def update_docs_index(repo_root: str, intro_markdown: str) -> None:
     print("docs/index.md updated.")
 
 
+def update_docs_steps_table(repo_root: str, steps_table_markdown: str) -> None:
+    """Update docs/index.md: replace DOCS_STEPS_TABLE block."""
+    index_path = os.path.join(repo_root, "docs", "index.md")
+    if not os.path.exists(index_path):
+        raise RuntimeError(f"docs/index.md not found at: {index_path}")
+
+    with open(index_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    region_start, region_end = find_marked_block(
+        text=text,
+        start_marker="<!-- DOCS_STEPS_TABLE_START -->",
+        end_marker="<!-- DOCS_STEPS_TABLE_END -->",
+    )
+    if region_start == -1:
+        raise RuntimeError(
+            "Could not locate <!-- DOCS_STEPS_TABLE_START --> ... <!-- DOCS_STEPS_TABLE_END --> "
+            "markers in docs/index.md."
+        )
+
+    text = replace_block(text, region_start, region_end, steps_table_markdown)
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+    print("docs/index.md steps table updated.")
+
+
 def sync_all(repo_root: str, webapp_version: str) -> None:
     """Load schema, build intro markdown, and sync README.md + docs/index.md."""
     schema_filename = f"app_schema_{webapp_version}.json"
@@ -177,9 +215,18 @@ def sync_all(repo_root: str, webapp_version: str) -> None:
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
 
-    from utils.help_menus import get_app_intro_markdown  # type: ignore
+    from utils.help_menus import (  # type: ignore
+        get_app_intro_markdown,
+        get_docs_intro_markdown,
+        get_steps_table_markdown,
+    )
 
     intro_markdown = get_app_intro_markdown(
+        cde_version=cde_version,
+        cde_google_sheet_url=cde_google_sheet_url,
+    )
+    docs_intro_markdown = get_docs_intro_markdown()
+    steps_table_markdown = get_steps_table_markdown(
         cde_version=cde_version,
         cde_google_sheet_url=cde_google_sheet_url,
     )
@@ -191,7 +238,11 @@ def sync_all(repo_root: str, webapp_version: str) -> None:
     )
     update_docs_index(
         repo_root=repo_root,
-        intro_markdown=intro_markdown,
+        intro_markdown=docs_intro_markdown,
+    )
+    update_docs_steps_table(
+        repo_root=repo_root,
+        steps_table_markdown=steps_table_markdown,
     )
 
 

@@ -9,8 +9,8 @@ Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/main/re
 Version history: https://github.com/ASAP-CRN/crn-meta-validate/blob/main/CHANGELOG.md
 
 Authors:
-- [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
+- [Andy Henrie](https://github.com/ergonyc)
 
 Contributors:
 - [Alejandro Marinez](https://github.com/AMCalejandro)
@@ -155,7 +155,6 @@ def main():
 
     # Main introduction text
     render_app_intro(
-        webapp_version=webapp_version,
         cde_version=app_config.cde_version,
         cde_google_sheet_url=app_config.cde_google_sheet_current,
     )

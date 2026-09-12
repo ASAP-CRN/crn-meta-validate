@@ -2,34 +2,42 @@
    ASAP brand accent palette. Defined as custom properties to accommodate
    both light- and dark-themed browsers.
    ============================================ */
-:root {
-    --accent: #035C81;           /* wedge C, deep teal-blue: AA on white (7.36:1) */
-    --accent-secondary: #8C4E9F; /* wedge B, purple: AA on white (5.67:1); large-text/icons only on dark */
-    --accent-success: #34A270;   /* wedge F, green: large-text/icons only on white; AA on dark (5.89:1) */
+:root { /* Light (default) theme */
+    --accent:           #035C81; /* Deep teal-blue */
+    --accent-secondary: #8C4E9F; /* Purple */
+    --accent-success:   #34A270; /* Green */
+    --table-header-bg:  #E3E4E3; /* Neutral grey */
+    --table-header-fg:  #00202C; /* Neutral black swap-pair */
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
-        --accent: #0C8DC3;           /* wedge D, same family as --accent, lighter shade: AA on #0E1117 (5.05:1) */
-        --accent-secondary: #8C4E9F; /* unchanged; caller must restrict to large text/icons in dark mode */
-        --accent-success: #34A270;   /* unchanged; already AA on dark */
+    :root { /* Dark theme */
+        --accent:           #0C8DC3;
+        --accent-secondary: #8C4E9F;
+        --accent-success:   #34A270;
+        --table-header-bg:  #00202C;
+        --table-header-fg:  #E3E4E3;
     }
+}
+
+/* Header bar gradient, matching parkinsonsroadmap.org/research-network's
+   own top bar and the same gradient already used on the App MkDocs. */
+[data-testid="stHeader"] {
+    background: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270) !important;
 }
 
 /* ============================================
    General font styles. Note: !important used to override Streamlit defaults
    ============================================ */
 
-/* ASAP brand font: Arial for body copy, Arial Bold for headings.
-   Applied broadly (app shell + sidebar) since Streamlit's default theme
-   does not expose an Arial option via .streamlit/config.toml. */
+/* ASAP brand font: Arial for body, Arial Bold for headings. */
 [data-testid="stAppViewContainer"],
 [data-testid="stSidebar"],
 [data-testid="stHeader"] {
     font-family: Arial, sans-serif !important;
 }
 
-/* Headings use Arial Bold, per ASAP brand guide */
+/* Headings use Arial Bold */
 [data-testid="stAppViewContainer"] h1,
 [data-testid="stAppViewContainer"] h2,
 [data-testid="stAppViewContainer"] h3,
@@ -306,4 +314,15 @@ section[data-testid="stFileUploaderDropzone"] button {
 div[data-testid="stCheckbox"] {
     margin-top: -1.3rem;        /* or a small negative value */
     padding-top: 0rem;
+}
+
+/* Markdown table borders/header row, matching the MkDocs table styling. */
+[data-testid="stMarkdownContainer"] table,
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td {
+    border-color: var(--accent) !important;
+}
+[data-testid="stMarkdownContainer"] th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-fg) !important;
 }
