@@ -76,6 +76,31 @@ def parse_literal_list(raw):
         return [val]  # force to list
 
 
+def build_numeric_expected_descr(type_label: str, fillnull_values: list) -> str:
+    """
+    Build the "Expected: ..." description for an invalid Integer/Float cell.
+
+    Formats validation output for invalid numeric cells (Integer/Float) avoiding a
+    double mention of NULL_SENTINEL ("NA") in the message.
+
+    Parameters
+    ----------
+    type_label : str
+        Human-readable type name to use in the message (e.g. "int", "float").
+    fillnull_values : list
+        This field's FillNull values, already parsed from the CDE.
+
+    Returns
+    -------
+    str
+        The "Expected: ..." description text.
+    """
+    fillnull_descr = ', '.join(f"'{value}'" for value in fillnull_values)
+    if NULL_SENTINEL in fillnull_values:
+        return f"{type_label} or FillNull values ({fillnull_descr})"
+    return f"{type_label} or NULL ('{NULL_SENTINEL}') or FillNull values ({fillnull_descr})"
+
+
 class ReportCollector:
     """
     Collect and serialise validation messages (markdown, errors, warnings, etc.).
@@ -243,10 +268,7 @@ def validate_table_eval(
             invalid_cell_mask.loc[invalid_mask, column] = True
             failing_values = col_values[invalid_mask].unique()
             if len(failing_values):
-                expected_descr = (
-                    f"int or NULL ('{NULL_SENTINEL}') or FillNull values "
-                    f"({', '.join(map(_quote, fillnull_values))})"
-                )
+                expected_descr = build_numeric_expected_descr("int", fillnull_values)
                 invalid_entries.append((opt_req, column, len(failing_values),
                                         expected_descr, ', '.join(map(_quote, failing_values))))
                 (invalid_required if is_required else invalid_optional).append(column)
@@ -259,10 +281,7 @@ def validate_table_eval(
             invalid_cell_mask.loc[invalid_mask, column] = True
             failing_values = col_values[invalid_mask].unique()
             if len(failing_values):
-                expected_descr = (
-                    f"float or NULL ('{NULL_SENTINEL}') or FillNull values "
-                    f"({', '.join(map(_quote, fillnull_values))})"
-                )
+                expected_descr = build_numeric_expected_descr("float", fillnull_values)
                 invalid_entries.append((opt_req, column, len(failing_values),
                                         expected_descr, ', '.join(map(_quote, failing_values))))
                 (invalid_required if is_required else invalid_optional).append(column)

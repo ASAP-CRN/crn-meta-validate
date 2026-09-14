@@ -1,13 +1,123 @@
 /* ============================================
+   ASAP brand accent palette. Defined as custom properties to accommodate
+   both light- and dark-themed browsers.
+   ============================================ */
+:root { /* Light (default) theme */
+    --accent:           #035C81; /* Deep teal-blue */
+    --accent-secondary: #8C4E9F; /* Purple */
+    --accent-success:   #34A270; /* Green */
+    --table-header-bg:  #E3E4E3; /* Neutral grey */
+    --table-header-fg:  #00202C; /* Neutral black swap-pair */
+    --bg-color:         #FFFFFF;              /* matches MkDocs light background */
+    --heading-color:    rgba(0, 0, 0, 0.54);  /* matches MkDocs' muted h1-h3 color */
+}
+
+@media (prefers-color-scheme: dark) {
+    :root { /* Dark theme */
+        --accent:           #0C8DC3;
+        --accent-secondary: #8C4E9F;
+        --accent-success:   #34A270;
+        --table-header-bg:  #00202C;
+        --table-header-fg:  #E3E4E3;
+        --bg-color:         #1E2129;                  /* matches MkDocs slate (dark) background */
+        --heading-color:    rgba(226, 228, 233, 0.56); /* matches MkDocs' muted h1-h3 color */
+    }
+}
+
+/* Page background, matching MkDocs' background exactly (was Streamlit's
+   own default #FFFFFF/#0E1117) so the two surfaces read as one product. */
+body {
+    background-color: var(--bg-color) !important;
+}
+
+/* Header bar gradient, matching parkinsonsroadmap.org/research-network's
+   own top bar and the same gradient already used on the App MkDocs. */
+[data-testid="stHeader"] {
+    background-image: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270) !important;
+    background-size: 100vw 60px !important;
+    background-attachment: fixed !important;
+    background-position: 0 0 !important;
+}
+
+/* Extend Header bar across Step 2 sidebar. */
+[data-testid="stSidebar"] {
+    position: relative !important;
+}
+[data-testid="stSidebar"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-image: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270);
+    background-size: 100vw 60px;
+    background-attachment: fixed;
+    background-position: 0 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ============================================
    General font styles. Note: !important used to override Streamlit defaults
    ============================================ */
 
+/* ASAP brand font: Arial for body, Arial Bold for headings. */
+[data-testid="stAppViewContainer"],
+[data-testid="stSidebar"],
+[data-testid="stHeader"] {
+    font-family: Arial, sans-serif !important;
+}
+
+/* Headings use Arial Light rather than a bold high-contrast one, 
+   so both surfaces feel like one product. */
+[data-testid="stAppViewContainer"] h1,
+[data-testid="stAppViewContainer"] h2,
+[data-testid="stAppViewContainer"] h3,
+[data-testid="stAppViewContainer"] h4,
+[data-testid="stAppViewContainer"] h5,
+[data-testid="stAppViewContainer"] h6,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,
+[data-testid="stSidebar"] h5,
+[data-testid="stSidebar"] h6 {
+    font-family: Arial, sans-serif !important;
+    font-weight: 300 !important;
+    color: var(--heading-color) !important;
+}
+
 .big-font {
-    font-family:Helvetica; color:#0f557a; font-size:48px !important;
+    font-family: Arial, sans-serif; font-weight: 300; color: var(--heading-color); font-size:32px !important;
+}
+
+/* Align h2 px (default Streamlit 36px) with MkDocs default 32px. */
+[data-testid="stAppViewContainer"] h2,
+[data-testid="stSidebar"] h2 {
+    font-size: 32px !important;
 }
 .medium-font {
     font-family:Arial; color:000000; font-size:18px;
 }
+
+/* Fix stMarkdownContainer bug: Streamlit sets its own font-family directly on
+   this container, then setting Arial. */
+[data-testid="stMarkdownContainer"] table,
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] a,
+[data-testid="stMarkdownContainer"] blockquote,
+.header-title {
+    font-family: Arial, sans-serif !important;
+}
+
+/* Align Streamlit link color and align with MkDocs accent color. */
+[data-testid="stMarkdownContainer"] a:not(.header-link) {
+    color: var(--accent) !important;
+}
+
 textarea {
     font-family: Arial;
     font-size: 25px;
@@ -23,6 +133,7 @@ input {
    General button styles
    ============================================ */
 div.stButton > button:first-child {
+    font-family: Arial, sans-serif;
     background-color: #D3D3D3;
     height: auto;
     color: black;
@@ -137,10 +248,10 @@ div.stButton > button:first-child {
    Custom styling for sidebar
    ============================================ */
 
-/* Widen Streamlit sidebar */
+/* Widen Step 2 sidebar. */
 [data-testid="stSidebar"] {
-    min-width: 355px !important;
-    max-width: 355px !important;
+    min-width: 380px !important;
+    max-width: 380px !important;
 }
 
 /* Reduce padding inside the dropzone area to make it more compact */
@@ -207,7 +318,8 @@ section[data-testid="stFileUploaderDropzone"]::before {
     text-align: center !important;
     color: inherit !important;
     font-weight: 500 !important;
-    margin-bottom: -1rem !important;  /* Controls space between custom legend and Browse button */
+    /* Net gap between "OR" and the button below. */
+    margin-bottom: -0.25rem !important;
     padding-top: 0rem !important;
 }
 
@@ -241,6 +353,7 @@ section[data-testid="stFileUploaderDropzone"] {
 
 /* Style only the 'Browse files' button inside the dropzone so it matches app buttons */
 section[data-testid="stFileUploaderDropzone"] button {
+    font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
     height: auto !important;
     color: black !important;
@@ -250,7 +363,7 @@ section[data-testid="stFileUploaderDropzone"] button {
     padding-right: 16px !important;
     font-size: 16px !important;
     border-radius: 4px !important;
-    border: 2px solid #0F6EA1 !important;
+    border: 2px solid var(--accent) !important;
 }
 
 /* ============================================
@@ -260,4 +373,15 @@ section[data-testid="stFileUploaderDropzone"] button {
 div[data-testid="stCheckbox"] {
     margin-top: -1.3rem;        /* or a small negative value */
     padding-top: 0rem;
+}
+
+/* Markdown table borders/header row, matching the MkDocs table styling. */
+[data-testid="stMarkdownContainer"] table,
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td {
+    border-color: var(--accent) !important;
+}
+[data-testid="stMarkdownContainer"] th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-fg) !important;
 }

@@ -1,25 +1,25 @@
 {
   "_comment": "Declares the expected pandas parse outcome for each tester CSV. Add an entry here whenever a new tester file is added. 'expect_parse_ok' = true means pd.read_csv() must succeed; false means it must raise an exception (the file intentionally contains a structural error that the app is designed to surface).",
   "files": {
+    "ASSAY.csv": {
+      "expect_parse_ok": true,
+      "reason": "Comma-delimited; well-formed. Built for OSA = Human / Brain / single_cell_rna_seq (CDE v4.5) so that 'assay' and 'sample_source' show the exact single-value narrowing Step 2's downloaded template applies for this OSA. Produces CDE errors on 'sequencing_end' (invalid Enum value 'dual') and 'RIN' (invalid Float value 'good'). 'instrument' demonstrates a valid semicolon-delimited multi-value entry ('10x_chromium_x;illumina_novaseq_6000' -- instrument is AllowMultiEnum) and is otherwise fully valid. Dropped 3 Optional fields left empty in every row (demultiplex_file, multiplex_method, pool_id)."
+    },
     "CLINPATH.csv": {
       "expect_parse_ok": false,
-      "reason": "Row 4 has extra spurious fields (ExtraField, ExtraColumn) that cause a column-count mismatch – intentional example of a malformed input the app must reject."
+      "reason": "Row 4 (subject_3) has exactly one extra spurious field ('ExtraField') beyond the 30-field header -- intentional example of a malformed input the app must reject. Dropped 3 Optional fields left empty in every row (hx_melanoma, path_autopsy_second_dx, path_autopsy_third_dx)."
     },
     "PROTOCOL.csv": {
       "expect_parse_ok": true,
       "reason": "Semicolon-delimited; well-formed; produces no CDE errors."
     },
-    "DATA.csv": {
-      "expect_parse_ok": true,
-      "reason": "Semicolon-delimited; well-formed; produces a CDE error on 'adjustment' column (invalid value) and 'file_description' is empty (required field)."
-    },
     "SAMPLE.csv": {
       "expect_parse_ok": true,
-      "reason": "Comma-delimited; well-formed; produces a CDE error on 'condition_id' column (invalid value) and five other columns are empty (required fields)."
+      "reason": "Comma-delimited; well-formed; produces two CDE errors: 'condition_id' (invalid values 'IBD', 'IBD remission') and 'preservation_method' (Required Enum column left empty in every row -- 'completely NULL' error, distinct from an invalid-value error; also demonstrates Step 4's interactive fillout, since a Required Enum column with missing values gets a dropdown of valid values to fill in). 'suspension_type' was added back with 'Cell' in every row -- it's not Required/Optional for this dataset's OSA (Human / Brain / bulk_rna_seq, since it's SpecificAssays-restricted to single-cell/nucleus assays), so it demonstrates the app's 'extra column, not evaluated' warning. Refreshed against CDE v4.5: dropped 3 fields retired since v4.4 (condition, repeated_sample, visium_probe_set) and updated 'region_level_1' to current valid ontology tokens. Also dropped 4 fields not Required/Optional for this dataset's OSA: antibiotics_use, clone_level, sample_run, SDRF_proteomics_table. Further dropped 13 Optional fields left empty in every row (pm_PH, time, alternate_id, assay_ontology_term_id, development_stage_ontology_term_id, disease_ontology_term_id, tissue_ontology_term_id, comorbidities, diet, latitude, longitude, laxative_use, treatments)."
     },
     "SUBJECT.csv": {
       "expect_parse_ok": true,
-      "reason": "Headers only (0 data rows); well-formed; flagged by app to skip validation."
+      "reason": "Headers only (0 data rows); well-formed; nothing to validate. Dropped 'cell_line' (restricted to cell-line sample sources) and 'strain' (restricted to non-Human species) -- neither is Required/Optional for this table's Human dataset context."
     }
   }
 }
