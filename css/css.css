@@ -248,10 +248,10 @@ div.stButton > button:first-child {
    Custom styling for sidebar
    ============================================ */
 
-/* Widen Streamlit sidebar */
+/* Widen Step 2 sidebar. */
 [data-testid="stSidebar"] {
-    min-width: 355px !important;
-    max-width: 355px !important;
+    min-width: 380px !important;
+    max-width: 380px !important;
 }
 
 /* Reduce padding inside the dropzone area to make it more compact */
@@ -318,7 +318,8 @@ section[data-testid="stFileUploaderDropzone"]::before {
     text-align: center !important;
     color: inherit !important;
     font-weight: 500 !important;
-    margin-bottom: -1rem !important;  /* Controls space between custom legend and Browse button */
+    /* Net gap between "OR" and the button below. */
+    margin-bottom: -0.25rem !important;
     padding-top: 0rem !important;
 }
 
