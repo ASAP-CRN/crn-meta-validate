@@ -278,21 +278,42 @@ def get_steps_table_markdown(cde_version: str, cde_google_sheet_url: str) -> str
 | **4. Fix common issues** | Follow app instructions | Helps to fix delimiter problems and missing values |
 | **5. CDE validation** | Click Compare vs. CDE | Reports errors and warnings against the [CDE {cde_version}]({cde_google_sheet_url}) |"""
 
+def get_two_types_of_issues_markdown() -> str:
+    """
+    Return the "two types of issues" markdown block.
+
+    Shared between the App intro (`get_app_intro_markdown`) and the docs
+    home page (`docs/index.md`, synced via `generate_readme.py`), so both
+    present the exact same wording in the same bullet-list format instead
+    of diverging into separate prose/list versions (this previously
+    happened: the App used hard-line-break paragraph text while docs used
+    a real markdown list, and the wording itself had also drifted).
+
+    Returns
+    -------
+    str
+        Markdown text: an intro line plus a real bullet list (`-`), not
+        hard-line-break paragraph text.
+    """
+    return """Two types of issues will be reported:
+
+- **Errors (❌)** — must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.
+- **Warnings (⚠️)** — recommended to be fixed before uploading, but not required."""
+
 def get_app_intro_markdown(cde_version: str, cde_google_sheet_url: str) -> str:
     """Return the main app introduction text shared between the UI and docs."""
     steps_table_markdown = get_steps_table_markdown(
         cde_version=cde_version,
         cde_google_sheet_url=cde_google_sheet_url,
     )
+    two_types_of_issues_markdown = get_two_types_of_issues_markdown()
     return f"""{_APP_PURPOSE_SENTENCE}
 
 We do this in five steps:
 
 {steps_table_markdown}
 
-Two types of issues will be reported:     
-**Errors (❌):**  must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
-**Warnings (⚠️):** recommended to be fixed before uploading, but not required.     
+{two_types_of_issues_markdown}
 
 {_FREE_TEXT_BOXES_SENTENCE}
 """
@@ -305,14 +326,20 @@ def get_docs_intro_markdown() -> str:
     between the repo README and the docs landing page re: 5 steps and
     two types of issues.
 
+    Note: unlike `get_app_intro_markdown`, this does NOT include
+    `_FREE_TEXT_BOXES_SENTENCE` — on docs/index.md that sentence is
+    hand-placed further down the page (after the "Two types of issues"
+    section, itself synced separately via `get_two_types_of_issues_markdown`
+    and its own marker block) rather than synced into the top DOCS_INTRO
+    block, so it is deliberately left out here to avoid generate_readme.py
+    duplicating it.
+
     Returns
     -------
     str
         Markdown text for the docs/index.md intro block.
     """
     return f"""{_APP_PURPOSE_SENTENCE}
-
-{_FREE_TEXT_BOXES_SENTENCE}
 """
 
 def render_app_intro(cde_version: str, cde_google_sheet_url: str) -> None:
@@ -341,16 +368,25 @@ class CustomMenu:
     with not being able to bring the sidebar back easily.
     """
 
-    def __init__(self, help_url: str, asap_url: str = "https://parkinsonsroadmap.org/"):
+    def __init__(
+        self,
+        help_url: str,
+        asap_url: str = "https://parkinsonsroadmap.org/",
+        app_title: str = "ASAP CRN metadata quality control (QC) app",
+    ):
         """
         Initialize the CustomMenu.
 
         Args:
             help_url: URL for the help/documentation page
             asap_url: URL for the ASAP parent-org site (defaults to its homepage)
+            app_title: title text shown top-left in the header bar, matching
+                the MkDocs site's own header title (defaults to the App's
+                existing hero title text)
         """
         self.help_url = help_url
         self.asap_url = asap_url
+        self.app_title = app_title
     
     def hide_default_menu(self):
         """Hide the default Streamlit kebab menu and customize sidebar."""
@@ -387,11 +423,13 @@ class CustomMenu:
         )
     
     def render(self):
-        """Render the custom menu inside the header bar, top-right."""
+        """Render the custom menu inside the header bar, top-right, plus
+        the app title top-left (matching the MkDocs header layout)."""
         # Hide the default menu
         self.hide_default_menu()
 
-        # Inject custom Help/ASAP links using Streamlit's markdown method
+        # Inject the header title (left) and custom Help/ASAP links (right)
+        # using Streamlit's markdown method
         st.markdown(
             f"""
             <style>
@@ -410,6 +448,8 @@ class CustomMenu:
             }}
 
             /* Plain white text links on the gradient header, not buttons.
+               Weight 300 (thin), matching the muted/thin heading treatment
+               used everywhere else in the App and MkDocs.
                !important needed: Streamlit applies its own blue/underlined
                default styling to <a> tags rendered via st.markdown, which
                otherwise wins over this plain class selector. */
@@ -417,7 +457,7 @@ class CustomMenu:
                 color: #fff !important;
                 text-decoration: none !important;
                 font-size: 1.1rem !important;
-                font-weight: 700 !important;
+                font-weight: 300 !important;
             }}
 
             .header-link:hover {{
@@ -429,10 +469,32 @@ class CustomMenu:
                 color: rgba(255, 255, 255, 0.7);
                 font-size: 1.1rem;
             }}
+
+            /* App title, left-aligned in the same header bar, matching
+               MkDocs' own .md-header__title (white, weight 400, 18px). */
+            .header-title-container {{
+                position: fixed;
+                top: 0;
+                left: 1rem;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                z-index: 999999;
+            }}
+
+            .header-title {{
+                color: #fff;
+                font-size: 18px;
+                font-weight: 400;
+            }}
             </style>
 
+            <div class="header-title-container">
+                <span class="header-title">{self.app_title}</span>
+            </div>
+
             <div class="custom-menu-container">
-                <a href="{self.help_url}" target="_blank" class="header-link">Help</a>
+                <a href="{self.help_url}" target="_blank" class="header-link">Documentation</a>
                 <span class="header-link-divider">|</span>
                 <a href="{self.asap_url}" target="_blank" class="header-link">ASAP</a>
             </div>

@@ -8,6 +8,8 @@
     --accent-success:   #34A270; /* Green */
     --table-header-bg:  #E3E4E3; /* Neutral grey */
     --table-header-fg:  #00202C; /* Neutral black swap-pair */
+    --bg-color:         #FFFFFF;              /* matches MkDocs light background */
+    --heading-color:    rgba(0, 0, 0, 0.54);  /* matches MkDocs' muted h1-h3 color */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,13 +19,54 @@
         --accent-success:   #34A270;
         --table-header-bg:  #00202C;
         --table-header-fg:  #E3E4E3;
+        --bg-color:         #1E2129;                  /* matches MkDocs slate (dark) background */
+        --heading-color:    rgba(226, 228, 233, 0.56); /* matches MkDocs' muted h1-h3 color */
     }
 }
 
+/* Page background, matching MkDocs' background exactly (was Streamlit's
+   own default #FFFFFF/#0E1117) so the two surfaces read as one product. */
+body {
+    background-color: var(--bg-color) !important;
+}
+
 /* Header bar gradient, matching parkinsonsroadmap.org/research-network's
-   own top bar and the same gradient already used on the App MkDocs. */
+   own top bar and the same gradient already used on the App MkDocs.
+   `background-attachment: fixed` + `background-size: 100vw` ties the
+   gradient to the viewport rather than this element's own box — so it
+   paints from the exact same reference frame as the matching sidebar
+   patch below, guaranteeing the two line up with no seam even if the
+   two elements' own widths differ by a pixel (e.g. scrollbar gutter). */
 [data-testid="stHeader"] {
-    background: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270) !important;
+    background-image: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270) !important;
+    background-size: 100vw 60px !important;
+    background-attachment: fixed !important;
+    background-position: 0 0 !important;
+}
+
+/* Streamlit's sidebar starts at the same vertical origin (top: 0) as the
+   header bar above, not below it — its own background paints over that
+   shared 60px-tall strip, cutting the gradient off (and leaving the header
+   title on a flat dark patch) wherever the sidebar is visible. Extend the
+   same gradient, from the same viewport-fixed reference frame as the
+   header rule above, across the sidebar's own top band so the two read
+   as one continuous bar with no seam at the boundary. */
+[data-testid="stSidebar"] {
+    position: relative !important;
+}
+[data-testid="stSidebar"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-image: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270);
+    background-size: 100vw 60px;
+    background-attachment: fixed;
+    background-position: 0 0;
+    pointer-events: none;
+    z-index: 1;
 }
 
 /* ============================================
@@ -37,7 +80,9 @@
     font-family: Arial, sans-serif !important;
 }
 
-/* Headings use Arial Bold */
+/* Headings use Arial Light, muted colour — matches MkDocs' own quiet
+   heading style (Material's default thin/translucent h1-h3) rather than
+   a bold high-contrast one, so both surfaces feel like one product. */
 [data-testid="stAppViewContainer"] h1,
 [data-testid="stAppViewContainer"] h2,
 [data-testid="stAppViewContainer"] h3,
@@ -51,15 +96,58 @@
 [data-testid="stSidebar"] h5,
 [data-testid="stSidebar"] h6 {
     font-family: Arial, sans-serif !important;
-    font-weight: 700 !important;
+    font-weight: 300 !important;
+    color: var(--heading-color) !important;
 }
 
 .big-font {
-    font-family: Arial, sans-serif; font-weight: 700; color: var(--accent); font-size:48px !important;
+    font-family: Arial, sans-serif; font-weight: 300; color: var(--heading-color); font-size:32px !important;
+}
+
+/* Streamlit's native h2 size (36px) is larger than MkDocs' h1 (32px) — the
+   heading level each "Step N: ..." section conceptually matches, since each
+   step is its own top-level page in MkDocs. Resized to match. h3 (25px)
+   already matches MkDocs' h2 (25px) as-is, so only h2 needs a size override. */
+[data-testid="stAppViewContainer"] h2,
+[data-testid="stSidebar"] h2 {
+    font-size: 32px !important;
 }
 .medium-font {
     font-family:Arial; color:000000; font-size:18px;
 }
+
+/* stMarkdownContainer bug: Streamlit sets its own font-family directly on
+   this container (not !important), which — being a closer ancestor than
+   the broader Arial rule above — breaks inheritance for anything that
+   doesn't already have its own more specific override. Headings/.big-font/
+   .medium-font are unaffected (each has its own explicit Arial rule above),
+   but table cells, list items, links, and the header-title/header-link
+   elements (all rendered via st.markdown, e.g. CustomMenu and the shared
+   steps table / two-types-of-issues bullets) were silently falling back to
+   Streamlit's default "Source Sans" font. Force Arial on the specific
+   elements confirmed affected — deliberately NOT a blanket `*` selector,
+   to avoid stripping the monospace font from <code>/<pre> blocks, which
+   should stay monospace exactly as they do on the MkDocs side. */
+[data-testid="stMarkdownContainer"] table,
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] a,
+[data-testid="stMarkdownContainer"] blockquote,
+.header-title {
+    font-family: Arial, sans-serif !important;
+}
+
+/* Prose/table links inside markdown default to Streamlit's own blue
+   (rgb(61, 157, 243)), not the ASAP accent color MkDocs already uses for
+   its own links (confirmed live: rgb(12, 141, 195) = wedge D in dark
+   mode). Exclude .header-link — the "Help | ASAP"-style header links are
+   deliberately plain white against the gradient header bar, not
+   accent-colored (see CustomMenu.render() in help_menus.py). */
+[data-testid="stMarkdownContainer"] a:not(.header-link) {
+    color: var(--accent) !important;
+}
+
 textarea {
     font-family: Arial;
     font-size: 25px;

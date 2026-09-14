@@ -1,14 +1,12 @@
-# ASAP CRN Metadata QC App
+# ASAP CRN metadata QC app at a glance
 
 <!-- DOCS_INTRO_START -->
 
 This app assists data contributors to QC their metadata tables in comma-delimited format (e.g. STUDY.csv, SAMPLE.csv, PROTOCOL.csv, etc.) against the ASAP CRN controlled vocabularies (CDE) before uploading them to Google buckets.
 
-Free text boxes allow users to record per-column comments to provide context to data curators during review.
-
 <!-- DOCS_INTRO_END -->
 
-## The five steps at a glance
+We do this in five steps:
 
 <!-- DOCS_STEPS_TABLE_START -->
 
@@ -22,20 +20,22 @@ Free text boxes allow users to record per-column comments to provide context to 
 
 <!-- DOCS_STEPS_TABLE_END -->
 
-## Two types of issues
+<!-- DOCS_TWO_TYPES_START -->
 
-- **Errors (❌)** — must be fixed before uploading to Google buckets
-- **Warnings (⚠️)** — recommended to fix, but not required
+Two types of issues will be reported:
 
-## Go to the app
+- **Errors (❌)** — must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.
+- **Warnings (⚠️)** — recommended to be fixed before uploading, but not required.
 
-👉 **[Open the QC App](https://asap-meta-qc.streamlit.app/)**
+<!-- DOCS_TWO_TYPES_END -->
 
-## Full step-by-step documentation
-The documentation covers all five steps with screenshots, a [FAQ](http://127.0.0.1:8000/crn-meta-validate/faq/), and download instructions.
-Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
+Free text boxes allow users to record per-column comments to provide context to data curators during review.
 
-📖 **[Full step-by-step documentation](https://asap-crn.github.io/crn-meta-validate/user-guide/step1-dataset-setup/)**
+
+## 📖 **[Full step-by-step user guide](https://asap-crn.github.io/crn-meta-validate/user-guide/step1-dataset-setup/)**
+Includes all five steps with screenshots, a [FAQ](http://127.0.0.1:8000/crn-meta-validate/faq/), and download instructions. Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
+
+## 👉 **[Go to the app](https://asap-meta-qc.streamlit.app/)**
 
 ---
 

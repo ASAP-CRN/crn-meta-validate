@@ -59,9 +59,10 @@ We do this in five steps:
 | **4. Fix common issues** | Follow app instructions | Helps to fix delimiter problems and missing values |
 | **5. CDE validation** | Click Compare vs. CDE | Reports errors and warnings against the [CDE v4.5](https://docs.google.com/spreadsheets/d/1c0z5KvRELdT2AtQAH2Dus8kwAyyLrR0CROhKOjpU4Vc/edit?usp=sharing) |
 
-Two types of issues will be reported:     
-**Errors (❌):**  must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.     
-**Warnings (⚠️):** recommended to be fixed before uploading, but not required.     
+Two types of issues will be reported:
+
+- **Errors (❌)** — must be fixed by the data contributors before uploading metadata to ASAP CRN Google buckets.
+- **Warnings (⚠️)** — recommended to be fixed before uploading, but not required.
 
 Free text boxes allow users to record per-column comments to provide context to data curators during review.
 

@@ -1,4 +1,4 @@
-site_name: ASAP CRN Metadata QC App
+site_name: ASAP CRN Metadata QC App Documentation
 site_url: https://asap-crn.github.io/crn-meta-validate/
 site_description: Step-by-step guide for validating ASAP CRN metadata before uploading to Google buckets
 site_author: DNAstack Bioinformatics
@@ -46,9 +46,10 @@ nav:
     - user-guide/step3-upload-files.md
     - user-guide/step4-fix-issues.md
     - user-guide/step5-cde-validation.md
-  - Changelog: changelog.md
   - FAQ: faq.md
   - About: about.md
+  - Changelog: changelog.md
+  - App: https://asap-meta-qc.streamlit.app/
 
 markdown_extensions:
   - admonition          # !!! tip / warning / note blocks

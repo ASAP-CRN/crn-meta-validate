@@ -32,6 +32,12 @@ This script updates:
        <!-- DOCS_STEPS_TABLE_END -->
      using utils.help_menus.get_steps_table_markdown() — the same table
      shown in the App intro, so both stay in sync.
+  5) The two-types-of-issues block between markers:
+       <!-- DOCS_TWO_TYPES_START -->
+       <!-- DOCS_TWO_TYPES_END -->
+     using utils.help_menus.get_two_types_of_issues_markdown() — the same
+     wording and bullet-list format shown in the App intro, so both stay
+     in sync.
 
 If any marker or header cannot be located, the script raises RuntimeError
 and leaves both files unchanged.
@@ -198,6 +204,34 @@ def update_docs_steps_table(repo_root: str, steps_table_markdown: str) -> None:
     print("docs/index.md steps table updated.")
 
 
+def update_docs_two_types_of_issues(repo_root: str, two_types_of_issues_markdown: str) -> None:
+    """Update docs/index.md: replace DOCS_TWO_TYPES block."""
+    index_path = os.path.join(repo_root, "docs", "index.md")
+    if not os.path.exists(index_path):
+        raise RuntimeError(f"docs/index.md not found at: {index_path}")
+
+    with open(index_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    region_start, region_end = find_marked_block(
+        text=text,
+        start_marker="<!-- DOCS_TWO_TYPES_START -->",
+        end_marker="<!-- DOCS_TWO_TYPES_END -->",
+    )
+    if region_start == -1:
+        raise RuntimeError(
+            "Could not locate <!-- DOCS_TWO_TYPES_START --> ... <!-- DOCS_TWO_TYPES_END --> "
+            "markers in docs/index.md."
+        )
+
+    text = replace_block(text, region_start, region_end, two_types_of_issues_markdown)
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+    print("docs/index.md two-types-of-issues block updated.")
+
+
 def sync_all(repo_root: str, webapp_version: str) -> None:
     """Load schema, build intro markdown, and sync README.md + docs/index.md."""
     schema_filename = f"app_schema_{webapp_version}.json"
@@ -219,6 +253,7 @@ def sync_all(repo_root: str, webapp_version: str) -> None:
         get_app_intro_markdown,
         get_docs_intro_markdown,
         get_steps_table_markdown,
+        get_two_types_of_issues_markdown,
     )
 
     intro_markdown = get_app_intro_markdown(
@@ -230,6 +265,7 @@ def sync_all(repo_root: str, webapp_version: str) -> None:
         cde_version=cde_version,
         cde_google_sheet_url=cde_google_sheet_url,
     )
+    two_types_of_issues_markdown = get_two_types_of_issues_markdown()
 
     update_readme(
         repo_root=repo_root,
@@ -243,6 +279,10 @@ def sync_all(repo_root: str, webapp_version: str) -> None:
     update_docs_steps_table(
         repo_root=repo_root,
         steps_table_markdown=steps_table_markdown,
+    )
+    update_docs_two_types_of_issues(
+        repo_root=repo_root,
+        two_types_of_issues_markdown=two_types_of_issues_markdown,
     )
 
 
