@@ -175,7 +175,10 @@ def main():
 
     ############
     ### Render custom menu (replaces hamburger menu)
-    custom_menu = CustomMenu(help_url=app_config.app_schema['kebab_menu']['get_help_url'])
+    custom_menu = CustomMenu(
+        help_url=app_config.app_schema['kebab_menu']['get_help_url'],
+        version=webapp_version,
+    )
     custom_menu.render()
 
     ############

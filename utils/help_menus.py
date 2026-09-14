@@ -253,10 +253,8 @@ def get_steps_table_markdown(cde_version: str, cde_google_sheet_url: str) -> str
     """
     Return the "five steps at a glance" markdown table.
 
-    Shared between the App intro (`get_app_intro_markdown`) and the docs
-    home page (`docs/index.md`, synced via `generate_readme.py`), so both
-    present the exact same step-by-step summary in the same table format
-    instead of diverging into separate prose/table versions.
+    Shared between the App intro (`get_app_intro_markdown`) and the MkDocs
+    home page (`docs/index.md`, synced via `generate_readme.py`).
 
     Parameters
     ----------
@@ -282,12 +280,8 @@ def get_two_types_of_issues_markdown() -> str:
     """
     Return the "two types of issues" markdown block.
 
-    Shared between the App intro (`get_app_intro_markdown`) and the docs
-    home page (`docs/index.md`, synced via `generate_readme.py`), so both
-    present the exact same wording in the same bullet-list format instead
-    of diverging into separate prose/list versions (this previously
-    happened: the App used hard-line-break paragraph text while docs used
-    a real markdown list, and the wording itself had also drifted).
+    Shared between the App intro (`get_app_intro_markdown`) and the MkDocs
+    home page (`docs/index.md`, synced via `generate_readme.py`).
 
     Returns
     -------
@@ -325,14 +319,6 @@ def get_docs_intro_markdown() -> str:
     A trimmed variant of `get_app_intro_markdown`. To avoid redundancy
     between the repo README and the docs landing page re: 5 steps and
     two types of issues.
-
-    Note: unlike `get_app_intro_markdown`, this does NOT include
-    `_FREE_TEXT_BOXES_SENTENCE` — on docs/index.md that sentence is
-    hand-placed further down the page (after the "Two types of issues"
-    section, itself synced separately via `get_two_types_of_issues_markdown`
-    and its own marker block) rather than synced into the top DOCS_INTRO
-    block, so it is deliberately left out here to avoid generate_readme.py
-    duplicating it.
 
     Returns
     -------
@@ -373,6 +359,8 @@ class CustomMenu:
         help_url: str,
         asap_url: str = "https://parkinsonsroadmap.org/",
         app_title: str = "ASAP CRN metadata quality control (QC) app",
+        version: str | None = None,
+        changelog_url: str = "https://asap-crn.github.io/crn-meta-validate/changelog/",
     ):
         """
         Initialize the CustomMenu.
@@ -383,10 +371,17 @@ class CustomMenu:
             app_title: title text shown top-left in the header bar, matching
                 the MkDocs site's own header title (defaults to the App's
                 existing hero title text)
+            version: webapp version label (e.g. "v0.9.5") shown as a third
+                header link, pointing to changelog_url. Omitted entirely
+                (no third link/divider rendered) if not provided.
+            changelog_url: URL the version link points to (defaults to the
+                MkDocs changelog page)
         """
         self.help_url = help_url
         self.asap_url = asap_url
         self.app_title = app_title
+        self.version = version
+        self.changelog_url = changelog_url
     
     def hide_default_menu(self):
         """Hide the default Streamlit kebab menu and customize sidebar."""
@@ -428,8 +423,16 @@ class CustomMenu:
         # Hide the default menu
         self.hide_default_menu()
 
-        # Inject the header title (left) and custom Help/ASAP links (right)
-        # using Streamlit's markdown method
+        # Third "| <version>" link segment, only rendered when a version
+        # was provided (keeps this class usable without one).
+        version_link_html = ""
+        if self.version:
+            version_link_html = f"""
+                <span class="header-link-divider">|</span>
+                <a href="{self.changelog_url}" target="_blank" class="header-link">{self.version}</a>"""
+
+        # Inject the header title (left) and custom ASAP/Documentation/version
+        # links (right) using Streamlit's markdown method
         st.markdown(
             f"""
             <style>
@@ -494,9 +497,9 @@ class CustomMenu:
             </div>
 
             <div class="custom-menu-container">
-                <a href="{self.help_url}" target="_blank" class="header-link">Documentation</a>
-                <span class="header-link-divider">|</span>
                 <a href="{self.asap_url}" target="_blank" class="header-link">ASAP</a>
+                <span class="header-link-divider">|</span>
+                <a href="{self.help_url}" target="_blank" class="header-link">Documentation</a>{version_link_html}
             </div>
             """,
             unsafe_allow_html=True

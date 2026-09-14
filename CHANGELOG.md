@@ -2,11 +2,18 @@
 
 All notable changes to this project are documented here.
 
-Format: `Webapp vA.B.C (CDE vX.Y) — Date`
+Format: `Webapp vA.B.C — Starting date · CDE <cde_version>`
 
 ---
 
-## v0.9.3 — May 4th, 2026 · CDE v4.4 (optional CDE v3.4)
+## v0.9.5 — July 29th, 2026 · CDE v4.5 (optional CDE v3.4)
+
+- Automate OSA and in-vitro definitios
+- Add support for Acomys dimidiatus (spiny mice)
+- Adopt ASAP branding
+
+
+## v0.9.3, v0.9.4 — May 4th, 2026 · CDE v4.4 (optional CDE v3.4)
 
 - Add Streamlit-free `validate_core` function for external calls, like:
     ```
@@ -14,34 +21,34 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
     report = validate_table_core(df, table_name, cde_table, report=global_report)
     ```
 
-## v0.9.2 — 02 to 30th March 2026 · CDE v4.2 (optional CDE v3.4)
+## v0.9.2 — March 2nd, 2026 · CDE v4.2 (optional CDE v3.4)
 
 - Add `AssayInstrumentTechnology` (AIT) tab to automate definition of instruments and technologies used in each assay, reducing manual work for users
 - Add CDE synchronization evaluation of `CDE_current` vs. AIT tabs
 - Add `load_and_validate_schema` function to encapsulate all app configuration from JSON and Google Sheets for public consumption
 - Add MkDocs for User Help at https://asap-crn.github.io/crn-meta-validate/
 
-## v0.9.1 — 27 February 2026 · CDE v4.2 (optional CDE v3.4)
+## v0.9.1 — February 27th, 2026 · CDE v4.2 (optional CDE v3.4)
 
 - Update to CDE version v4.2 (including fields for ATAC and Proteomics assays)
 - Add CDE column `AllowMultiEnum` and functionality to allow multiple Enum values for specific fields (e.g. multiple brain regions per sample)
 
-## v0.9 — 04 February 2026 · CDE v4.2 (optional CDE v3.4)
+## v0.9 — February 4th, 2026 · CDE v4.2 (optional CDE v3.4)
 
 - Remove `table_categories` from `app_schema.json` — now loaded from CDE Spreadsheet `ValidCategories` tab
 
-## v0.8 — 02 February 2026 · CDE v4.1 (optional CDE v3.4)
+## v0.8 — February 2nd, 2026 · CDE v4.1 (optional CDE v3.4)
 
 - Fix bug not using `Specific[Species|SampleSource|Assay]` filters when building template files and validating tables
 - Slim down coloured logs and direct users to "see below" sections for details on missing columns and invalid values
 - Add free-text box for "Other" entries in Step 1 dropdowns
 
-## v0.7 — 20 January 2026 · CDE v4.0 (optional CDE v3.4)
+## v0.7 — January 20th, 2026 · CDE v4.0 (optional CDE v3.4)
 
 - Fix bug accepting malformed Pandas dataframes
 - Allow switching between CDE versions for Step 5 validation (if enabled in `app_schema`)
 
-## v0.6 — 01 December 2025 · CDE v4.0
+## v0.6 — December 1st, 2025 · CDE v4.0
 
 - Update to CDE version v4.0
 - Use Assay Type for the dropdown menu instead of Modality
@@ -51,14 +58,14 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 - Standardize logs, documentation and aesthetics across the app
 - Add colours to final table preview based on missing values and invalid vs. CDE status
 
-## v0.5 — 25 November 2025 · CDE v3.4
+## v0.5 — November 25th, 2025 · CDE v3.4
 
 - Assist users to fill out missing values on each column via radio buttons, free text, or dropdown menus
 - Improve detection of missing values in `utils/find_missing_values.py`
 - Compare each column vs. CDE using both Validation and FillNull rules
 - Add download button for pre-CDE-validated sanitized CSV
 
-## v0.4 — 13 November 2025 · CDE v3.3-beta
+## v0.4 — November 13th, 2025 · CDE v3.3-beta
 
 - CDE version is now provided in `resource/app_schema_{webapp_version}.json` and loaded via `utils/cde.py`
 - Add supported species, assay, and sample source dropdowns to select expected tables
@@ -68,8 +75,8 @@ Format: `Webapp vA.B.C (CDE vX.Y) — Date`
 - Improve delimiter detection
 - Improve file upload handling and status display
 
-## v0.3 — 01 April 2025 · CDE v3
+## v0.3 — April 1st, 2025 · CDE v3
 - No detailed notes recorded
 
-## v0.2 — 20 August 2023 · CDE v2
+## v0.2 — August 20th, 2023 · CDE v2
 - Initial release. Inspired on an similar tool developed for GP2 by Alejandro Martinez at Data Tecnica.

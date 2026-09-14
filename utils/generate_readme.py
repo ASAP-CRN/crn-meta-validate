@@ -13,8 +13,7 @@ This script updates:
 
   README.md
   ---------
-  1) The header version in:
-       "Metadata validator for ASAP CRN metadata (vX.Y)"
+  1) The header version in the resource/app_schema_<webapp_version>.json"
      to match --webapp-version.
   2) The intro block between markers:
        <!-- APP_INTRO_START -->
@@ -38,6 +37,9 @@ This script updates:
      using utils.help_menus.get_two_types_of_issues_markdown() — the same
      wording and bullet-list format shown in the App intro, so both stay
      in sync.
+
+Before sync'ing <version>, this script checks that the CHANGELOG.md's
+latest entry matches --webapp-version.
 
 If any marker or header cannot be located, the script raises RuntimeError
 and leaves both files unchanged.
@@ -113,6 +115,78 @@ def replace_readme_header_version(readme_text: str, webapp_version: str) -> str:
         )
 
     return updated_text
+
+
+def get_latest_changelog_version(repo_root: str) -> str:
+    """
+    Return the version from CHANGELOG.md's first (most recent) entry.
+
+    CHANGELOG.md lists entries newest-first, each headed by a line like
+    '## v0.9.3 — May 4th, 2026 · CDE v4.4'. This returns the version from
+    the first such heading found.
+
+    Parameters
+    ----------
+    repo_root : str
+        Absolute path to the repository root.
+
+    Returns
+    -------
+    str
+        Version string from the first "## v..." heading (e.g. "v0.9.3").
+    """
+    changelog_path = os.path.join(repo_root, "CHANGELOG.md")
+    if not os.path.exists(changelog_path):
+        raise RuntimeError(f"CHANGELOG.md not found at: {changelog_path}")
+
+    with open(changelog_path, "r", encoding="utf-8") as f:
+        changelog_text = f.read()
+
+    version_match = re.search(
+        r"^##\s+(v[0-9]+(?:\.[0-9]+){0,2})\b",
+        changelog_text,
+        re.MULTILINE,
+    )
+    if version_match is None:
+        raise RuntimeError(
+            "Could not find a version heading in CHANGELOG.md. Expected a "
+            "line like: '## v0.9.3 — May 4th, 2026 · CDE v4.4'."
+        )
+
+    return version_match.group(1)
+
+
+def validate_changelog_version(repo_root: str, webapp_version: str) -> None:
+    """
+    Raise RuntimeError if CHANGELOG.md's latest entry doesn't match webapp_version.
+
+    This is a check, not a sync: CHANGELOG.md is never rewritten here (its
+    entries are hand-written release notes, not derived content like the
+    intro/steps-table/two-types-of-issues blocks). Catches releasing a new
+    webapp_version without having first added its changelog entry.
+
+    Parameters
+    ----------
+    repo_root : str
+        Absolute path to the repository root.
+    webapp_version : str
+        Version passed via --webapp-version.
+
+    Returns
+    -------
+    None
+    """
+    latest_changelog_version = get_latest_changelog_version(repo_root=repo_root)
+
+    if latest_changelog_version != webapp_version:
+        raise RuntimeError(
+            f"CHANGELOG.md's latest entry is '{latest_changelog_version}', but "
+            f"--webapp-version is '{webapp_version}'. Add a "
+            f"'## {webapp_version} — <date> · CDE <cde_version>' entry to "
+            "CHANGELOG.md (repo root) describing this release, then re-run."
+        )
+
+    print(f"CHANGELOG.md is up to date (latest entry: {latest_changelog_version}).")
 
 
 def update_readme(repo_root: str, intro_markdown: str, webapp_version: str) -> None:
@@ -234,6 +308,10 @@ def update_docs_two_types_of_issues(repo_root: str, two_types_of_issues_markdown
 
 def sync_all(repo_root: str, webapp_version: str) -> None:
     """Load schema, build intro markdown, and sync README.md + docs/index.md."""
+    # Guard, not a sync — fail fast before touching any file if CHANGELOG.md
+    # hasn't been updated for this release yet.
+    validate_changelog_version(repo_root=repo_root, webapp_version=webapp_version)
+
     schema_filename = f"app_schema_{webapp_version}.json"
     schema_path = os.path.join(repo_root, "resource", schema_filename)
 

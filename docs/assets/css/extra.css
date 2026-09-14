@@ -105,9 +105,8 @@ body,
     border-radius: 999px 999px 0 0;
 }
 
-/* Rounded Note/Tip/Warning/Danger/FAQ boxes — one shared Material selector
-   for every type. overflow:hidden clips the title bar's tinted background
-   to the rounded corners (its own border-top-radius alone isn't enough). */
+/* Rounded boxes for Note/Tip/Warning/Danger/FAQ.
+   Clips tinted background to the rounded corners. */
 .md-typeset .admonition,
 .md-typeset details {
     border-radius: 1rem;
