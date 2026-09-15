@@ -1,5 +1,237 @@
+/* ============================================
+   ASAP brand font: Arial.
+   Requires theme.font: false in mkdocs.yml.
+   ============================================ */
+:root {
+    --md-text-font: Arial, sans-serif;
+    /* --md-code-font inline code-like text, left unset on purpose to use
+       sans-serif instead of default courier */
+}
+
+body,
+.md-typeset {
+    font-family: Arial, sans-serif;
+}
+
+.md-header__title,
+.md-nav__title,
+.md-nav__link,
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+    font-family: Arial, sans-serif;
+}
+
+/* Arial has no Light weight, so Material's h2 (font-weight: 300) renders
+   heavier than Roboto's — lighten the color instead, matching h1. */
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+    color: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   ASAP brand solid colors
+    ┌───────┬─────────┬────────────────────┐
+    │ Label │   Hex   │    Description     │
+    ├───────┼─────────┼────────────────────┤
+    │ A     │ #E3E4E3 │ Light neutral grey │
+    ├───────┼─────────┼────────────────────┤
+    │ B     │ #8C4E9F │ Purple             │
+    ├───────┼─────────┼────────────────────┤
+    │ C     │ #035C81 │ Deep teal-blue     │
+    ├───────┼─────────┼────────────────────┤
+    │ D     │ #0C8DC3 │ Medium cyan-blue   │
+    ├───────┼─────────┼────────────────────┤
+    │ E     │ #00202C │ Near-black navy    │
+    ├───────┼─────────┼────────────────────┤
+    │ F     │ #34A270 │ Green              │
+    └───────┴─────────┴────────────────────┘
+   - See "Header/tabs gradient" section below for ASAP color gradient.
+   ============================================ */
+
+/* Header bar */
+:root,
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color:        #035C81; /* ASAP deep teal-blue */
+    --md-primary-fg-color--light: #0487BD; /* lightened for hover/border states */
+    --md-primary-fg-color--dark:  #02384F; /* darkened for hover/border states */
+    --md-primary-bg-color:        #fff;
+    --md-primary-bg-color--light: #ffffffb3;
+}
+
+/* Header/tabs gradient. Matching gradient of
+   https://parkinsonsroadmap.org/research-network's top bar
+   (B purple → D cyan-blue → F green). */
+.md-header,
+.md-tabs {
+    background: linear-gradient(to right, #8C4E9F, #0C8DC3, #34A270);
+}
+
+/* Accent + body-text link color */
+[data-md-color-scheme="default"] {
+    --md-accent-fg-color:              #035C81; /* ASAP deep teal-blue for white-themed browser */
+    --md-accent-fg-color--transparent: #035C811a;
+    --md-accent-bg-color:              #fff;
+    --md-accent-bg-color--light:       #ffffffb3;
+    --md-typeset-a-color:              #035C81;
+}
+[data-md-color-scheme="slate"] {
+    --md-accent-fg-color:              #0C8DC3; /* ASAP medium cyan-blue for dark-themed browser */
+    --md-accent-fg-color--transparent: #0C8DC31a;
+    --md-accent-bg-color:              #fff;
+    --md-accent-bg-color--light:       #ffffffb3;
+    --md-typeset-a-color:              #0C8DC3;
+}
+
+/* Footer bar */
+:root,
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+    --md-footer-bg-color:       #035C81;
+    --md-footer-bg-color--dark: #035C81;
+}
+
+/* Pill-shaped search box. Active state keeps flat-bottom corners so the
+   results dropdown reads as attached rather than floating. */
+.md-search__form {
+    border-radius: 999px;
+}
+[data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+    border-radius: 999px 999px 0 0;
+}
+
+/* Rounded boxes for Note/Tip/Warning/Danger/FAQ.
+   Clips tinted background to the rounded corners. */
+.md-typeset .admonition,
+.md-typeset details {
+    border-radius: 1rem;
+    overflow: hidden;
+}
+.md-typeset .admonition-title,
+.md-typeset summary {
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+}
+
+/* Note & Tip colors adapted to ASAP branding */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+    border-color: #0C8DC3;
+}
+.md-typeset .admonition.note:focus-within,
+.md-typeset details.note:focus-within {
+    box-shadow: 0 0 0 .2rem #0C8DC31a;
+}
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+    background-color: #0C8DC31a;
+}
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+    background-color: #0C8DC3;
+}
+.md-typeset .note > .admonition-title::after,
+.md-typeset .note > summary::after {
+    color: #0C8DC3;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+    border-color: #34A270;
+}
+.md-typeset .admonition.tip:focus-within,
+.md-typeset details.tip:focus-within {
+    box-shadow: 0 0 0 .2rem #34A2701a;
+}
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+    background-color: #34A2701a;
+}
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+    background-color: #34A270;
+}
+.md-typeset .tip > .admonition-title::after,
+.md-typeset .tip > summary::after {
+    color: #34A270;
+}
+
+/* FAQ (`??? question`) boxes adapted to ASAP branding */
+.md-typeset .admonition.question,
+.md-typeset details.question {
+    border-color: #8C4E9F;
+}
+.md-typeset .admonition.question:focus-within,
+.md-typeset details.question:focus-within {
+    box-shadow: 0 0 0 .2rem #8C4E9F1a;
+}
+.md-typeset .question > .admonition-title,
+.md-typeset .question > summary {
+    background-color: #8C4E9F1a;
+}
+.md-typeset .question > .admonition-title::before,
+.md-typeset .question > summary::before {
+    background-color: #8C4E9F;
+}
+.md-typeset .question > .admonition-title::after,
+.md-typeset .question > summary::after {
+    color: #8C4E9F;
+}
+
+/* Table text size relative to prose */
+:root {
+    --table-to-prose-font-ratio: 0.9;
+}
+.md-typeset table:not([class]) {
+    font-size: calc(.8rem * var(--table-to-prose-font-ratio));
+}
+
+/* Table borders/row-dividers adapted to ASAP branding */
+[data-md-color-scheme="default"] {
+    --md-typeset-table-color: #035C81;
+}
+[data-md-color-scheme="slate"] {
+    --md-typeset-table-color: #0C8DC3;
+}
+
+/* Table header row emphasis relative to the rest of the table */
+[data-md-color-scheme="default"] .md-typeset table:not([class]) th {
+    background-color: #E3E4E3;
+    color: #00202C;
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+    background-color: #00202C;
+    color: #E3E4E3;
+}
+
+/* Inline code chip background contrast adjustment */
+[data-md-color-scheme="default"] .md-typeset code {
+    background-color: #E3E4E3;
+    color: #00202C;
+}
+[data-md-color-scheme="slate"] .md-typeset code {
+    background-color: #343846;
+    color: #E3E4E3;
+}
+.md-typeset pre code {
+    background-color: var(--md-code-bg-color);
+    color: var(--md-code-fg-color);
+}
+
 .screenshot {
     border: 1px solid #d0d0d0;
     border-radius: 6px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* Visual | separator before the "App" */
+.md-tabs__item:last-child .md-tabs__link::before {
+    content: "|";
+    color: rgba(255, 255, 255, 0.7);
+    margin-right: 1.2rem;
 }

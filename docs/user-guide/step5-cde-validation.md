@@ -6,13 +6,13 @@ This is the main validation step. The app compares each table against the [ASAP 
 
 Click the **Compare vs. CDE** button for the table you want to validate.
 
-![Step 5 - Compare button](../assets/screenshots/step_5_send_vs_cde.png){ width="700" }
+![Step 5 - Compare button](../assets/screenshots/step_5_send_vs_cde.png){ width="800" }
 
 The app will validate your table against the current CDE version. A progress indicator will appear while validation runs.
 
 ## Reading the validation report
 
-![Step 5 - Validation report](../assets/screenshots/step_5_validation_report.png){ width="700" }
+![Step 5 - Validation report](../assets/screenshots/step_5_validation_report.png){ width="800" }
 
 The report shows four summary lines:
 
@@ -31,7 +31,7 @@ Below the summary, a color-coded preview of your table highlights invalid values
 
 ## Downloading your results
 
-![Step 5 - Downloads](../assets/screenshots/step_5_downloads.png){ width="600" }
+![Step 5 - Downloads](../assets/screenshots/step_5_downloads.png){ width="800" }
 
 Once validation is complete, three files are available to download:
 

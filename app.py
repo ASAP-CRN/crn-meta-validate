@@ -9,8 +9,8 @@ Example *csv infiles: https://github.com/ASAP-CRN/crn-meta-validate/tree/main/re
 Version history: https://github.com/ASAP-CRN/crn-meta-validate/blob/main/CHANGELOG.md
 
 Authors:
-- [Andy Henrie](https://github.com/ergonyc)
 - [Javier Diaz](https://github.com/jdime)
+- [Andy Henrie](https://github.com/ergonyc)
 
 Contributors:
 - [Alejandro Marinez](https://github.com/AMCalejandro)
@@ -155,7 +155,6 @@ def main():
 
     # Main introduction text
     render_app_intro(
-        webapp_version=webapp_version,
         cde_version=app_config.cde_version,
         cde_google_sheet_url=app_config.cde_google_sheet_current,
     )
@@ -176,7 +175,10 @@ def main():
 
     ############
     ### Render custom menu (replaces hamburger menu)
-    custom_menu = CustomMenu(help_url=app_config.app_schema['kebab_menu']['get_help_url'])
+    custom_menu = CustomMenu(
+        help_url=app_config.app_schema['kebab_menu']['get_help_url'],
+        version=webapp_version,
+    )
     custom_menu.render()
 
     ############
@@ -186,7 +188,7 @@ def main():
     # Drop down menu to select species
     with col1:
         species, other_species_value = render_step1_selectbox_with_other_text(
-            heading_html='<h3 style="font-size: 25px;">Choose dataset species <span style="color: red;">*</span></h3>',
+            heading_html='<h3 style="font-size: 23px;">Choose dataset species <span style="color: red;">*</span></h3>',
             selectbox_label="Dataset species",
             selectbox_options=app_config.SPECIES,
             selectbox_key="step1_species_select",
@@ -197,7 +199,7 @@ def main():
     # Drop down menu to select sample_source
     with col2:
         sample_source, other_sample_source_value = render_step1_selectbox_with_other_text(
-            heading_html='<h3 style="font-size: 25px;">Choose sample source <span style="color: red;">*</span></h3>',
+            heading_html='<h3 style="font-size: 23px;">Choose sample source <span style="color: red;">*</span></h3>',
             selectbox_label="Sample source",
             selectbox_options=app_config.SAMPLE_SOURCE,
             selectbox_key="step1_sample_source_select",
@@ -208,7 +210,7 @@ def main():
     # Drop down menu to select assay type
     with col3:
         assay_label, other_assay_label_value = render_step1_selectbox_with_other_text(
-            heading_html='<h3 style="font-size: 25px;">Choose assay type <span style="color: red;">*</span></h3>',
+            heading_html='<h3 style="font-size: 23px;">Choose assay type <span style="color: red;">*</span></h3>',
             selectbox_label="Assay type",
             selectbox_options=app_config.ASSAY_TYPES,
             selectbox_key="step1_assay_type_select",

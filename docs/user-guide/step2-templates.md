@@ -2,7 +2,7 @@
 
 After selecting your dataset type in Step 1, the app generates a set of CSV template files tailored to your selection.
 
-![Step 2 download screenshot](../assets/screenshots/step_2_template_download.png){ width="400" }
+![Step 2 download screenshot](../assets/screenshots/step_2_template_download.png){ width="300" }
 
 ## What to download
 
@@ -11,7 +11,7 @@ Click the download button in the sidebar to get a zip file containing one CSV pe
 ## What's inside each template
 
 Each CSV includes **6 helper rows** at the top. For example:
-![Step 2 example screenshot](../assets/screenshots/step_2_template_example.png){ width="1400" }
+![Step 2 example screenshot](../assets/screenshots/step_2_template_example.png){ width="800" }
 
 Where rows represent:
 
