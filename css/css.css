@@ -69,7 +69,7 @@ body {
     font-family: Arial, sans-serif !important;
 }
 
-/* Headings use Arial Light rather than a bold high-contrast one, 
+/* Headings use Arial Light rather than a bold high-contrast one,
    so both surfaces feel like one product. */
 [data-testid="stAppViewContainer"] h1,
 [data-testid="stAppViewContainer"] h2,
@@ -351,7 +351,8 @@ section[data-testid="stFileUploaderDropzone"] {
     border: 1px solid rgba(49, 51, 63, 0.2) !important;
 }
 
-/* Style only the 'Browse files' button inside the dropzone so it matches app buttons */
+/* Style only the 'Browse files' button inside the dropzone so it matches app buttons.
+   min-width + white-space: nowrap keep the "Upload" text always visible. */
 section[data-testid="stFileUploaderDropzone"] button {
     font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
@@ -364,6 +365,12 @@ section[data-testid="stFileUploaderDropzone"] button {
     font-size: 16px !important;
     border-radius: 4px !important;
     border: 2px solid var(--accent) !important;
+    min-width: 160px !important;
+    white-space: nowrap !important;
+}
+section[data-testid="stFileUploaderDropzone"] button * {
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 
 /* ============================================
