@@ -352,7 +352,7 @@ section[data-testid="stFileUploaderDropzone"] {
 }
 
 /* Style only the 'Browse files' button inside the dropzone so it matches app buttons.
-   min-width + white-space: nowrap keep the "Upload" text always visible. */
+   min-width keeps the "Upload" text always viewable. */
 section[data-testid="stFileUploaderDropzone"] button {
     font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
@@ -366,11 +366,6 @@ section[data-testid="stFileUploaderDropzone"] button {
     border-radius: 4px !important;
     border: 2px solid var(--accent) !important;
     min-width: 200px !important;
-    white-space: nowrap !important;
-}
-section[data-testid="stFileUploaderDropzone"] button * {
-    white-space: nowrap !important;
-    overflow: visible !important;
 }
 
 /* ============================================
