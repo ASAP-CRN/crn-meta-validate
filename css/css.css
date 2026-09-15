@@ -352,7 +352,7 @@ section[data-testid="stFileUploaderDropzone"] {
 }
 
 /* Style only the 'Browse files' button inside the dropzone so it matches app buttons.
-   min-width keeps the "Upload" text always viewable. */
+   min-width keeps the "Upload" text always visible. */
 section[data-testid="stFileUploaderDropzone"] button {
     font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
@@ -366,6 +366,10 @@ section[data-testid="stFileUploaderDropzone"] button {
     border-radius: 4px !important;
     border: 2px solid var(--accent) !important;
     min-width: 200px !important;
+}
+/* Exclude per-file delete (×) chips. */
+section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] button {
+    min-width: auto !important;
 }
 
 /* ============================================
