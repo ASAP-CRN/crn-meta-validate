@@ -1,4 +1,4 @@
 sample_id,sequencing_end,RIN,assay,sample_source,instrument,reference_genome_or_genome_collection,technology,modality,molecular_source,input_cell_count,sequencing_length,sequencing_resolution_or_indexing,sequencing_transcript_representation
-sample_1,dual,8.2,single_cell_rna_seq,Brain,10x_chromium_x;illumina_novaseq_6000,GRCh38,10x_chromium,rna_expression,Total RNA,8500,2x100bp,single_cell,3_prime_tag_based
-sample_2,Paired-end,7.9,single_cell_rna_seq,Brain,10x_chromium_x,GRCh38,10x_chromium,rna_expression,Total RNA,9200,2x100bp,single_cell,3_prime_tag_based
-sample_3,Paired-end,good,single_cell_rna_seq,Brain,10x_chromium_controller,GRCh38,10x_chromium,rna_expression,Total RNA,7800,2x100bp,single_cell,3_prime_tag_based
+sample_1,dual,8.2,single_cell_rna_seq,Brain,10x_chromium_x;illumina_novaseq_6000,,10x_chromium,rna_expression,Total RNA,8500,2x100bp,single_cell,3_prime_tag_based
+sample_2,Paired-end,7.9,single_cell_rna_seq,Brain,10x_chromium_x,,10x_chromium,rna_expression,Total RNA,9200,2x100bp,single_cell,3_prime_tag_based
+sample_3,Paired-end,good,single_cell_rna_seq,Brain,10x_chromium_controller,,10x_chromium,rna_expression,Total RNA,7800,2x100bp,single_cell,3_prime_tag_based
