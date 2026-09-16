@@ -274,10 +274,9 @@ section[data-testid="stFileUploaderDropzone"] * {
     margin-left: auto !important;
     margin-right: auto !important;
 }
-/* Hide the 'Limit 200MB per file CSV' legend*/
-section[data-testid="stFileUploaderDropzone"] span + span {
-    display: none !important;
-}
+/* NOTE: a generic "hide the legend via span + span" rule used to live here.
+         But a newer Streamlit (streamlit==1.64.0) made the Upload text in Step 2
+         box disappear with that rule. Removing the rule fixes that. */
 
 /* Additional safeguard using current class name (may change on Streamlit upgrade) */
 span.st-emotion-cache-1sct1q3.e1d2qte94 {
@@ -351,8 +350,7 @@ section[data-testid="stFileUploaderDropzone"] {
     border: 1px solid rgba(49, 51, 63, 0.2) !important;
 }
 
-/* Style only the 'Browse files' button inside the dropzone so it matches app buttons.
-   min-width keeps the "Upload" text always visible. */
+/* Style only the 'Browse files' button inside the dropzone so it matches app buttons. */
 section[data-testid="stFileUploaderDropzone"] button {
     font-family: Arial, sans-serif !important;
     background-color: #D3D3D3 !important;
@@ -365,11 +363,6 @@ section[data-testid="stFileUploaderDropzone"] button {
     font-size: 16px !important;
     border-radius: 4px !important;
     border: 2px solid var(--accent) !important;
-    min-width: 300px !important;
-}
-/* Exclude per-file delete (×) chips. */
-section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] button {
-    min-width: auto !important;
 }
 
 /* ============================================
