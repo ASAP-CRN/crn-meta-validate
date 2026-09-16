@@ -177,6 +177,48 @@ def render_missing_columns(
             table_comments[column_name] = comment_value
 
 
+def render_missing_optional_summary(
+    *,
+    validation_report: "ReportCollector",
+    table_name: str,
+    missing_columns: list[str],
+    total_columns: int,
+) -> None:
+    """Render a single compact bullet for missing Optional columns.
+
+    Unlike Required columns (see `render_missing_columns`), an entirely
+    absent Optional column isn't actionable per-column — there's nothing
+    for the data contributor to fill out or comment on, since it was never
+    required to begin with. A one-line count per table is enough; no
+    per-column bullets, hover tooltips, or comment boxes.
+
+    Parameters
+    ----------
+    validation_report : ReportCollector
+        Collector to append the rendered markdown to, for the downloadable log.
+    table_name : str
+        Name of the table being validated (e.g. "SAMPLE").
+    missing_columns : list[str]
+        Optional CDE fields absent from the input table. No-op if empty.
+    total_columns : int
+        Total number of Optional CDE fields for this table.
+
+    Returns
+    -------
+    None
+    """
+    if not missing_columns:
+        return
+
+    summary_text = "**Missing optional columns:**"
+    bullet_text = f"- **{table_name}** ({len(missing_columns)}/{total_columns})"
+
+    validation_report.entries.append(("markdown", summary_text))
+    validation_report.entries.append(("markdown", bullet_text))
+    st.markdown(summary_text)
+    st.markdown(bullet_text)
+
+
 def render_invalid_values(
     *,
     validation_report: "ReportCollector",
@@ -392,8 +434,8 @@ def validate_table_ui(df_after_fill: pd.DataFrame, table_name: str,
     )
     _render_entries_to_streamlit(validation_report.entries[entries_before:])
 
-    # Fill missing columns with NULL so the df is complete for downstream steps
-    for column in result["missing_required"] + result["missing_optional"]:
+    # Fill missing Required columns with NULL so the df is complete for downstream steps
+    for column in result["missing_required"]:
         df_after_fill[column] = NULL
 
     invalid_cell_mask = result["invalid_cell_mask"]
@@ -469,15 +511,11 @@ def validate_table_ui(df_after_fill: pd.DataFrame, table_name: str,
             column_type_label="Required",
             widget_key_prefix="missing_comment",
         )
-        render_missing_columns(
+        render_missing_optional_summary(
             validation_report=validation_report,
             table_name=table_name,
-            cde_rules=cde_rules,
-            table_comments=table_comments,
             missing_columns=missing_optional,
             total_columns=total_optional,
-            column_type_label="Optional",
-            widget_key_prefix="missing_comment",
         )
 
         column_comments[table_name] = table_comments

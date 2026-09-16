@@ -2,7 +2,7 @@
 
 Before comparing against the CDE, the app checks each uploaded table for two common problems: non-comma delimiters and missing values.
 
-![Step 4 screenshot](../assets/screenshots/step_4_fix_issues.png){ width="700" }
+![Step 4 screenshot](../assets/screenshots/step_4_fix_issues.png){ width="800" }
 
 ## What the app checks
 

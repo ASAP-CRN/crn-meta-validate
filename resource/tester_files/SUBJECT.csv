@@ -1,1 +1,1 @@
-subject_id,source_subject_id,biobank_name,sex,race,gp2_phenotype,ethnicity,education_level,smoking_status,smoking_years,aux_table,cell_line,strain
+subject_id,source_subject_id,biobank_name,sex,race,gp2_phenotype,ethnicity,education_level,smoking_status,smoking_years,aux_table

@@ -2,7 +2,7 @@
 
 Once your CSV files are filled out and helper rows 2–6 are removed, upload them to the app.
 
-![Step 3 screenshot](../assets/screenshots/step_3_upload_files.png){ width="400" }
+![Step 3 screenshot](../assets/screenshots/step_3_upload_files.png){ width="300" }
 
 ## How to upload
 
