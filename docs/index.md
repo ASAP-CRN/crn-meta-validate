@@ -33,7 +33,7 @@ Free text boxes allow users to record per-column comments to provide context to 
 
 
 ## 📖 **[Full step-by-step user guide](https://asap-crn.github.io/crn-meta-validate/user-guide/step1-dataset-setup/)**
-Includes all five steps with screenshots, a [FAQ](http://127.0.0.1:8000/crn-meta-validate/faq/), and download instructions. Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
+Includes all five steps with screenshots, a [FAQ](https://asap-crn.github.io/crn-meta-validate/faq/), and download instructions. Example CSV files to test the app are available [here](https://github.com/ASAP-CRN/crn-meta-validate/tree/main/resource/tester_files).
 
 ## 👉 **[Go to the app](https://asap-meta-qc.streamlit.app/)**
 
