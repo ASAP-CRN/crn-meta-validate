@@ -365,7 +365,7 @@ section[data-testid="stFileUploaderDropzone"] button {
     font-size: 16px !important;
     border-radius: 4px !important;
     border: 2px solid var(--accent) !important;
-    min-width: 200px !important;
+    min-width: 300px !important;
 }
 /* Exclude per-file delete (×) chips. */
 section[data-testid="stFileUploaderDropzone"] [data-testid="stFileChip"] button {
