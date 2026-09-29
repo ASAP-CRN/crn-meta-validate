@@ -28,6 +28,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.help_menus import get_current_function_name, inline_error
+from utils.validate_core import emoji_warning
 
 LINES_TO_EVALUATE = 50  # Number of lines to read for delimiter detection
 SUPPORTED_DELIMITERS = [",", ";", "\t", "|"]  # Supported delimiters for detection
@@ -420,7 +421,7 @@ class DelimiterHandler:
         preview_df: Optional[pd.DataFrame],
         file_key: str,
     ):
-        st.info(f"**{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0f}%).")
+        st.warning(f"{emoji_warning} **{filename}** ({row_count} rows) — file detected **{delimiter_name}** delimited (confidence {confidence:.0f}%).")
         if preview_df is not None:
             rows_to_show = st.session_state.get('preview_max_rows', 10)
             preview_df_formatted = format_dataframe_for_preview(preview_df)
